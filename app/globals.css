@@ -1,0 +1,431 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────────────────
+   Mirrors DESIGN.md. Exposed to Tailwind v4 via @theme so utilities like
+   bg-rust-500 / text-n-700 / rounded-lg work directly.                      */
+
+@theme {
+  --color-rust-50: #faf5f1;
+  --color-rust-100: #f3e5da;
+  --color-rust-200: #e6c9b4;
+  --color-rust-300: #d5a483;
+  --color-rust-400: #c48257;
+  --color-rust-500: #b06740;
+  --color-rust-600: #95542f;
+  --color-rust-700: #764226;
+  --color-rust-800: #57321d;
+  --color-rust-900: #3a2314;
+
+  --color-n-0: #ffffff;
+  --color-n-25: #fbfaf8;
+  --color-n-50: #f5f3ef;
+  --color-n-100: #ece8e2;
+  --color-n-200: #dcd7ce;
+  --color-n-300: #bfb8ac;
+  --color-n-400: #968e81;
+  --color-n-500: #756e63;
+  --color-n-600: #585249;
+  --color-n-700: #413c35;
+  --color-n-800: #2a2621;
+  --color-n-900: #1a1714;
+
+  --color-ok: #6e9464;
+  --color-ok-soft: #eaf0e7;
+  --color-warn: #b79034;
+  --color-warn-soft: #f7efdc;
+  --color-danger: #a8556a;
+  --color-danger-soft: #f6e8ec;
+  --color-info: #5b7c9d;
+  --color-info-soft: #e8eef4;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-pop: 0 4px 16px -4px rgb(26 23 20 / 0.1);
+  --shadow-modal: 0 16px 48px -12px rgb(26 23 20 / 0.18);
+
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+  --dot: var(--color-n-200);
+}
+
+* {
+  border-color: var(--color-n-100);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-n-25);
+  color: var(--color-n-700);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 23px;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Drafting-paper dot lattice. Fixed so it doesn't scroll with content, and
+   masked at the top so it never competes with the header.                   */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size: 24px 24px;
+  opacity: 0.55;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 220px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 220px);
+}
+
+::selection {
+  background: var(--color-rust-200);
+  color: var(--color-rust-900);
+}
+
+/* ── Type roles ────────────────────────────────────────────────────────── */
+
+.font-display {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 40;
+  letter-spacing: -0.015em;
+}
+
+.font-num {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-n-500);
+}
+
+/* ── Focus ─────────────────────────────────────────────────────────────── */
+
+/* Declared in @layer base so a Tailwind `outline-none` utility can override it.
+   Unlayered CSS beats layered CSS, so leaving this bare made `outline-none`
+   a no-op everywhere and drew a ring on inputs that style their own focus.
+   No border-radius here — browsers already follow the element's own radius. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-rust-500);
+    outline-offset: 2px;
+  }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-n-200);
+  border-radius: 99px;
+  border: 3px solid var(--color-n-25);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-n-300);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+}
+@keyframes draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 260ms var(--ease-out-soft) both;
+}
+.animate-fade-in {
+  animation: fade-in 200ms ease-out both;
+}
+.animate-scale-in {
+  animation: scale-in 180ms var(--ease-out-soft) both;
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Progress fills and count-ups get the long expo curve (DESIGN.md §5). */
+.bar-fill {
+  transition: width 420ms var(--ease-out-expo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--color-n-0);
+  border: 1px solid var(--color-n-100);
+  border-radius: var(--radius-lg);
+}
+
+/* Hide number input spinners — durations are typed, not nudged. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Range input styled as the focus slider. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--color-n-200);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  margin-top: -6px;
+  border-radius: 99px;
+  background: var(--color-n-0);
+  border: 2px solid var(--color-rust-500);
+  transition: transform 120ms ease-out;
+}
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+}
+
+/* ── Markdown notes ────────────────────────────────────────────────────────
+   Editorial reading column. Fraunces for headings keeps notes feeling like
+   a document rather than a form.                                            */
+
+.prose-notes {
+  color: var(--color-n-700);
+  font-size: 15px;
+  line-height: 26px;
+  overflow-wrap: break-word;
+}
+
+.prose-notes > *:first-child { margin-top: 0; }
+.prose-notes > *:last-child { margin-bottom: 0; }
+
+.prose-notes .md-h {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 36;
+  letter-spacing: -0.015em;
+  color: var(--color-n-900);
+  scroll-margin-top: 80px;
+}
+.prose-notes .md-h1 { font-size: 30px; line-height: 38px; font-weight: 600; margin: 32px 0 12px; }
+.prose-notes .md-h2 { font-size: 23px; line-height: 31px; font-weight: 600; margin: 28px 0 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--color-n-100); }
+.prose-notes .md-h3 { font-size: 18px; line-height: 26px; font-weight: 600; margin: 22px 0 8px; }
+.prose-notes .md-h4,
+.prose-notes .md-h5,
+.prose-notes .md-h6 { font-size: 15px; line-height: 23px; font-weight: 600; margin: 18px 0 6px; }
+
+.prose-notes p { margin: 0 0 14px; }
+.prose-notes ul,
+.prose-notes ol { margin: 0 0 14px; padding-left: 22px; }
+.prose-notes li { margin: 4px 0; }
+.prose-notes ul { list-style: disc; }
+.prose-notes ol { list-style: decimal; }
+.prose-notes li::marker { color: var(--color-n-400); }
+
+/* GFM task lists */
+.prose-notes li:has(> input[type="checkbox"]) { list-style: none; margin-left: -20px; }
+.prose-notes input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--color-ok);
+}
+
+.prose-notes a {
+  color: var(--color-rust-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--color-rust-200);
+}
+.prose-notes a:hover { text-decoration-color: var(--color-rust-500); }
+
+.prose-notes blockquote {
+  margin: 0 0 14px;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--color-rust-200);
+  color: var(--color-n-600);
+}
+
+.prose-notes hr { margin: 28px 0; border: 0; border-top: 1px solid var(--color-n-200); }
+
+.prose-notes code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.87em;
+  background: var(--color-n-50);
+  border: 1px solid var(--color-n-100);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.prose-notes .code-block {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--color-n-50);
+  border: 1px solid var(--color-n-100);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.prose-notes .code-block code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 21px;
+}
+.prose-notes .code-lang {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-n-400);
+}
+
+.prose-notes table {
+  width: 100%;
+  margin: 0 0 16px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.prose-notes th,
+.prose-notes td {
+  border: 1px solid var(--color-n-100);
+  padding: 7px 10px;
+  text-align: left;
+}
+.prose-notes th { background: var(--color-n-50); font-weight: 600; color: var(--color-n-800); }
+
+.prose-notes img { border-radius: var(--radius-md); border: 1px solid var(--color-n-100); }
+
+/* Syntax highlighting — the design system's own hues, not a stock theme. */
+.hljs-comment, .hljs-quote { color: var(--color-n-400); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type { color: #8A4430; font-weight: 600; }
+.hljs-string, .hljs-regexp, .hljs-addition { color: #3D6924; }
+.hljs-number, .hljs-built_in, .hljs-symbol { color: #2D6FA0; }
+.hljs-title, .hljs-name, .hljs-section, .hljs-function .hljs-title { color: #A284C6; }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #93474F; }
+.hljs-meta, .hljs-deletion { color: var(--color-n-500); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+
+/* ── Print / PDF export ────────────────────────────────────────────────────
+   The PDF route is the browser's own "Save as PDF" over a print stylesheet —
+   better typography and page-breaking than any JS PDF library, and no extra
+   dependency to keep alive.                                                 */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 16mm 20mm;
+  }
+
+  html, body { background: #fff !important; }
+  body::before { display: none !important; }        /* no dot grid on paper */
+  .no-print { display: none !important; }
+
+  .print-sheet { max-width: none; padding: 0; }
+
+  /* Keep a heading with the text that follows it. */
+  .prose-notes .md-h { break-after: avoid-page; page-break-after: avoid; }
+  .prose-notes p, .prose-notes li, .prose-notes blockquote { orphans: 3; widows: 3; }
+  .prose-notes .code-block, .prose-notes table, .prose-notes img {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .page-break { break-before: page; page-break-before: always; }
+
+  /* Print links as footnoted URLs so a paper copy stays useful. */
+  .prose-notes a::after {
+    content: " (" attr(href) ")";
+    font-size: 10px;
+    color: #666;
+    word-break: break-all;
+  }
+  .prose-notes a[href^="#"]::after { content: ""; }
+}

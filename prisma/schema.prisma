@@ -1,0 +1,228 @@
+// Study Planner 26/27 — data model
+//
+// Deliberately portable: no SQLite-specific types are used, so migrating to
+// Postgres is a `provider` + `DATABASE_URL` change and `prisma migrate dev`.
+// Enums are modelled as String + a const union in lib/types.ts for the same
+// reason (SQLite has no native enum; Postgres would accept either).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A university course. Progress weights are per-course and sum to 100
+/// across the categories that actually exist for that course (see
+/// lib/progress.ts — absent categories auto-rescale).
+model Course {
+  id           String  @id @default(cuid())
+  code         String  @unique // e.g. COMPSCI5113
+  name         String
+  shortName    String // compact label for charts/badges, e.g. "FP"
+  colour       String // hex, drawn from the DESIGN.md course palette
+  archived     Boolean @default(false)
+  position     Int     @default(0)
+  /// 1 = semester 1, 2 = semester 2, 3 = runs all year.
+  /// Semester-2 courses stay hidden until SEMESTER_2_VISIBLE_FROM (lib/types.ts).
+  semester     Int     @default(1)
+  /// When on, every lecture gains an unticked "Revised" part, re-opening the
+  /// course for exam revision without losing the attendance/notes history.
+  revisionMode Boolean @default(false)
+
+  // Progress weights out of 100. Exams are deliberately excluded from the
+  // bar (they resolve only at the very end of the year) and surface as a
+  // separate readiness/countdown card instead.
+  lectureWeight    Int @default(35)
+  labWeight        Int @default(0)
+  assessmentWeight Int @default(65)
+
+  slots    ScheduleSlot[]
+  tasks    Task[]
+  sessions SessionCourse[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A recurring timetable entry, used to generate Task instances week by week.
+/// Kept after generation so the timetable can be re-run or extended.
+model ScheduleSlot {
+  id        String  @id @default(cuid())
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  kind      String // LECTURE | LAB | SEMINAR
+  dayOfWeek Int // 1 = Monday ... 7 = Sunday
+  startMin  Int // minutes from midnight, e.g. 600 = 10:00
+  endMin    Int
+  location  String?
+
+  @@index([courseId])
+}
+
+/// Everything you can tick off: lecture instances, labs, coursework, quizzes,
+/// exams, and anything ad-hoc you add yourself.
+model Task {
+  id       String  @id @default(cuid())
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title String
+  kind  String // LECTURE | LAB | SEMINAR | COURSEWORK | QUIZ | EXAM | OTHER
+  notes String?
+
+  /// When it happens / is due. `dueAt` is the deadline or class start time.
+  dueAt     DateTime?
+  /// Set for timetabled classes so the home page can show "today's classes"
+  /// with real times; null for deadline-only tasks.
+  startMin  Int?
+  endMin    Int?
+  /// Monday of the teaching week this instance belongs to (timetabled tasks).
+  weekStart DateTime?
+
+  /// Grade weight as a percentage of the final course mark, where known.
+  /// Null means "unweighted" and the task is equal-weighted among its peers.
+  gradeWeight Float?
+
+  /// Exam diet label, e.g. "December 2026" / "April/May 2027". Exams often
+  /// have no fixed date yet, so this carries the information dueAt cannot.
+  examDiet String?
+
+  priority  Int     @default(0) // 0 normal, 1 high
+  cancelled Boolean @default(false)
+
+  /// Typed lecture notes, as markdown. Rendered in-app and exported to PDF.
+  notesMd       String?
+  /// Where the handwritten notes physically live: which notebook (by cover
+  /// design — Space / Physics / Computing) and which pages.
+  notebook      String?
+  notebookPages String?
+
+  /// Google Calendar event id, set once this task has been pushed across, so
+  /// a second push updates the event rather than duplicating it.
+  calendarEventId String?
+  /// Denormalised completion stamp. Truth lives in TaskItem; this is set when
+  /// every item is done (or, for item-less tasks, when ticked directly).
+  doneAt          DateTime?
+
+  items        TaskItem[]
+  /// Tasks this one depends on — advisory only, never blocking.
+  dependsOn    TaskDependency[] @relation("Dependent")
+  dependents   TaskDependency[] @relation("Prerequisite")
+  sessionLinks SessionTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([dueAt])
+  @@index([weekStart])
+  @@index([kind])
+}
+
+/// A checklist part of a task. Lectures get Attendance / Typed Notes /
+/// Handwritten Notes; labs get Attendance / Lab Completion; coursework gets
+/// whatever subtasks you create.
+model TaskItem {
+  id       String    @id @default(cuid())
+  taskId   String
+  task     Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label    String
+  position Int       @default(0)
+  doneAt   DateTime?
+
+  @@index([taskId])
+}
+
+/// Advisory prerequisite edge: "these should be done before that".
+/// Never enforced — completing a task early is always allowed.
+model TaskDependency {
+  id             String @id @default(cuid())
+  dependentId    String
+  dependent      Task   @relation("Dependent", fields: [dependentId], references: [id], onDelete: Cascade)
+  prerequisiteId String
+  prerequisite   Task   @relation("Prerequisite", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentId, prerequisiteId])
+  @@index([prerequisiteId])
+}
+
+/// A completed study session, created when the global timer is stopped.
+model Session {
+  id String @id @default(cuid())
+
+  name       String
+  startedAt  DateTime
+  endedAt    DateTime
+  /// Final, possibly adjusted-down duration in minutes. This — not the
+  /// wall-clock difference — is what every statistic uses.
+  minutes    Int
+  /// Raw wall-clock minutes before adjustment, kept for honesty in stats.
+  rawMinutes Int
+  /// Self-reported focus, 0–100.
+  focus      Int
+  notes      String?
+
+  courses SessionCourse[]
+  tasks   SessionTask[]
+
+  createdAt DateTime @default(now())
+
+  @@index([startedAt])
+}
+
+/// Many-to-many: a session can cover several subjects, each with its own
+/// slice of the session's time. The slices always sum to Session.minutes —
+/// see lib/split.ts, which apportions them with largest-remainder rounding
+/// so no minute is ever lost or double-counted.
+model SessionCourse {
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  /// This subject's share of the session, in minutes.
+  minutes   Int     @default(0)
+
+  @@id([sessionId, courseId])
+  @@index([courseId])
+}
+
+/// Optional link from a session to the specific tasks worked on.
+model SessionTask {
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, taskId])
+  @@index([taskId])
+}
+
+/// Singleton (id is always "singleton") holding the running timer, so the
+/// timer is server-side state and survives reloads, tab closes and crashes.
+model ActiveTimer {
+  id        String   @id @default("singleton")
+  startedAt DateTime
+  /// Optional pre-filled name typed before/while the timer runs.
+  draftName String?
+}
+
+/// Google OAuth tokens (id is always "singleton").
+///
+/// Single-user app on one machine, so tokens live in the database rather than
+/// a session — they survive restarts and there is no second user to isolate.
+model GoogleAuth {
+  id           String   @id @default("singleton")
+  accessToken  String
+  refreshToken String
+  /// When the current access token stops working; refreshed on demand.
+  expiresAt    DateTime
+  scope        String
+  email        String?
+  /// Which calendar events get written to. "primary" unless changed.
+  calendarId   String   @default("primary")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

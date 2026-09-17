@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+*.pem
+npm-debug.log*
+.env
+.env*.local
+next-env.d.ts
+*.tsbuildinfo
+
+# SQLite data — your study data. Backed up via `npm run backup`.
+prisma/*.db
+prisma/*.db-journal
+backups/
