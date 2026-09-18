@@ -204,3 +204,101 @@ function addDay(d: Date): Date {
   x.setDate(x.getDate() + 1);
   return x;
 }
+
+/* ── Reading events ─────────────────────────────────────────────────────── */
+
+export type GoogleEvent = {
+  id: string;
+  calendarId: string;
+  calendarName: string;
+  summary: string;
+  start: Date;
+  end: Date;
+  allDay: boolean;
+  location: string | null;
+  htmlLink: string | null;
+};
+
+type RawEvent = {
+  id: string;
+  status?: string;
+  summary?: string;
+  location?: string;
+  htmlLink?: string;
+  start?: { date?: string; dateTime?: string };
+  end?: { date?: string; dateTime?: string };
+};
+
+/** Parse Google's all-day `YYYY-MM-DD` as local midnight, not UTC midnight. */
+function localDate(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * Events in a range from every calendar you have ticked as visible in Google —
+ * so the planner shows what Google shows, not just the primary calendar.
+ *
+ * `singleEvents=true` expands recurring events into individual occurrences.
+ * Any calendar that fails is skipped rather than failing the whole view.
+ */
+export async function listEventsInRange(
+  timeMin: Date,
+  timeMax: Date,
+): Promise<{ events: GoogleEvent[]; error: string | null }> {
+  const token = await getAccessToken();
+  if (!token) return { events: [], error: null };
+
+  const listRes = await fetch(`${CALENDAR_API}/users/me/calendarList?minAccessRole=reader`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!listRes.ok) {
+    return { events: [], error: `Couldn't read your calendars (${listRes.status}).` };
+  }
+  const list = (await listRes.json()) as {
+    items?: { id: string; summary: string; selected?: boolean; primary?: boolean }[];
+  };
+  const calendars = (list.items ?? []).filter((c) => c.selected || c.primary);
+
+  const results = await Promise.all(
+    calendars.map(async (cal) => {
+      const params = new URLSearchParams({
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        singleEvents: "true",
+        orderBy: "startTime",
+        maxResults: "500",
+      });
+      const res = await fetch(
+        `${CALENDAR_API}/calendars/${encodeURIComponent(cal.id)}/events?${params}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+      );
+      if (!res.ok) return [] as GoogleEvent[];
+      const data = (await res.json()) as { items?: RawEvent[] };
+
+      return (data.items ?? [])
+        .filter((e) => e.status !== "cancelled" && (e.start?.date || e.start?.dateTime))
+        .map((e): GoogleEvent => {
+          const allDay = !!e.start?.date;
+          const start = allDay ? localDate(e.start!.date!) : new Date(e.start!.dateTime!);
+          const end = allDay
+            ? localDate(e.end?.date ?? e.start!.date!)
+            : new Date(e.end?.dateTime ?? e.start!.dateTime!);
+          return {
+            id: e.id,
+            calendarId: cal.id,
+            calendarName: cal.summary,
+            summary: e.summary?.trim() || "(No title)",
+            start,
+            end,
+            allDay,
+            location: e.location ?? null,
+            htmlLink: e.htmlLink ?? null,
+          };
+        });
+    }),
+  );
+
+  return { events: results.flat(), error: null };
+}

@@ -15,6 +15,7 @@ export default async function SessionsPage() {
       include: {
         courses: { include: { course: { select: { id: true, shortName: true, colour: true } } } },
         tasks: { include: { task: { select: { id: true, title: true } } } },
+        tracks: { select: { artist: true, minutes: true, kind: true } },
       },
     }),
     db.course.findMany({
@@ -61,9 +62,29 @@ export default async function SessionsPage() {
             notes: s.notes,
             courses: s.courses.map((c) => ({ ...c.course, minutes: c.minutes })),
             tasks: s.tasks.map((t) => t.task),
+            music: summariseMusic(s.tracks, s.rawMinutes),
           }))}
         />
       )}
     </div>
   );
+}
+
+/**
+ * A session's soundtrack in one line: the most-listened artist, how many
+ * others, total listening time, and what share of the session had music on.
+ */
+function summariseMusic(tracks: { artist: string; minutes: number; kind: string }[], sessionMinutes: number) {
+  if (tracks.length === 0) return null;
+  const byArtist = new Map<string, number>();
+  for (const t of tracks) byArtist.set(t.artist, (byArtist.get(t.artist) ?? 0) + t.minutes);
+  const ranked = [...byArtist.entries()].sort((a, b) => b[1] - a[1]);
+  const minutes = tracks.reduce((s, t) => s + t.minutes, 0);
+  return {
+    topArtist: ranked[0][0],
+    others: ranked.length - 1,
+    minutes,
+    share: sessionMinutes > 0 ? Math.min(1, minutes / sessionMinutes) : null,
+    podcast: tracks.some((t) => t.kind === "episode"),
+  };
 }

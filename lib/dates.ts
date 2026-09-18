@@ -105,16 +105,60 @@ export function fmtClock(totalSeconds: number): string {
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
 
+/* ── Deterministic formatting ───────────────────────────────────────────────
+   Hand-rolled rather than toLocaleDateString. Client components render once
+   on the server (Node's locale data) and again in the browser (Safari's), and
+   the two disagree — Safari writes "Sat, 29 Aug", Node "Sat 29 Aug" — which
+   React reports as a hydration mismatch. These produce identical strings
+   everywhere.                                                              */
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** Monday-first index (0 = Mon) for a Date. */
+const dow = (d: Date) => (d.getDay() + 6) % 7;
+
+/** "29 Aug" */
 export function fmtDate(d: Date): string {
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
+/** "Saturday 29 August" */
 export function fmtDateLong(d: Date): string {
-  return d.toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  return `${DAY_NAMES[dow(d)]} ${d.getDate()} ${MONTHS_LONG[d.getMonth()]}`;
+}
+
+/** "Sat 29 Aug" */
+export function fmtDayDate(d: Date): string {
+  return `${DAY_SHORT[dow(d)]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+/** "Sat 29" */
+export function fmtDayNum(d: Date): string {
+  return `${DAY_SHORT[dow(d)]} ${d.getDate()}`;
+}
+
+/** "29 Aug 2026" */
+export function fmtDateYear(d: Date): string {
+  return `${fmtDate(d)} ${d.getFullYear()}`;
+}
+
+/** "29 August 2026" */
+export function fmtDateLongYear(d: Date): string {
+  return `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** "August 2026" */
+export function fmtMonthYear(d: Date): string {
+  return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** "14:05" — the clock time of a Date (fmtTime takes minutes-from-midnight). */
+export function fmtHM(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 /** Human-relative deadline copy: "Overdue by 2d", "Today", "In 5d". */

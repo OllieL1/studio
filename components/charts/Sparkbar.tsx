@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmtDuration } from "@/lib/dates";
+import { fmtDuration, fmtDate, fmtDayDate } from "@/lib/dates";
 
 /** Compact daily bars for the home page. Single series, one hue — magnitude
  *  over time needs no categorical colour. Hover gives the exact figure. */
@@ -30,7 +30,7 @@ export function Sparkbar({
               onBlur={() => setHover(null)}
               className="group relative flex-1 outline-none"
               style={{ height }}
-              aria-label={`${new Date(d.label).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}: ${fmtDuration(d.value)}`}
+              aria-label={`${fmtDayDate(new Date(d.label))}: ${fmtDuration(d.value)}`}
             >
               {/* Hit target spans the full height; the mark is only the bar. */}
               <span
@@ -51,10 +51,10 @@ export function Sparkbar({
       </div>
 
       <div className="mt-1.5 flex items-center justify-between text-[10.5px] text-n-400">
-        <span>{new Date(data[0]?.label).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+        <span>{fmtDate(new Date(data[0]?.label))}</span>
         {hover != null ? (
           <span className="font-num font-medium text-n-700">
-            {new Date(data[hover].label).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+            {fmtDayDate(new Date(data[hover].label))}
             {" · "}
             {fmtDuration(data[hover].value)}
           </span>

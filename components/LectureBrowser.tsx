@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { fmtDate, fmtTime } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
-import { Card, Eyebrow, EmptyState, Pill } from "./ui";
+import { Card, EmptyState, Pill } from "./ui";
 import { NotebookLocation } from "./NotebookLocation";
 
 type Item = { id: string; label: string; done: boolean; isRevision: boolean };
@@ -170,8 +170,6 @@ export function LectureBrowser({
 
 function LectureRow({ lecture: l }: { lecture: Lecture }) {
   const [open, setOpen] = useState(false);
-  const typed = l.items.find((i) => i.label === "Typed Notes");
-  const hand = l.items.find((i) => i.label === "Handwritten Notes");
   const revision = l.items.find((i) => i.isRevision);
 
   return (

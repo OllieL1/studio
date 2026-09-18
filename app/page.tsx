@@ -10,6 +10,7 @@ import { Card, Eyebrow, EmptyState, ProgressBar, SectionHeading, Stat, Pill } fr
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
+import { isGoogleConfigured } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,9 @@ export default async function HomePage() {
     ]);
 
   const overall = getOverall(courses);
+  const calendarConnected =
+    isGoogleConfigured() &&
+    !!(await db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }));
   const classes = todayTasks.filter((t) => t.startMin != null);
   const dueToday = todayTasks.filter((t) => t.startMin == null);
 
@@ -110,7 +114,7 @@ export default async function HomePage() {
           title="Add something"
           sub="Type it in one line — press / from anywhere to jump here."
         />
-        <QuickAdd courses={composerCourses} />
+        <QuickAdd courses={composerCourses} calendarConnected={calendarConnected} />
       </section>
 
       {/* ── Today ──────────────────────────────────────────────────────── */}

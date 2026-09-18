@@ -107,3 +107,35 @@ I had a study planner for my third year exams and it worked incredibly well. I r
   Dormant until `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set.
 - **Course palette** re-validated at 10 colours; validator vendored to
   `scripts/palette/` so it stays reproducible across sessions.
+
+
+---
+
+## Enhancements (17 Sep 2026)
+
+- **Calendar**: month (default) + week. Shows Google events, deadlines/exams, lectures
+  and labs — **not** study sessions. Exams and coursework ≥ `BIG_WEIGHT_THRESHOLD`
+  (15%) are blocked out. Items this app pushed to Google are de-duplicated.
+- **Uni events** (`Event` model) are **one-off only**, optionally synced to Google.
+  All-day events store an exclusive end (Google's convention).
+- **Task pages** at `/tasks/[id]`; every task property editable. A session tagged to
+  several tasks is split **evenly** between them for per-task time.
+- **Spotify** is read-only now-playing beside the timer. Redirect URI must be
+  `http://127.0.0.1:3000/api/spotify/callback` — Spotify forbids `localhost`.
+
+
+---
+
+## Enhancements (18 Sep 2026)
+
+- **Music per session.** `SessionTrack` rows, rebuilt at stop from now-playing samples
+  (`ListeningSample`, taken while the timer runs) plus Spotify recently-played history.
+  `Session.musicTracked` distinguishes "silent" from "unknown"; only tracked sessions
+  enter music stats. No genres/audio features — blocked by Spotify for new apps.
+- **Dates are formatted by hand** (`lib/dates.ts`), never `toLocaleDateString`, because
+  Safari and Node disagree and React reports the difference as a hydration error.
+- **Every dialog is portalled to <body>** and uses `useModal` (scroll lock + restore,
+  focus without scroll, click-not-mousedown dismissal).
+- **Server components must not call functions from "use client" modules** —
+  `scripts/check-boundaries.mjs` enforces it in `npm test`.
+- Task editing lives in a modal (**E**); revision only shows for courses with an exam.

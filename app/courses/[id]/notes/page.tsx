@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { renderMarkdown, extractToc, wordCount } from "@/lib/markdown";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate, fmtDateLongYear } from "@/lib/dates";
 import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +72,7 @@ export default async function CourseNotesPage({
           {totalWords.toLocaleString("en-GB")} words
         </p>
         <p className="mt-0.5 text-[11.5px] text-n-400">
-          Compiled {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+          Compiled {fmtDateLongYear(new Date())}
         </p>
       </header>
 

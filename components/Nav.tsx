@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { clsx } from "@/lib/clsx";
+import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
 
 const LINKS = [
   { href: "/", label: "Home" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/lectures", label: "Lectures" },
   { href: "/stats", label: "Stats" },
   { href: "/sessions", label: "Sessions" },
@@ -119,31 +121,20 @@ function Mark() {
 }
 
 
-/** Affordance for the ⌘K palette — the search itself lives in CommandPalette. */
+/** Opens the ⌘K palette. Deliberately no shortcut hint — just a quiet field
+ *  that reads as search at a glance. */
 function SearchHint() {
-  const [mac, setMac] = useState(true);
-  useEffect(() => {
-    setMac(/Mac|iPhone|iPad/.test(navigator.platform ?? navigator.userAgent));
-  }, []);
-
   return (
     <button
-      onClick={() =>
-        window.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
-        )
-      }
-      className="ml-auto hidden items-center gap-2 rounded-md border border-n-200 bg-n-0 py-1.5 pl-2.5 pr-2 text-[12px] text-n-400 transition-colors duration-[120ms] hover:border-n-300 hover:text-n-600 sm:flex"
+      onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+      className="group ml-auto hidden h-8 w-44 items-center gap-2 rounded-full bg-n-100/60 px-3 text-[12.5px] text-n-400 transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-600 sm:flex"
       aria-label="Search"
     >
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden className="shrink-0">
         <circle cx="7" cy="7" r="4.6" stroke="currentColor" strokeWidth="1.6" />
         <path d="M10.6 10.6L14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
       Search
-      <kbd className="font-num rounded border border-n-200 bg-n-50 px-1.5 py-0.5 text-[10px] font-medium">
-        {mac ? "\u2318" : "Ctrl"}K
-      </kbd>
     </button>
   );
 }

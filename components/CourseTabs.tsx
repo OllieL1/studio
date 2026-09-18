@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtDate } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
 import { Card, Eyebrow, EmptyState } from "./ui";
 import { TaskRow, type TaskRowData } from "./TaskRow";
@@ -95,10 +96,7 @@ export function CourseTabs({
                     Week {w.n}
                     <span className="ml-2 font-normal normal-case tracking-normal text-n-400">
                       w/b{" "}
-                      {new Date(w.start).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                      })}
+                      {fmtDate(new Date(w.start))}
                     </span>
                   </Eyebrow>
                   <span className="font-num text-[11px] text-n-400">

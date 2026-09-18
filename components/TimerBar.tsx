@@ -6,6 +6,7 @@ import { startTimer, cancelTimer } from "@/app/actions";
 import { fmtClock } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
 import { StopDialog } from "./StopDialog";
+import { NowPlaying } from "./NowPlaying";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -55,7 +56,8 @@ export function TimerBar({
 
   return (
     <>
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-5">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-2.5 px-4 pb-5">
+        <NowPlaying studying={running} />
         <div
           className={clsx(
             "pointer-events-auto flex items-center gap-3 rounded-full border bg-n-0/95 py-2 pl-2 pr-2 backdrop-blur-md transition-[border-color] duration-200",

@@ -30,6 +30,20 @@ export function NotesEditor({
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [exporting, setExporting] = useState(false);
+
+  /** Save anything unsaved, then open the print view with its dialog up —
+   *  so the PDF always matches what's on screen. */
+  const exportPdf = async () => {
+    setExporting(true);
+    if (timer.current) clearTimeout(timer.current);
+    if (value !== initial || !saved) {
+      await saveNotes(taskId, value);
+      setSaved(true);
+    }
+    router.push(`/lectures/${taskId}/print?auto=1`);
+  };
+
   const persist = (text: string) => {
     startTransition(async () => {
       await saveNotes(taskId, text);
@@ -114,6 +128,7 @@ export function NotesEditor({
           </button>
         </div>
 
+        <div className="flex items-center gap-3">
         <span className="flex items-center gap-2 text-[11px] text-n-400">
           {pending ? (
             "Saving…"
@@ -129,6 +144,19 @@ export function NotesEditor({
             </>
           )}
         </span>
+
+        <button
+          onClick={exportPdf}
+          disabled={exporting || !value.trim()}
+          title={value.trim() ? "Save and export these notes as a PDF" : "Write something first"}
+          className="flex items-center gap-1.5 rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[12px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50 hover:text-n-800 disabled:opacity-40"
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+            <path d="M6 1.8v6.4M3.4 5.6 6 8.2l2.6-2.6M2 10.2h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {exporting ? "Preparing…" : "PDF"}
+        </button>
+        </div>
       </div>
 
       {tab === "edit" ? (

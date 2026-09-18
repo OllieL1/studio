@@ -5,9 +5,13 @@ import { db } from "@/lib/db";
 import { DEFAULT_ITEMS } from "@/lib/types";
 import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
+import { inclusiveEnd, resolveEventTimes, type EventInput } from "@/lib/events";
+import { buildTaskPatch, type TaskEdit } from "@/lib/taskEdit";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
+import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
+import { buildListening } from "@/lib/music";
 import {
-  addTaskItem, removeTaskItem, setCourseRevisionMode, setTaskDone, toggleTaskItem,
+  addTaskItem, removeTaskItem, renameTaskItem, setCourseRevisionMode, setTaskDone, toggleTaskItem,
 } from "@/lib/tasks";
 
 function refresh() {
@@ -34,6 +38,12 @@ export async function addItem(taskId: string, label: string) {
   refresh();
 }
 
+export async function renameItem(itemId: string, label: string) {
+  const ok = await renameTaskItem(db, itemId, label);
+  refresh();
+  return { ok };
+}
+
 export async function deleteItem(itemId: string) {
   await removeTaskItem(db, itemId);
   refresh();
@@ -52,6 +62,8 @@ export type NewTaskInput = {
   priority: boolean;
   items: string[];
   dependsOn: string[];
+  /** Push to Google Calendar once created. Ignored if the task has no date. */
+  addToCalendar?: boolean;
 };
 
 export async function createTask(input: NewTaskInput) {
@@ -92,40 +104,48 @@ export async function createTask(input: NewTaskInput) {
     });
   }
 
-  refresh();
-  return { ok: true as const, id: task.id };
-}
-
-export async function updateTask(
-  id: string,
-  data: {
-    title?: string;
-    notes?: string | null;
-    dueDate?: string | null;
-    dueTime?: string | null;
-    gradeWeight?: number | null;
-    priority?: boolean;
-    cancelled?: boolean;
-    examDiet?: string | null;
-  },
-) {
-  const patch: Record<string, unknown> = {};
-  if (data.title !== undefined) patch.title = data.title.trim();
-  if (data.notes !== undefined) patch.notes = data.notes?.trim() || null;
-  if (data.gradeWeight !== undefined) patch.gradeWeight = data.gradeWeight;
-  if (data.priority !== undefined) patch.priority = data.priority ? 1 : 0;
-  if (data.cancelled !== undefined) patch.cancelled = data.cancelled;
-  if (data.examDiet !== undefined) patch.examDiet = data.examDiet;
-  if (data.dueDate !== undefined) {
-    if (!data.dueDate) patch.dueAt = null;
-    else {
-      const [y, m, d] = data.dueDate.split("-").map(Number);
-      const [hh, mm] = (data.dueTime || "23:59").split(":").map(Number);
-      patch.dueAt = new Date(y, m - 1, d, hh, mm, 0, 0);
+  // The task is already saved at this point, so a Google failure is reported
+  // back as a warning rather than losing what was typed.
+  let calendarWarning: string | null = null;
+  let onCalendar = false;
+  if (input.addToCalendar) {
+    if (!dueAt) {
+      calendarWarning = "Task added, but not put on your calendar — it has no date.";
+    } else {
+      const res = await pushToCalendar(task.id);
+      if (res.ok) onCalendar = true;
+      else calendarWarning = `Task added, but Google Calendar refused: ${res.error}`;
     }
   }
-  await db.task.update({ where: { id }, data: patch });
+
   refresh();
+  return { ok: true as const, id: task.id, onCalendar, calendarWarning };
+}
+
+/**
+ * Edit any property of a task.
+ *
+ * The patch is built by lib/taskEdit.ts (pure, tested). If the task is already
+ * on Google Calendar, the event is updated to match — a changed deadline
+ * shouldn't leave a stale event behind. A Google failure never blocks the edit.
+ */
+export async function updateTask(id: string, data: TaskEdit) {
+  const existing = await db.task.findUnique({ where: { id } });
+  if (!existing) return { ok: false as const, error: "Task not found." };
+
+  const built = buildTaskPatch(existing, data);
+  if (!built.ok) return built;
+
+  await db.task.update({ where: { id }, data: built.patch });
+
+  let calendarWarning: string | null = null;
+  if (existing.calendarEventId && isGoogleConfigured()) {
+    const res = await pushToCalendar(id);
+    if (!res.ok) calendarWarning = `Saved, but Google Calendar wasn't updated: ${res.error}`;
+  }
+
+  refresh();
+  return { ok: true as const, calendarWarning };
 }
 
 /** Where the handwritten notes for this lecture physically live. */
@@ -231,6 +251,8 @@ export async function startTimer() {
 /** Abandon a running timer without recording anything. */
 export async function cancelTimer() {
   await db.activeTimer.deleteMany({ where: { id: "singleton" } });
+  // A discarded session's music samples go with it.
+  await db.listeningSample.deleteMany({});
   refresh();
 }
 
@@ -281,8 +303,8 @@ export async function stopTimer(input: StopTimerInput) {
   const name = input.name.trim() || "Study session";
   const slices = reconcileSlices(input.courses, minutes);
 
-  await db.$transaction(async (tx) => {
-    const session = await tx.session.create({
+  const session = await db.$transaction(async (tx) => {
+    const created = await tx.session.create({
       data: {
         name,
         startedAt: timer.startedAt,
@@ -296,11 +318,77 @@ export async function stopTimer(input: StopTimerInput) {
       },
     });
     await tx.activeTimer.deleteMany({ where: { id: "singleton" } });
-    return session;
+    return created;
   });
 
+  // The session is safely saved. Music is extra: if Spotify is slow or down,
+  // the session still stands — it's just logged without a soundtrack.
+  let music: { tracks: number } | null = null;
+  try {
+    music = await attachListening(session.id, timer.startedAt, endedAt);
+  } catch {
+    music = null;
+  }
+
   refresh();
-  return { ok: true as const };
+  return { ok: true as const, music };
+}
+
+/**
+ * Fold what played during a session into SessionTracks: now-playing samples
+ * taken while the timer ran, plus Spotify's history for any stretch the app
+ * wasn't open. Marks the session as music-tracked even when nothing played —
+ * that's a genuine "studied in silence", which the stats need.
+ */
+async function attachListening(sessionId: string, start: Date, end: Date) {
+  if (!isSpotifyConfigured()) return null;
+  const auth = await db.spotifyAuth.findUnique({ where: { id: "singleton" }, select: { id: true } });
+  if (!auth) return null;
+
+  const [rawSamples, history] = await Promise.all([
+    db.listeningSample.findMany({
+      where: { sampledAt: { gte: new Date(start.getTime() - 60_000), lte: end } },
+      orderBy: { sampledAt: "asc" },
+    }),
+    // Look back one long track before the start, so a song already playing
+    // when the timer started is still found.
+    getHistorySince(new Date(start.getTime() - 15 * 60_000)),
+  ]);
+
+  const plays = buildListening({
+    start,
+    end,
+    samples: rawSamples.map((x) => ({
+      spotifyId: x.spotifyId, kind: x.kind === "episode" ? "episode" : "track",
+      title: x.title, artist: x.artist, artists: x.artists, album: x.album,
+      imageUrl: x.imageUrl, url: x.url, durationMs: x.durationMs,
+      at: x.sampledAt, progressMs: x.progressMs, isPlaying: x.isPlaying,
+    })),
+    history: history.map((h) => ({ ...h, kind: "track" as const })),
+  });
+
+  await db.$transaction([
+    db.sessionTrack.createMany({
+      data: plays.map((p) => ({
+        sessionId,
+        spotifyId: p.spotifyId,
+        kind: p.kind,
+        title: p.title,
+        artist: p.artist,
+        artists: p.artists,
+        album: p.album,
+        imageUrl: p.imageUrl,
+        url: p.url,
+        startedAt: p.startedAt,
+        minutes: Math.round(p.minutes * 100) / 100,
+      })),
+    }),
+    db.session.update({ where: { id: sessionId }, data: { musicTracked: true } }),
+    // Samples are raw material — consumed now, and never left to pile up.
+    db.listeningSample.deleteMany({ where: { sampledAt: { lte: end } } }),
+  ]);
+
+  return { tracks: plays.length };
 }
 
 /** Persist a name typed while the timer is still running, so it isn't lost. */
@@ -422,6 +510,13 @@ export async function pushToCalendar(taskId: string) {
   return { ok: true as const, htmlLink: res.htmlLink };
 }
 
+/** Whether one-click calendar sync is available right now. */
+export async function googleStatus() {
+  if (!isGoogleConfigured()) return { configured: false, connected: false };
+  const auth = await db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } });
+  return { configured: true, connected: !!auth };
+}
+
 /** Remove a task's calendar event and forget the link. */
 export async function removeFromCalendar(taskId: string) {
   const task = await db.task.findUnique({ where: { id: taskId } });
@@ -450,4 +545,119 @@ export async function setCalendarTarget(calendarId: string) {
 
 function isEndOfDay(d: Date): boolean {
   return d.getHours() === 23 && d.getMinutes() === 59;
+}
+
+/* ── Uni events ─────────────────────────────────────────────────────────────
+   Calendar entries that aren't work: supervisor meetings, talks, fairs.
+   All-day events store an exclusive end (midnight after the last day), the
+   same convention Google uses, so the two never disagree about span.        */
+
+
+/** Push (or update) a uni event on Google. Returns a warning string on failure. */
+async function syncEventToGoogle(eventId: string): Promise<string | null> {
+  const ev = await db.event.findUnique({ where: { id: eventId }, include: { course: true } });
+  if (!ev) return "Event not found.";
+
+  const res = await upsertEvent(
+    {
+      summary: ev.course ? `${ev.course.shortName}: ${ev.title}` : ev.title,
+      description: [ev.location ? `Where: ${ev.location}` : null, ev.notes, "Added from Study Planner."]
+        .filter(Boolean)
+        .join("\n\n"),
+      start: ev.startAt,
+      // upsertEvent treats an all-day end as inclusive and adds a day itself.
+      end: ev.allDay ? inclusiveEnd(ev.endAt) : ev.endAt,
+      allDay: ev.allDay,
+    },
+    ev.calendarEventId,
+  );
+  if (!res.ok) return res.error;
+
+  await db.event.update({ where: { id: eventId }, data: { calendarEventId: res.eventId } });
+  return null;
+}
+
+export async function createUniEvent(input: EventInput) {
+  const title = input.title.trim();
+  if (!title) return { ok: false as const, error: "Give the event a title." };
+  const times = resolveEventTimes(input);
+  if (!times.ok) return { ok: false as const, error: times.error };
+
+  const ev = await db.event.create({
+    data: {
+      title,
+      startAt: times.startAt,
+      endAt: times.endAt,
+      allDay: input.allDay,
+      location: input.location?.trim() || null,
+      notes: input.notes?.trim() || null,
+      courseId: input.courseId || null,
+    },
+  });
+
+  let warning: string | null = null;
+  if (input.syncToGoogle) {
+    const w = await syncEventToGoogle(ev.id);
+    if (w) warning = `Saved, but not synced to Google: ${w}`;
+  }
+
+  refresh();
+  return { ok: true as const, id: ev.id, warning };
+}
+
+/**
+ * Edit a uni event. Turning sync off removes it from Google; editing a synced
+ * event updates the Google copy rather than making a second one.
+ */
+export async function updateUniEvent(id: string, input: EventInput) {
+  const existing = await db.event.findUnique({ where: { id } });
+  if (!existing) return { ok: false as const, error: "Event not found." };
+
+  const title = input.title.trim();
+  if (!title) return { ok: false as const, error: "Give the event a title." };
+  const times = resolveEventTimes(input);
+  if (!times.ok) return { ok: false as const, error: times.error };
+
+  await db.event.update({
+    where: { id },
+    data: {
+      title,
+      startAt: times.startAt,
+      endAt: times.endAt,
+      allDay: input.allDay,
+      location: input.location?.trim() || null,
+      notes: input.notes?.trim() || null,
+      courseId: input.courseId || null,
+    },
+  });
+
+  let warning: string | null = null;
+  if (input.syncToGoogle) {
+    const w = await syncEventToGoogle(id);
+    if (w) warning = `Saved, but not synced to Google: ${w}`;
+  } else if (existing.calendarEventId) {
+    await deleteEvent(existing.calendarEventId);
+    await db.event.update({ where: { id }, data: { calendarEventId: null } });
+  }
+
+  refresh();
+  return { ok: true as const, warning };
+}
+
+/** Delete a uni event, and its Google copy if it has one. */
+export async function deleteUniEvent(id: string) {
+  const existing = await db.event.findUnique({ where: { id } });
+  if (!existing) return { ok: true as const };
+  if (existing.calendarEventId) await deleteEvent(existing.calendarEventId);
+  await db.event.delete({ where: { id } });
+  refresh();
+  return { ok: true as const };
+}
+
+
+/* ── Spotify ────────────────────────────────────────────────────────────── */
+
+export async function disconnectSpotify() {
+  await db.spotifyAuth.deleteMany({ where: { id: "singleton" } });
+  refresh();
 }

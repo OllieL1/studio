@@ -429,3 +429,13 @@ input[type="range"]::-webkit-slider-thumb:active {
   }
   .prose-notes a[href^="#"]::after { content: ""; }
 }
+
+/* Now-playing equaliser bars. */
+@keyframes eq {
+  0%, 100% { height: 3px; }
+  50% { height: 10px; }
+}
+.animate-eq {
+  height: 3px;
+  animation: eq 900ms ease-in-out infinite;
+}

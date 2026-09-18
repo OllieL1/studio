@@ -26,6 +26,8 @@ export function BarChart({
   format = "count",
   emptyLabel = "No data yet",
   highlight,
+  domainMax,
+  showValues = false,
 }: {
   bars: Bar[];
   height?: number;
@@ -34,14 +36,21 @@ export function BarChart({
   emptyLabel?: string;
   /** "max" emphasises the largest bar; "note" uses each bar's own note flag. */
   highlight?: "max" | "note";
+  /** Fix the top of the scale — e.g. 100 for percentages, so 77% and 79%
+   *  aren't both drawn as "almost full". Defaults to the largest value. */
+  domainMax?: number;
+  /** Write each bar's value above it. For a handful of bars, where hovering
+   *  to read three numbers would be silly. */
+  showValues?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const max = Math.max(...bars.map((b) => b.value), 0);
+  const dataMax = Math.max(...bars.map((b) => b.value), 0);
+  const max = domainMax ?? dataMax;
   const fmt = (v: number) => formatValue(format, v);
   const isHighlighted = (b: Bar) =>
-    highlight === "max" ? b.value === max && max > 0 : highlight === "note" ? b.note === "best" : false;
+    highlight === "max" ? b.value === dataMax && dataMax > 0 : highlight === "note" ? b.note === "best" : false;
 
-  if (max <= 0) {
+  if (dataMax <= 0) {
     return (
       <div
         className="flex items-center justify-center rounded-md border border-dashed border-n-200 text-[12.5px] text-n-400"
@@ -86,8 +95,16 @@ export function BarChart({
                 style={{ height }}
                 aria-label={`${b.label}: ${fmt(b.value)}`}
               >
+                {showValues && b.value > 0 && (
+                  <span
+                    className="font-num absolute left-0 right-0 text-center text-[11px] font-semibold text-n-700"
+                    style={{ bottom: h + 3 }}
+                  >
+                    {fmt(b.value)}
+                  </span>
+                )}
                 <span
-                  className="absolute bottom-0 left-0 right-0 rounded-t-[4px] transition-colors duration-[120ms]"
+                  className="absolute bottom-0 left-1/2 w-full max-w-[56px] -translate-x-1/2 rounded-t-[4px] transition-colors duration-[120ms]"
                   style={{
                     height: h,
                     background: active

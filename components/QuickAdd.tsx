@@ -21,7 +21,14 @@ import { Eyebrow } from "./ui";
  */
 type ComposerCourse = ParseCourse & { colour: string };
 
-export function QuickAdd({ courses }: { courses: ComposerCourse[] }) {
+export function QuickAdd({
+  courses,
+  calendarConnected = false,
+}: {
+  courses: ComposerCourse[];
+  /** Whether Google Calendar is connected, so the sync toggle can be offered. */
+  calendarConnected?: boolean;
+}) {
   const router = useRouter();
   const [raw, setRaw] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -31,6 +38,8 @@ export function QuickAdd({ courses }: { courses: ComposerCourse[] }) {
   const [override, setOverride] = useState<{ courseId?: string; kind?: string }>({});
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [addToCalendar, setAddToCalendar] = useState(false);
+  const [calendarNote, setCalendarNote] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -81,13 +90,21 @@ export function QuickAdd({ courses }: { courses: ComposerCourse[] }) {
         priority: parsed.priority,
         items: subtasks,
         dependsOn: [],
+        addToCalendar: calendarConnected && addToCalendar,
       });
       if (!res.ok) {
         setError(res.error);
         return;
       }
       setSaved(parsed.title);
-      setTimeout(() => setSaved(null), 2600);
+      setCalendarNote(
+        res.calendarWarning
+          ? { tone: "warn", text: res.calendarWarning }
+          : res.onCalendar
+            ? { tone: "ok", text: "Added to Google Calendar." }
+            : null,
+      );
+      setTimeout(() => { setSaved(null); setCalendarNote(null); }, res.calendarWarning ? 6000 : 2600);
       reset();
       router.refresh();
       inputRef.current?.focus();
@@ -244,6 +261,53 @@ export function QuickAdd({ courses }: { courses: ComposerCourse[] }) {
             />
           </div>
 
+          <div className="rounded-sm border border-n-100 bg-n-25 px-3 py-2.5">
+            {calendarConnected ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={addToCalendar}
+                onClick={() => setAddToCalendar((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <span className="flex items-center gap-2.5">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden className="shrink-0 text-n-500">
+                    <rect x="1.8" y="3" width="12.4" height="11.2" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M1.8 6.4h12.4M5.2 1.8v2.4M10.8 1.8v2.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <span>
+                    <span className="block text-[12.5px] font-medium text-n-700">Add to Google Calendar</span>
+                    <span className="block text-[10.5px] text-n-400">
+                      {parsed.dueDate
+                        ? parsed.dueTime ? "As a one-hour slot ending at the deadline" : "As an all-day event"
+                        : "Needs a date — type one, e.g. “fri 5pm”"}
+                    </span>
+                  </span>
+                </span>
+                <span
+                  className={clsx(
+                    "relative h-[18px] w-8 shrink-0 rounded-full transition-colors duration-[180ms]",
+                    addToCalendar ? "bg-rust-500" : "bg-n-200",
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-transform duration-[180ms]",
+                      addToCalendar ? "translate-x-[16px]" : "translate-x-[2px]",
+                    )}
+                  />
+                </span>
+              </button>
+            ) : (
+              <p className="flex items-center justify-between gap-3 text-[12px] text-n-500">
+                <span>Google Calendar isn&apos;t connected.</span>
+                <a href="/settings" className="shrink-0 font-semibold text-rust-600 hover:text-rust-700">
+                  Connect →
+                </a>
+              </p>
+            )}
+          </div>
+
           <p className="text-[11px] leading-4 text-n-400">
             Typing shortcuts: <Kbd>FP</Kbd> course · <Kbd>lab</Kbd> type ·{" "}
             <Kbd>fri</Kbd> <Kbd>24/11</Kbd> <Kbd>in 3d</Kbd> date · <Kbd>5pm</Kbd> time ·{" "}
@@ -258,6 +322,11 @@ export function QuickAdd({ courses }: { courses: ComposerCourse[] }) {
       {saved && (
         <p className="animate-fade-in border-t border-n-100 px-4 py-2 text-[12.5px] text-ok">
           Added “{saved}”.
+          {calendarNote && (
+            <span className={clsx("ml-1.5", calendarNote.tone === "warn" ? "text-warn" : "text-ok")}>
+              {calendarNote.text}
+            </span>
+          )}
         </p>
       )}
     </div>

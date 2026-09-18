@@ -120,20 +120,28 @@ export function Stat({
   unit,
   sub,
   tone,
+  text = false,
 }: {
   label: string;
   value: string;
   unit?: string;
   sub?: React.ReactNode;
   tone?: string;
+  /** For a name rather than a number: display face, smaller, one line. */
+  text?: boolean;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <Eyebrow>{label}</Eyebrow>
-      <p className="mt-1.5 flex items-baseline gap-1">
+      <p className="mt-1.5 flex min-w-0 items-baseline gap-1">
         <span
-          className="font-num text-[30px] leading-9 font-semibold text-n-900"
+          className={
+            text
+              ? "font-display truncate text-[22px] leading-9 font-semibold text-n-900"
+              : "font-num text-[30px] leading-9 font-semibold text-n-900"
+          }
           style={tone ? { color: tone } : undefined}
+          title={text ? value : undefined}
         >
           {value}
         </span>

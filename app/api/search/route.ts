@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         title: t.title,
         subtitle: [t.course?.name, t.notebook ? `${t.notebook}${t.notebookPages ? ` pp. ${t.notebookPages}` : ""}` : null]
           .filter(Boolean).join(" · ") || null,
-        href: isLecture ? `/lectures/${t.id}` : `/courses/${t.courseId}`,
+        href: isLecture ? `/lectures/${t.id}` : `/tasks/${t.id}`,
         colour: t.course?.colour ?? null,
         score: s + (isLecture ? 2 : 1),
       });

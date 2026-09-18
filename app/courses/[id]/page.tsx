@@ -54,6 +54,10 @@ export default async function CoursePage({
   const lectureCount = course.tasks.filter(
     (t) => ["LECTURE", "SEMINAR"].includes(t.kind) && !t.cancelled,
   ).length;
+  // Revision only makes sense ahead of an exam. A course already in revision
+  // keeps the control, so it can always be switched back off.
+  const hasExam = course.tasks.some((t) => t.kind === "EXAM" && !t.cancelled);
+  const showRevision = hasExam || course.revisionMode;
   const withCourse = course.tasks.map((t) => ({
     ...t,
     course: { id: course.id, shortName: course.shortName, colour: course.colour, name: course.name },
@@ -171,6 +175,7 @@ export default async function CoursePage({
                 tone={avgFocus >= 75 ? "var(--color-ok)" : avgFocus >= 50 ? "var(--color-warn)" : "var(--color-danger)"}
               />
             )}
+            {showRevision && (
             <RevisionToggle
               courseId={course.id}
               on={course.revisionMode}
@@ -179,6 +184,7 @@ export default async function CoursePage({
               total={revision.total}
               colour={course.colour}
             />
+            )}
 
             <WeightEditor
               courseId={course.id}

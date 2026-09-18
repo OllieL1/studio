@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setRevisionMode } from "@/app/actions";
 import { ProgressBar } from "./ui";
-import { clsx } from "@/lib/clsx";
 
 /**
  * Mark a course for revision.

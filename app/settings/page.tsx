@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { isGoogleConfigured, listCalendars } from "@/lib/google";
 import { Card, Eyebrow } from "@/components/ui";
 import { GooglePanel } from "@/components/GooglePanel";
+import { SpotifyPanel } from "@/components/SpotifyPanel";
+import { hasHistoryScope, isSpotifyConfigured } from "@/lib/spotify";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +17,22 @@ const MESSAGES: Record<string, { tone: "ok" | "bad"; text: string }> = {
   exchange_failed: { tone: "bad", text: "Couldn't exchange the code for a token. Check the client secret and redirect URI." },
 };
 
+const SPOTIFY_MESSAGES: Record<string, { tone: "ok" | "bad"; text: string }> = {
+  connected: { tone: "ok", text: "Connected to Spotify." },
+  denied: { tone: "bad", text: "You declined Spotify's permission request." },
+  unconfigured: { tone: "bad", text: "No Spotify credentials in .env yet — see the setup steps below." },
+  missing_code: { tone: "bad", text: "Spotify didn't send an authorisation code. Try again." },
+  bad_state: { tone: "bad", text: "Spotify security check failed (state mismatch). Try connecting again." },
+  exchange_failed: { tone: "bad", text: "Couldn't finish connecting to Spotify. Check the client secret and that the redirect URI is exactly http://127.0.0.1:3000/api/spotify/callback." },
+};
+
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ google?: string }>;
+  searchParams: Promise<{ google?: string; spotify?: string }>;
 }) {
-  const { google } = await searchParams;
+  const { google, spotify } = await searchParams;
+  const spotifyAuth = await db.spotifyAuth.findUnique({ where: { id: "singleton" } });
   const auth = await db.googleAuth.findUnique({ where: { id: "singleton" } });
   const configured = isGoogleConfigured();
   const calendars = auth ? await listCalendars() : [];
@@ -54,6 +66,25 @@ export default async function SettingsPage({
         calendarId={auth?.calendarId ?? "primary"}
         calendars={calendars.map((c) => ({ id: c.id, summary: c.summary, primary: !!c.primary }))}
         linkedCount={linked}
+      />
+
+      {spotify && SPOTIFY_MESSAGES[spotify] && (
+        <div
+          className={`animate-fade-in rounded-md border px-3.5 py-2.5 text-[13px] font-medium ${
+            SPOTIFY_MESSAGES[spotify].tone === "ok"
+              ? "border-[#cfdcca] bg-ok-soft text-[#3f5c38]"
+              : "border-[#e6c6cf] bg-danger-soft text-[#7a3245]"
+          }`}
+        >
+          {SPOTIFY_MESSAGES[spotify].text}
+        </div>
+      )}
+
+      <SpotifyPanel
+        configured={isSpotifyConfigured()}
+        connected={!!spotifyAuth}
+        displayName={spotifyAuth?.displayName ?? null}
+        historyScope={spotifyAuth ? await hasHistoryScope() : false}
       />
 
       <Card className="p-5">

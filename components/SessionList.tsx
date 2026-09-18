@@ -3,9 +3,9 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSession } from "@/app/actions";
-import { fmtDuration, startOfDay } from "@/lib/dates";
+import { fmtDuration, startOfDay, fmtDateLong, fmtHM } from "@/lib/dates";
 import { Card, Eyebrow } from "./ui";
-import { focusColour } from "./StopDialog";
+import { focusColour } from "@/lib/focus";
 
 type S = {
   id: string;
@@ -17,6 +17,7 @@ type S = {
   notes: string | null;
   courses: { id: string; shortName: string; colour: string; minutes: number }[];
   tasks: { id: string; title: string }[];
+  music: { topArtist: string; others: number; minutes: number; share: number | null; podcast: boolean } | null;
 };
 
 /** Session history, grouped by day with a per-day total. */
@@ -38,9 +39,7 @@ export function SessionList({ sessions }: { sessions: S[] }) {
           <Card key={day}>
             <div className="flex items-baseline justify-between border-b border-n-100 px-4 py-2.5">
               <Eyebrow>
-                {new Date(day).toLocaleDateString("en-GB", {
-                  weekday: "long", day: "numeric", month: "long",
-                })}
+                {fmtDateLong(new Date(day))}
               </Eyebrow>
               <span className="font-num text-[11.5px] font-semibold text-n-600">
                 {fmtDuration(total)}
@@ -56,9 +55,7 @@ export function SessionList({ sessions }: { sessions: S[] }) {
                   <p className="text-[14px] font-medium text-n-800">{s.name}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-n-500">
                     <span className="font-num">
-                      {new Date(s.startedAt).toLocaleTimeString("en-GB", {
-                        hour: "2-digit", minute: "2-digit",
-                      })}
+                      {fmtHM(new Date(s.startedAt))}
                     </span>
                     {s.courses.map((c) => (
                       <span key={c.id} className="font-medium" style={{ color: c.colour }}>
@@ -82,6 +79,31 @@ export function SessionList({ sessions }: { sessions: S[] }) {
                       </span>
                     )}
                   </div>
+                  {s.music && (
+                    <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-n-500">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden className="shrink-0 text-rust-500">
+                          <path d="M4.5 9.2V2.6l5-1v6.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="3.3" cy="9.3" r="1.3" stroke="currentColor" strokeWidth="1.3" />
+                          <circle cx="8.3" cy="8.3" r="1.3" stroke="currentColor" strokeWidth="1.3" />
+                        </svg>
+                        <span className="text-n-400">Top artist</span>
+                        <span className="truncate font-medium text-n-700">{s.music.topArtist}</span>
+                        {s.music.others > 0 && (
+                          <span className="shrink-0 text-n-400">+{s.music.others} other{s.music.others === 1 ? "" : "s"}</span>
+                        )}
+                      </span>
+                      <span className="text-n-300">·</span>
+                      <span className="shrink-0">
+                        <span className="font-num font-medium text-n-700">{fmtDuration(s.music.minutes)}</span>{" "}
+                        <span className="text-n-400">listening</span>
+                        {s.music.share != null && (
+                          <span className="font-num text-n-400"> ({Math.round(s.music.share * 100)}%)</span>
+                        )}
+                      </span>
+                      {s.music.podcast && <span className="shrink-0 text-n-400">· podcast</span>}
+                    </p>
+                  )}
                   {s.notes && (
                     <p className="mt-1.5 border-l-2 border-n-200 pl-2 text-[12px] leading-5 text-n-500">
                       {s.notes}

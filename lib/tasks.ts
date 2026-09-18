@@ -95,6 +95,14 @@ export async function addTaskItem(db: DB, taskId: string, label: string): Promis
   await syncTaskDone(db, taskId);
 }
 
+/** Rename a subtask. Empty labels are rejected rather than blanking it. */
+export async function renameTaskItem(db: DB, itemId: string, label: string): Promise<boolean> {
+  const trimmed = label.trim();
+  if (!trimmed) return false;
+  await db.taskItem.update({ where: { id: itemId }, data: { label: trimmed } });
+  return true;
+}
+
 /** Remove a subtask, handing completion back to the task if it was the last. */
 export async function removeTaskItem(db: DB, itemId: string): Promise<void> {
   const item = await db.taskItem.findUnique({ where: { id: itemId } });

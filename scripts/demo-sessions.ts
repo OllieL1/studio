@@ -31,6 +31,13 @@ async function main() {
   const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
   const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)];
 
+  // Fictional artists — obviously demo, never mistaken for your real listening.
+  // "calm" ones skew towards high-focus sessions so the music stats have
+  // something to show.
+  const CALM = ["Low Tide Collective", "Paper Satellites", "Moss & Static", "The Quiet Engines"];
+  const BUSY = ["Neon Parade", "Velvet Riot", "Sugarglass", "Loud Weather"];
+  const SHOW = "The Study Hour (podcast)";
+
   const NAMES = [
     "Lecture notes write-up", "Past paper practice", "Reading + annotation",
     "Coursework draft", "Tutorial problems", "Lab write-up",
@@ -83,6 +90,32 @@ async function main() {
               return [first, minutes - first];
             })();
 
+      // ~70% of sessions have music. Calm artists lean towards focused sessions.
+      const tracks: {
+        spotifyId: string; kind: string; title: string; artist: string; artists: string;
+        startedAt: Date; minutes: number;
+      }[] = [];
+      if (rnd() < 0.7) {
+        const podcast = rnd() < 0.12;
+        const pool = focus >= 75 ? (rnd() < 0.8 ? CALM : BUSY) : (rnd() < 0.7 ? BUSY : CALM);
+        const loop = rnd() < 0.15;
+        let t = startedAt.getTime();
+        const stop = t + rawMinutes * 60000 * (0.6 + rnd() * 0.4);
+        let i = 0;
+        while (t < stop) {
+          const artist = podcast ? SHOW : pick(pool);
+          const len = podcast ? 30 + rnd() * 25 : 2.5 + rnd() * 2.5;
+          const title = podcast ? `Episode ${1 + Math.floor(rnd() * 90)}` : loop ? "Deep Current" : `Track ${1 + Math.floor(rnd() * 12)}`;
+          const played = Math.min(len, (stop - t) / 60000);
+          tracks.push({
+            spotifyId: `demo-${artist}-${title}`, kind: podcast ? "episode" : "track",
+            title, artist, artists: artist, startedAt: new Date(t), minutes: Math.round(played * 100) / 100,
+          });
+          t += played * 60000;
+          if (++i > 80) break;
+        }
+      }
+
       rows.push({
         name: pick(NAMES),
         startedAt,
@@ -90,6 +123,8 @@ async function main() {
         minutes,
         rawMinutes,
         focus,
+        musicTracked: true,
+        tracks: { create: tracks },
         notes: `${TAG} generated sample session`,
         courses: { create: courseIds.map((courseId, i) => ({ courseId, minutes: slices[i] })) },
       });

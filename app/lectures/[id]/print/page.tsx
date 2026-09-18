@@ -10,10 +10,14 @@ export const dynamic = "force-dynamic";
 /** Print-optimised view of one lecture's notes. */
 export default async function LecturePrintPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ auto?: string }>;
 }) {
   const { id } = await params;
+  // ?auto=1 comes from the editor's PDF button: open the print dialog straight away.
+  const { auto } = await searchParams;
   const lecture = await db.task.findUnique({
     where: { id },
     include: { course: true },
@@ -26,7 +30,7 @@ export default async function LecturePrintPage({
         <Link href={`/lectures/${lecture.id}`} className="text-[12.5px] font-medium text-n-500 hover:text-rust-600">
           ← Back to lecture
         </Link>
-        <PrintButton />
+        <PrintButton auto={auto === "1"} />
       </div>
 
       <header className="mb-8 border-b border-n-200 pb-5">

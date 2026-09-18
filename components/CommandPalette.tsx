@@ -4,7 +4,11 @@ import type { Route } from "next";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clsx } from "@/lib/clsx";
+import { backdropProps, ModalLock, Portal } from "@/lib/hooks/useModal";
 import type { SearchHit } from "@/app/api/search/route";
+
+/** Dispatched on window by anything that wants to open the palette. */
+export const OPEN_PALETTE_EVENT = "open-command-palette";
 
 const TYPE_LABEL: Record<SearchHit["type"], string> = {
   course: "Course",
@@ -40,14 +44,18 @@ export function CommandPalette() {
       }
       if (e.key === "Escape") setOpen(false);
     };
+    const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener(OPEN_PALETTE_EVENT, onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(OPEN_PALETTE_EVENT, onOpen);
+    };
   }, []);
 
   useEffect(() => {
     if (open) {
       setActive(0);
-      requestAnimationFrame(() => inputRef.current?.focus());
     } else {
       setQ("");
       setHits([]);
@@ -109,9 +117,11 @@ export function CommandPalette() {
   if (!open) return null;
 
   return (
+    <ModalLock onClose={() => setOpen(false)} initialFocus={inputRef}>
+    <Portal>
     <div
       className="animate-fade-in fixed inset-0 z-[70] flex items-start justify-center bg-n-900/25 px-4 pt-[12vh] backdrop-blur-[2px]"
-      onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
+      {...backdropProps(() => setOpen(false))}
       role="dialog"
       aria-modal="true"
       aria-label="Search"
@@ -206,5 +216,7 @@ export function CommandPalette() {
         </div>
       </div>
     </div>
+    </Portal>
+    </ModalLock>
   );
 }

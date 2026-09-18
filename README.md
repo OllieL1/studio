@@ -17,9 +17,11 @@ npm run dev      # → http://localhost:3000
 | **Home** | Overall progress, per-course progress, today's classes and deadlines, headline metrics, and a one-line task composer. |
 | **Stats** | Daily averages, best/worst hours and weekdays, focus trends and distribution, per-subject breakdown. |
 | **Sessions** | Full session history by day, plus manual logging for study done away from the laptop. |
+| **Calendar** | Month and week views: Google events, deadlines, exams, lectures, labs and uni events. Big deadlines blocked out. |
+| **Task** | Full view of one task: details (all editable), subtasks, prerequisites, time tracked and work history. |
 | **Lectures** | Every lecture, filterable by course and by what's missing. Typed notes, handwritten notebook references, PDF export. |
 | **Course** | Weighted breakdown, exam readiness, revision mode, assessed work and classes by teaching week. |
-| **Settings** | Google Calendar connection and semester-2 status. |
+| **Settings** | Google Calendar and Spotify connections, semester-2 status. |
 | **Timer** | Always-visible global on/off control, pinned bottom-centre on every page. |
 | **⌘K** | Global search across courses, lectures, tasks and the full text of your notes. |
 
@@ -151,6 +153,60 @@ didn't justify pulling in `googleapis`.
 
 ---
 
+## Calendar
+
+`/calendar` — month by default, week for real times. Keys: ← → page, **T** today,
+**M**/**W** switch view, **N** new event.
+
+| Shows | How |
+|---|---|
+| Deadlines | Chips; exams and coursework worth **15%+** are blocked out with a hatch |
+| Lectures & labs | Coloured dots in month view, timed blocks in week view |
+| Uni events | Outlined; created here, optionally synced to Google |
+| Google events | Every calendar you have visible in Google, read-only |
+
+Anything this app pushed to Google is filtered from the Google feed, so nothing
+appears twice. Overlapping items in week view sit side by side
+(`lib/calendar.ts` → `layoutDay`). All-day events store an exclusive end date,
+matching Google — and step back by a *calendar day*, not 24 hours, so events on
+the day the clocks change don't lose a day.
+
+---
+
+## Spotify
+
+What's playing sits beside the timer. Read-only — it can't control playback.
+
+**Music is logged with every study session.** While the timer runs, each now-playing
+poll is stored; when the session stops, those samples plus Spotify's listening
+history (for stretches the app was closed) are folded into per-session tracks by
+`lib/music.ts`. Listening time comes from how far playback *position* moved, so
+pauses don't count, and skips are cut off where the next track begins.
+
+The Stats page's Music section only uses sessions recorded **with capture on** — an
+older session without music data is "unknown", not "silent", and counting it as
+silent would skew music-vs-silence. Comparisons need 3+ sessions per side before
+they show a difference.
+
+Genres and audio features (tempo, energy, instrumentalness) aren't available:
+Spotify blocked them for new apps in November 2024.
+
+Needs a Spotify app (steps at `/settings`) and in `.env`:
+
+```
+SPOTIFY_CLIENT_ID="…"
+SPOTIFY_CLIENT_SECRET="…"
+```
+
+Connections made before 18 Sep 2026 lack the listening-history permission; the app
+prompts to reconnect.
+
+Spotify **rejects `localhost`** as a redirect URI, so register
+`http://127.0.0.1:3000/api/spotify/callback`. The connect button bounces to
+`127.0.0.1` first so the sign-in's security cookie lands on the right host.
+
+---
+
 ## Semesters
 
 Courses carry a `semester` (1, 2, or 3 = all year). **Semester-2 courses are
@@ -212,7 +268,7 @@ destroys completion state, sessions or tasks you added yourself.
 |---|---|
 | `npm run dev` | Dev server |
 | `npm run build` / `start` | Production build & serve |
-| `npm test` | Progress, parser, split, subtask, revision and markdown tests (93) |
+| `npm test` | All unit and integration tests, plus a server/client boundary check (183) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run seed` | Populate/refresh courses and timetable |
 | `npm run backup` | Snapshot the database |
@@ -225,6 +281,8 @@ destroys completion state, sessions or tasks you added yourself.
 ```
 app/
   page.tsx            home
+  calendar/           month & week views
+  tasks/[id]/         task detail + editing
   lectures/           notes, filters, per-lecture pages + print
   settings/           Google Calendar, semester status
   stats/              analytics
@@ -237,7 +295,17 @@ lib/
   split.ts            per-subject time apportionment
   tasks.ts            completion, subtasks & revision mode (kept testable)
   markdown.ts         note rendering, TOC, sanitisation
-  google.ts           Calendar OAuth + event sync
+  google.ts           Calendar OAuth, event push & read
+  calendar.ts         calendar ranges, day placement, week layout
+  calendarData.ts     assembles tasks, events and Google into one feed
+  events.ts           uni-event times (exclusive all-day ends)
+  taskEdit.ts         task edits → database patches
+  taskStats.ts        per-task time attribution and metrics
+  spotify.ts          now-playing, listening history, session sampling
+  music.ts            rebuild what played from samples + history
+  musicStats.ts       music-vs-focus statistics
+  focus.ts            focus colour bands (shared by server and client)
+  hooks/useModal.tsx  dialog scroll-lock, focus, dismissal, portal
   stats.ts            analytics aggregation
   parse.ts            one-line task parser
   queries.ts          data fetching

@@ -1,14 +1,153 @@
 # Enhancement List - Check Off as we go
 
+18/09
+
+[x] SMall bug - clicking out of the new event modal on the calendar screen seems to scroll us down the page a bit for some reason
+[x] Spotify integration is working well - lets factor music into the stats. We can include music in each session since we have it integrated. Factor in some stats for music too - relating to focus and anything else you think would be interesting.
+- Most played while studying is not needed. Focus by artist is really interesting. Music vs silence is great. You can remove on repeat vs varied and podcatss vs music. Variety vs focus is great. You can remove your study tracks. I like the bar on the top. Remember to add the listening time and top artist to each session too i.e. on the sessions screen. Music by time of day and day of the week would be cool too.
+[x] On the task specific pages, for editing tasks we should hide this menu behind another click / make it a modal - there is no reason to have it as obvious on the screen.
+[x] Lecture specific pages should also display their time tracking metrics as well as the written note display.  So we can see how much time has been spent on each task.
+[x] Mark as revision on the course page doesnt need to be there for courses with no exam.
+[x] Allow for export of individual lectures on their page i.e. where we have write and preview, we should be able to export these to PDF.
+[~] We are seeing some of these console errors. Nothing too important but if you know a fix, it would be great
+- A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+See more info here: https://nextjs.org/docs/messages/react-hydration-error
+
+
++
+Client
+-
+Server
+  ...
+    <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<SegmentViewNode>} forbidden={undefined} ...>
+      <RedirectBoundary>
+        <RedirectErrorBoundary router={{...}}>
+          <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+            <SegmentViewNode type="page" pagePath="page.tsx">
+              <SegmentTrieNode>
+              <HomePage>
+                <div className="space-y-10">
+                  <section className="animate-fa...">
+                    <p>
+                    <h1>
+                    <Card>
+                      <div className="card relat...">
+                        <div>
+                        <div className="mt-6 borde...">
+                          <div>
+                          <Sparkbar data={[...]}>
+                            <div className="relative">
+                              <div className="flex items..." style={{height:44}}>
+                                <button
+                                  onMouseEnter={function onMouseEnter}
+                                  onMouseLeave={function onMouseLeave}
+                                  onFocus={function onFocus}
+                                  onBlur={function onBlur}
+                                  className="group relative flex-1 outline-none"
+                                  style={{height:44}}
++                                 aria-label="Sat, 29 Aug: 1h 24m"
+-                                 aria-label="Sat 29 Aug: 1h 24m"
+                                >
+
+
+
+---
+
+## Status — 18/09/26
+
+`[x]` done · `[~]` fixed, but only verifiable in Safari
+
+**Modal scroll bug** — confirmed fixed. Didn't happen in Chrome, and headless Safari wouldn't run here, so
+all three plausible Safari causes are fixed together: the page is scroll-locked while a dialog is
+open and restored exactly on close; the first field is focused without scrolling; and dialogs
+close on a full click, not mousedown (which let the click fall through to the calendar). Verified
+in Chrome: scroll position unchanged to the pixel, no click-through, and dragging a text
+selection out of a dialog no longer closes it.
+
+**Music in stats** — whatever plays while the timer runs is logged with the session (podcasts too),
+plus Spotify's history for stretches the app was closed. Not possible: genres and audio features
+(tempo, energy) — Spotify has blocked both for new apps.
+
+*Revised after feedback:* kept the tile bar, focus by artist, music vs silence and variety vs
+focus; removed most played, on-repeat vs varied, podcasts vs music and study tracks; added music
+by time of day and by day of week (as the share of study time with music on — raw minutes would
+just echo when you study). Each session now shows its top artist and listening time, with the
+share of the session that had music.
+
+**Task editing** — behind an Edit button (or **E**) in a modal.
+
+**Lecture pages** — time tracked and work history under the notes.
+
+**Revision** — only on courses with an exam (PSI, RMT, FP). A course already in revision keeps
+the control so it can be switched off.
+
+**Lecture PDF** — PDF button in the Write/Preview toolbar; saves first, then opens the save dialog.
+
+**Console errors** `[~]` — the hydration error was Safari and Node formatting dates differently
+("Sat, 29 Aug" vs "Sat 29 Aug"). All date formatting is now hand-rolled, so both sides produce
+identical text. The week view's "now" line also rendered from two different clocks — it now
+appears after load. The 404 was a missing favicon. Chrome shows zero console errors on every
+page; **please confirm Safari's console is clear too.**
+
+
 17/09/36
 
-[] Spotify integration - displays currently playing song for more personalisation 
-[] Remove the ctrl k visual aid on the search bar - I know ctrl k works so i dont need the hint. Please make the search bar look cleaner in that top right. 
-[] Add the Add to Google Calendar button in the detail menu for creating a new task
-[] Tasks should have their own expandable pages where you can see the task in detail, see its subtasks, its history of work tagged to it, see its time tracking metrics and stats. Essentially a full task view. 
-[] Tasks should be editable! Allow editing of all properties of a task - this is a given. 
-[] Calendar view - pull the google calendar plus the tasks and have a calendar view. Default to a month. This can be an insanely useful view with some details on the side of the page for upcoming coursework - exams can be blocked especially or big coursework with large weighting. Allow the creation of events here - these are not tasks but uni events i.e. meetings with project supervisor. These should have the option to sync to google calendar ofc. 
+[~] Spotify integration - displays currently playing song for more personalisation 
+[x] Remove the ctrl k visual aid on the search bar - I know ctrl k works so i dont need the hint. Please make the search bar look cleaner in that top right. 
+[x] Add the Add to Google Calendar button in the detail menu for creating a new task
+[x] Tasks should have their own expandable pages where you can see the task in detail, see its subtasks, its history of work tagged to it, see its time tracking metrics and stats. Essentially a full task view. 
+[x] Tasks should be editable! Allow editing of all properties of a task - this is a given. 
+[x] Calendar view - pull the google calendar plus the tasks and have a calendar view. Default to a month. This can be an insanely useful view with some details on the side of the page for upcoming coursework - exams can be blocked especially or big coursework with large weighting. Allow the creation of events here - these are not tasks but uni events i.e. meetings with project supervisor. These should have the option to sync to google calendar ofc. 
 - Ensure our calendar view is powerful, useful and sleek. We want the calendar view to be a major benefit to the site - I want to centralise my work, schedule and everything into this site ideally.
+
+
+---
+
+## Status — 17/09/26
+
+`[x]` done · `[~]` built, needs one action from you
+
+**Search bar** — shortcut hint gone; a quiet rounded field in the top right that opens
+the same ⌘K palette.
+
+**Calendar in the task composer** — Detail menu has an "Add to Google Calendar" switch.
+The task is saved first, so if Google refuses, the task isn't lost; you get a warning.
+
+**Task pages** (`/tasks/[id]`) — open any task from its title, the calendar or ⌘K.
+Subtasks (add, tick, rename, remove), prerequisites and what's waiting on it, and
+time tracking: total, per session, focus, last worked, by weekday, plus full work
+history. A session tagged to several tasks is **shared evenly** between them, so
+time is never double-counted — the page says so when it happens.
+
+**Editing** — every property from the task page: title, course, type, date, time
+(or start/end for classes), grade weight, notes, priority, cancelled, exam diet.
+Saved together, with discard. If the task is on Google Calendar, the event updates.
+
+**Calendar** (`/calendar`) — month (default) and week. Shows Google events, deadlines,
+exams, lectures and labs; study sessions left off as agreed.
+- Exams and coursework worth **15%+ are blocked out** with a hatched tint.
+- Month collapses a day's classes to coloured dots so deadlines stay visible.
+- Week puts classes and meetings at their real times, side by side when they overlap.
+- Sidebar: big deadlines, the next 6 weeks by week, exams with readiness.
+- Filters for each kind; click anything for details without leaving the page.
+- Click a day or time slot to create a **uni event** (one-off), optionally synced
+  to Google. Edits update the Google copy; turning sync off removes it.
+- Anything this app pushed to Google isn't shown twice.
+- Keys: ← → page · T today · M/W switch · N new event.
+
+**Spotify** — built: now-playing sits beside the timer with artwork, a progress
+bar and equaliser. **Needs Spotify credentials in `.env`** — five steps at `/settings`.
+Spotify doesn't accept `localhost` as a redirect URI, so it has to be
+`http://127.0.0.1:3000/api/spotify/callback`, and you briefly land on 127.0.0.1 during
+sign-in.
 
 15/09/26
 

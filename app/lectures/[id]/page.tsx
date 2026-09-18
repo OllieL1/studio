@@ -4,10 +4,11 @@ import { db } from "@/lib/db";
 import { renderMarkdown, extractToc, wordCount } from "@/lib/markdown";
 import { fmtDateLong, fmtTime } from "@/lib/dates";
 import { REVISION_ITEM_LABEL } from "@/lib/types";
-import { Card, Eyebrow, Pill } from "@/components/ui";
+import { Card, Eyebrow } from "@/components/ui";
 import { NotesEditor } from "@/components/NotesEditor";
 import { NotebookLocation } from "@/components/NotebookLocation";
 import { LectureChecklist } from "@/components/LectureChecklist";
+import { TaskTime } from "@/components/TaskTime";
 
 export const dynamic = "force-dynamic";
 
@@ -83,12 +84,7 @@ export default async function LecturePage({
                 <span className="font-num text-[12px] text-n-400">
                   {wordCount(md)} words
                 </span>
-                <Link
-                  href={`/lectures/${lecture.id}/print`}
-                  className="rounded-md border border-n-200 bg-n-0 px-3 py-1.5 text-[12px] font-semibold text-n-700 transition-colors duration-[120ms] hover:bg-n-50"
-                >
-                  Export PDF
-                </Link>
+
               </>
             )}
           </div>
@@ -101,6 +97,12 @@ export default async function LecturePage({
             taskId={lecture.id}
             initial={md}
             renderedInitial={md ? renderMarkdown(md) : ""}
+          />
+
+          <TaskTime
+            taskId={lecture.id}
+            showWeekday={false}
+            emptyHint="Tag this lecture under “Tasks worked on” when you stop the timer — writing up, revising, re-watching — and the time shows up here."
           />
 
           <div className="flex items-center justify-between gap-3">

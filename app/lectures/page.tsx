@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { visibleCourseWhere, REVISION_ITEM_LABEL } from "@/lib/types";
 import { wordCount } from "@/lib/markdown";

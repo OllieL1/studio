@@ -5,6 +5,8 @@ import { stopTimer } from "@/app/actions";
 import { fmtDuration } from "@/lib/dates";
 import { resolveSplit, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
+import { focusColour } from "@/lib/focus";
+import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
 import { Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
 
@@ -42,14 +44,7 @@ export function StopDialog({
   const [pending, startTransition] = useTransition();
   const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    nameRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useModal({ onClose, initialFocus: nameRef });
 
   // Task options are scoped to the chosen subjects — picking a subject first
   // keeps the task list short and relevant.
@@ -136,9 +131,10 @@ export function StopDialog({
   };
 
   return (
+    <Portal>
     <div
       className="animate-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-n-900/25 p-4 backdrop-blur-[2px] sm:items-center"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      {...backdropProps(onClose)}
       role="dialog"
       aria-modal="true"
       aria-label="Log study session"
@@ -334,6 +330,7 @@ export function StopDialog({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -372,8 +369,3 @@ function Tick({ on }: { on: boolean }) {
   );
 }
 
-export function focusColour(focus: number): string {
-  if (focus >= 75) return "var(--color-ok)";
-  if (focus >= 50) return "var(--color-warn)";
-  return "var(--color-danger)";
-}

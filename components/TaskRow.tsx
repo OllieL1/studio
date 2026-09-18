@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleItem, toggleTask, deleteTask, addItem, deleteItem } from "@/app/actions";
@@ -117,19 +118,21 @@ export function TaskRow({
           {partial && <span className="h-[7px] w-[7px] rounded-[2px] bg-rust-500" />}
         </button>
 
-        <button
+        <div
           onClick={() => expandable && setOpen((v) => !v)}
           className={clsx("min-w-0 flex-1 text-left", expandable && "cursor-pointer")}
         >
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span
+            <Link
+              href={`/tasks/${task.id}`}
+              onClick={(e) => e.stopPropagation()}
               className={clsx(
-                "text-[14px] font-medium text-n-800",
+                "text-[14px] font-medium text-n-800 decoration-rust-300 underline-offset-2 hover:text-rust-700 hover:underline",
                 done && "line-through decoration-n-400",
               )}
             >
               {task.title}
-            </span>
+            </Link>
             {task.priority > 0 && !done && (
               <Pill tone="rust">Priority</Pill>
             )}
@@ -170,7 +173,7 @@ export function TaskRow({
               </span>
             )}
           </div>
-        </button>
+        </div>
 
         <div className="flex shrink-0 items-center gap-1">
           <CalendarButton

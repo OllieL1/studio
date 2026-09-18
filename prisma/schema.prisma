@@ -42,6 +42,7 @@ model Course {
   slots    ScheduleSlot[]
   tasks    Task[]
   sessions SessionCourse[]
+  events   Event[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,8 +166,14 @@ model Session {
   focus      Int
   notes      String?
 
+  /// True when Spotify capture was active for this session. A tracked session
+  /// with no tracks means "studied in silence"; an untracked one means "we
+  /// don't know" — so only tracked sessions enter music-vs-silence stats.
+  musicTracked Boolean @default(false)
+
   courses SessionCourse[]
   tasks   SessionTask[]
+  tracks  SessionTrack[]
 
   createdAt DateTime @default(now())
 
@@ -225,4 +232,90 @@ model GoogleAuth {
   calendarId   String   @default("primary")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+/// A uni event that isn't a piece of work — a supervisor meeting, a talk, a
+/// careers fair. Lives on the calendar, can be tied to a course, and can be
+/// pushed to Google. One-off by design.
+model Event {
+  id       String   @id @default(cuid())
+  title    String
+  startAt  DateTime
+  endAt    DateTime
+  allDay   Boolean  @default(false)
+  location String?
+  notes    String?
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  /// Google event id once synced — a second sync updates rather than duplicates.
+  calendarEventId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startAt])
+  @@index([courseId])
+}
+
+/// Spotify OAuth tokens (id is always "singleton"). Read-only access to what's
+/// currently playing — no playback control.
+model SpotifyAuth {
+  id           String   @id @default("singleton")
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  displayName  String?
+  /// Granted scopes — listening history needs user-read-recently-played,
+  /// which connections made before 18 Sep 2026 don't have.
+  scope        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Something that played during a study session — a track or podcast episode —
+/// with an estimate of how long it actually played within the session.
+model SessionTrack {
+  id        String  @id @default(cuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  spotifyId String?
+  kind      String // "track" | "episode"
+  title     String
+  /// Primary artist (or show name for an episode) — what stats group by.
+  artist    String
+  /// Every credited artist, for display.
+  artists   String
+  album     String?
+  imageUrl  String?
+  url       String?
+
+  startedAt DateTime
+  /// Minutes of this play that fell inside the session.
+  minutes   Float
+
+  @@index([sessionId])
+  @@index([artist])
+}
+
+/// A now-playing reading taken while the timer runs. Raw material: folded
+/// into SessionTracks when the session is logged, then deleted.
+model ListeningSample {
+  id         String   @id @default(cuid())
+  sampledAt  DateTime @default(now())
+  spotifyId  String?
+  kind       String
+  title      String
+  artist     String
+  artists    String
+  album      String?
+  imageUrl   String?
+  url        String?
+  durationMs Int
+  progressMs Int
+  isPlaying  Boolean
+
+  @@index([sampledAt])
 }

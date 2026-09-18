@@ -5,12 +5,16 @@ import {
   byDayOfWeek, byHourOfDay, bySubject, focusByLength,
   focusDistribution, headline, rollingMean, type StatSession,
 } from "@/lib/stats";
-import { fmtDuration, fmtTime } from "@/lib/dates";
+import { fmtDuration, fmtTime, fmtDate } from "@/lib/dates";
 import { Card, Eyebrow, EmptyState, SectionHeading, Stat, ProgressBar } from "@/components/ui";
 import { BarChart } from "@/components/charts/BarChart";
 import { HBarChart } from "@/components/charts/HBarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { RangePicker } from "@/components/RangePicker";
+import { MusicSection } from "@/components/MusicSection";
+import { musicStats } from "@/lib/musicStats";
+import { hasHistoryScope, isSpotifyConfigured } from "@/lib/spotify";
+import { addDays, startOfDay } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +37,20 @@ export default async function StatsPage({
   ]);
 
   const sessions: StatSession[] = raw;
+
+  // Music: the same sessions, with what played in each.
+  const [musicSessions, spotifyAuth] = await Promise.all([
+    db.session.findMany({
+      where: days ? { startedAt: { gte: startOfDay(addDays(new Date(), -days)) } } : undefined,
+      select: {
+        id: true, focus: true, minutes: true, rawMinutes: true, startedAt: true, musicTracked: true,
+        tracks: { select: { spotifyId: true, kind: true, title: true, artist: true, minutes: true, startedAt: true } },
+      },
+    }),
+    isSpotifyConfigured() ? db.spotifyAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }) : null,
+  ]);
+  const music = musicStats(musicSessions);
+  const historyScope = spotifyAuth ? await hasHistoryScope() : false;
   const h = headline(sessions);
   const hours = byHourOfDay(sessions);
   const dow = byDayOfWeek(sessions);
@@ -41,7 +59,7 @@ export default async function StatsPage({
   const focusLen = focusByLength(sessions);
 
   const focusSeries = daily.map((d) => ({
-    label: d.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+    label: fmtDate(d.date),
     value: d.focus,
   }));
   const focusTrend = rollingMean(focusSeries.map((p) => p.value), 7);
@@ -233,6 +251,8 @@ export default async function StatsPage({
           </Panel>
         </div>
       </section>
+
+      <MusicSection stats={music} connected={!!spotifyAuth} historyScope={historyScope} />
 
       {/* ── Honesty ────────────────────────────────────────────────────── */}
       {h.adjustedDownMinutes > 0 && (
