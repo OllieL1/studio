@@ -98,11 +98,12 @@ export function fmtDuration(mins: number): string {
   return `${h}h ${m}m`;
 }
 
-/** "01:23:45" for the live timer. */
+/** "01:23" (hours:minutes) for the live timer. Seconds are left off —
+ *  the pulsing dot beside it already shows the timer is running. */
 export function fmtClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}`;
 }
 
 /* ── Deterministic formatting ───────────────────────────────────────────────
