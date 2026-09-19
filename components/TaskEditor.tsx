@@ -113,7 +113,7 @@ export function TaskEditor({
 
         <Field
           label="Type"
-          hint={kindChanged ? "Changing type keeps the existing checklist — edit subtasks to match." : undefined}
+          hint={kindChanged ? "Changing type keeps the existing checklist - edit subtasks to match." : undefined}
         >
           <div className="flex flex-wrap gap-1">
             {TASK_KINDS.map((k) => (
@@ -188,7 +188,7 @@ export function TaskEditor({
               step="0.1"
               value={draft.gradeWeight ?? ""}
               onChange={(e) => set("gradeWeight", e.target.value === "" ? null : Number(e.target.value))}
-              placeholder="—"
+              placeholder="-"
               className={clsx(inputCls, "font-num w-24")}
             />
             <span className="text-[12px] text-n-400">%</span>

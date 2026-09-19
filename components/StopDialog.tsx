@@ -208,7 +208,7 @@ export function StopDialog({
 
           {/* Tasks */}
           {tasks.length > 0 && (
-            <Field label="Tasks worked on" hint="Optional — lets stats show time per task.">
+            <Field label="Tasks worked on" hint="Optional - lets stats show time per task.">
               <div className="max-h-36 space-y-0.5 overflow-y-auto rounded-sm border border-n-100 p-1">
                 {tasks.map((t) => {
                   const on = taskIds.includes(t.id);

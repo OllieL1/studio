@@ -67,7 +67,7 @@ export function SubtaskPanel({
               done ? "bg-ok-soft text-[#3f5c38] hover:bg-n-100" : "bg-rust-500 text-white hover:bg-rust-600",
             )}
           >
-            {done ? "✓ Complete — undo" : "Mark complete"}
+            {done ? "✓ Complete - undo" : "Mark complete"}
           </button>
         )}
       </div>

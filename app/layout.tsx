@@ -28,8 +28,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Study Planner — 26/27",
-  description: "Fifth year time management portal",
+  title: "Studio - 26/27",
+  description: "Studio - fifth-year study planner",
 };
 
 export default async function RootLayout({

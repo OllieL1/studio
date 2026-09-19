@@ -1,4 +1,4 @@
-# Study Planner — Design System
+# Studio — Design System
 
 Sleek, editorial, metric-forward. Bold where it counts, muted everywhere else.
 **No gradients. Shadows used sparingly and only for genuinely floating layers.**
@@ -92,6 +92,18 @@ beside its name, and charts direct-label their categories (see §7).
 All body text meets WCAG AA (4.5:1) on its own surface; `--n-500` on `--n-0`
 is 5.1:1. Progress fills carry a text label or adjacent numeral — colour is
 never the only carrier of meaning.
+
+---
+
+## Wordmark
+
+**Studio** — study + IO. Set entirely in Fraunces, with "io" in `--rust-500`
+so the pun survives in colour alone. Beside it: the progress-ring mark, and
+`26/27` in the numeric face. Component: `components/Wordmark.tsx`.
+
+**Tab icon** — a cream house on a rust tile (`app/icon.svg`), also shipped as
+`favicon.ico` (16/32/48) and `apple-icon.png` (180), because Safari doesn't
+reliably use SVG favicons.
 
 ---
 

@@ -182,7 +182,7 @@ export function NotesEditor({
         />
       ) : (
         <p className="p-8 text-center text-[13px] text-n-400">
-          Nothing written yet — switch to Write and start typing.
+          Nothing written yet - switch to Write and start typing.
         </p>
       )}
     </div>

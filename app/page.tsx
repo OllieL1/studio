@@ -87,7 +87,7 @@ export default async function HomePage() {
               />
               <Stat
                 label="Avg focus"
-                value={stats.avgFocus > 0 ? stats.avgFocus.toFixed(0) : "—"}
+                value={stats.avgFocus > 0 ? stats.avgFocus.toFixed(0) : "-"}
                 unit={stats.avgFocus > 0 ? "%" : undefined}
                 sub={`${stats.totalSessions} sessions logged`}
               />
@@ -112,7 +112,7 @@ export default async function HomePage() {
       <section className="animate-fade-up" style={{ animationDelay: "40ms" }}>
         <SectionHeading
           title="Add something"
-          sub="Type it in one line — press / from anywhere to jump here."
+          sub="Type it in one line - press / from anywhere to jump here."
         />
         <QuickAdd courses={composerCourses} calendarConnected={calendarConnected} />
       </section>
@@ -190,7 +190,7 @@ export default async function HomePage() {
 
       {/* ── Courses ────────────────────────────────────────────────────── */}
       <section className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-        <SectionHeading title="Courses" sub="Lecture, lab and assessment progress — weighted per course." />
+        <SectionHeading title="Courses" sub="Lecture, lab and assessment progress - weighted per course." />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {courses.map((c) => (
             <CourseCard key={c.id} course={c} />
@@ -203,7 +203,7 @@ export default async function HomePage() {
         <section className="animate-fade-up" style={{ animationDelay: "160ms" }}>
           <SectionHeading
             title="Exams"
-            sub="Kept out of the progress bars — tracked here by readiness instead."
+            sub="Kept out of the progress bars - tracked here by readiness instead."
           />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {allExams.map((e) => (

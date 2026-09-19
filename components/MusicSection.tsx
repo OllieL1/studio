@@ -42,7 +42,7 @@ export function MusicSection({
           </p>
           <p className="mt-1 max-w-[60ch] text-[13px] leading-5 text-n-500">
             {connected
-              ? "Whatever plays while the timer runs is logged with the session. After a few sessions this fills in: how much of your study has music, your study artists, and whether music — or silence — helps you focus."
+              ? "Whatever plays while the timer runs is logged with the session. After a few sessions this fills in: how much of your study has music, your study artists, and whether music - or silence - helps you focus."
               : "Once it's connected, whatever plays while the timer runs is logged with each session."}
           </p>
           {connected && !historyScope && <ReconnectHint />}
@@ -75,7 +75,7 @@ export function MusicSection({
         />
         <Stat
           label="Music vs silence"
-          value={stats.musicVsSilence == null ? "—" : `${stats.musicVsSilence > 0 ? "+" : ""}${stats.musicVsSilence.toFixed(0)}`}
+          value={stats.musicVsSilence == null ? "-" : `${stats.musicVsSilence > 0 ? "+" : ""}${stats.musicVsSilence.toFixed(0)}`}
           unit={stats.musicVsSilence == null ? undefined : "pts"}
           tone={stats.musicVsSilence == null ? undefined : stats.musicVsSilence >= 0 ? "var(--color-ok)" : "var(--color-danger)"}
           sub={
@@ -88,7 +88,7 @@ export function MusicSection({
         <Stat
           text
           label="Top study artist"
-          value={top ? top.artist : "—"}
+          value={top ? top.artist : "-"}
           sub={top ? `${fmtDuration(top.minutes)} · ${top.sessions} session${top.sessions === 1 ? "" : "s"}` : undefined}
         />
       </Card>
@@ -176,7 +176,7 @@ export function MusicSection({
       {stats.untrackedSessions > 0 && (
         <p className="text-[11.5px] leading-5 text-n-400">
           {stats.untrackedSessions} session{stats.untrackedSessions === 1 ? " was" : "s were"} logged before music tracking
-          and {stats.untrackedSessions === 1 ? "is" : "are"} left out here — whether they had music is unknown, so counting
+          and {stats.untrackedSessions === 1 ? "is" : "are"} left out here - whether they had music is unknown, so counting
           them as silent would skew the comparison.
         </p>
       )}
@@ -205,7 +205,7 @@ function Compare({
     <div className="min-w-0">
       <p className="truncate text-[11px] text-n-500">{name}</p>
       <p className="font-num text-[18px] font-semibold leading-6" style={{ color: g.focus != null ? focusColour(g.focus) : "var(--color-n-300)" }}>
-        {g.focus != null ? `${g.focus.toFixed(0)}%` : "—"}
+        {g.focus != null ? `${g.focus.toFixed(0)}%` : "-"}
       </p>
       <p className="font-num text-[10.5px] text-n-400">{g.sessions} session{g.sessions === 1 ? "" : "s"}</p>
     </div>

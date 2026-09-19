@@ -162,7 +162,7 @@ export function EventDialog({
           </div>
 
           <div className="grid gap-2.5">
-            <input value={d.location} onChange={(e) => set("location", e.target.value)} placeholder="Location — room, building or link" className={input} aria-label="Location" />
+            <input value={d.location} onChange={(e) => set("location", e.target.value)} placeholder="Location - room, building or link" className={input} aria-label="Location" />
             <textarea value={d.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Notes" rows={2} className={clsx(input, "h-auto resize-none py-2")} aria-label="Notes" />
           </div>
 

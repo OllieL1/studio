@@ -103,7 +103,7 @@ export function MonthGrid({
                     onClick={(e) => { e.stopPropagation(); onDayOpen(day); }}
                     title={classes.map((c) => `${c.courseShort ?? ""} ${c.title}`.trim()).join("\n")}
                     className="flex items-center gap-[3px] rounded-full px-1 py-0.5 transition-colors duration-[120ms] hover:bg-n-100"
-                    aria-label={`${classes.length} classes — open week`}
+                    aria-label={`${classes.length} classes - open week`}
                   >
                     {classes.slice(0, 5).map((c) => (
                       <span

@@ -133,7 +133,7 @@ export default async function CoursePage({
                   <div className="mb-1 flex items-baseline justify-between text-[12.5px]">
                     <span className="font-medium capitalize text-n-700">
                       {c.category === "assessment" ? "Assessed work" : `${c.category}s`}
-                      {!c.present && <span className="ml-1.5 text-n-400">— none</span>}
+                      {!c.present && <span className="ml-1.5 text-n-400">- none</span>}
                     </span>
                     <span className="font-num text-n-500">
                       {c.present && (
@@ -200,7 +200,7 @@ export default async function CoursePage({
       {/* ── Exams ──────────────────────────────────────────────────────── */}
       {exams.length > 0 && (
         <section className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-          <SectionHeading title="Exam" sub="Excluded from the progress bar — tracked by readiness." />
+          <SectionHeading title="Exam" sub="Excluded from the progress bar - tracked by readiness." />
           <div className="grid gap-4 sm:grid-cols-2">
             {exams.map((e) => {
               const prereqs = deps.filter((d) => d.dependentId === e.id).map((d) => d.prerequisite);
@@ -228,7 +228,7 @@ export default async function CoursePage({
                     </div>
                     <ProgressBar value={r.ratio * 100} colour={course.colour} height={5} />
                     <p className="mt-2 text-[11px] leading-4 text-n-400">
-                      Advisory only — you can tick the exam off whenever you like.
+                      Advisory only - you can tick the exam off whenever you like.
                     </p>
                   </div>
                 </Card>

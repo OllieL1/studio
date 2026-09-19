@@ -102,7 +102,7 @@ export default async function LecturePage({
           <TaskTime
             taskId={lecture.id}
             showWeekday={false}
-            emptyHint="Tag this lecture under “Tasks worked on” when you stop the timer — writing up, revising, re-watching — and the time shows up here."
+            emptyHint="Tag this lecture under “Tasks worked on” when you stop the timer - writing up, revising, re-watching - and the time shows up here."
           />
 
           <div className="flex items-center justify-between gap-3">

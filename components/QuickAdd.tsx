@@ -131,7 +131,7 @@ export function QuickAdd({
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
             if (e.key === "Escape") { reset(); inputRef.current?.blur(); }
           }}
-          placeholder="Add a task — try “FP programming exercise fri 5pm 20%”"
+          placeholder="Add a task - try “FP programming exercise fri 5pm 20%”"
           className="h-8 min-w-0 flex-1 bg-transparent text-[14px] text-n-800 outline-none placeholder:text-n-400"
           aria-label="New task"
         />
@@ -214,7 +214,7 @@ export function QuickAdd({
               Subtasks
               {subtasks.length === 0 && defaultChecklist.length > 0 && (
                 <span className="ml-1.5 font-normal normal-case tracking-normal text-n-400">
-                  — defaults to {defaultChecklist.join(" · ")}
+                  - defaults to {defaultChecklist.join(" · ")}
                 </span>
               )}
             </Eyebrow>
@@ -280,7 +280,7 @@ export function QuickAdd({
                     <span className="block text-[10.5px] text-n-400">
                       {parsed.dueDate
                         ? parsed.dueTime ? "As a one-hour slot ending at the deadline" : "As an all-day event"
-                        : "Needs a date — type one, e.g. “fri 5pm”"}
+                        : "Needs a date - type one, e.g. “fri 5pm”"}
                     </span>
                   </span>
                 </span>

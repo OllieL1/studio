@@ -64,13 +64,13 @@ export async function TaskTime({
               <Stat label="Per session" value={fmtDuration(metrics.avgSessionMinutes ?? 0)} sub={`${metrics.activeDays} day${metrics.activeDays === 1 ? "" : "s"} active`} />
               <Stat
                 label="Avg focus"
-                value={metrics.avgFocus != null ? metrics.avgFocus.toFixed(0) : "—"}
+                value={metrics.avgFocus != null ? metrics.avgFocus.toFixed(0) : "-"}
                 unit={metrics.avgFocus != null ? "%" : undefined}
                 tone={metrics.avgFocus != null ? focusColour(metrics.avgFocus) : undefined}
               />
               <Stat
                 label="Last worked"
-                value={metrics.lastWorked ? fmtRelative(metrics.lastWorked) : "—"}
+                value={metrics.lastWorked ? fmtRelative(metrics.lastWorked) : "-"}
                 sub={metrics.firstWorked ? `Started ${fmtDate(metrics.firstWorked)}` : undefined}
               />
             </div>

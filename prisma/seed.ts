@@ -122,8 +122,8 @@ const COURSES: CourseSpec[] = [
     lectureWeight: 0, labWeight: 0, assessmentWeight: 100,
     slots: [],
     tasks: [
-      { title: "Presentation — Upload", kind: "COURSEWORK", due: "2026-09-24" },
-      { title: "Presentation — Present", kind: "COURSEWORK", due: "2026-09-25" },
+      { title: "Presentation - Upload", kind: "COURSEWORK", due: "2026-09-24" },
+      { title: "Presentation - Present", kind: "COURSEWORK", due: "2026-09-25" },
       // 07/08 and 19/08 in SUBJECTS.md were typos for October (see AIM.md).
       { title: "Report / Essay", kind: "COURSEWORK", due: "2026-10-07" },
       { title: "Poster (Project Proposal)", kind: "COURSEWORK", due: "2026-10-19" },
@@ -164,9 +164,9 @@ const COURSES: CourseSpec[] = [
     ],
     tasks: [
       // No published weights — equal-weighted until set.
-      { title: "Assessment #1 — In-Person Class Test", kind: "COURSEWORK", due: "2026-10-28" },
+      { title: "Assessment #1 - In-Person Class Test", kind: "COURSEWORK", due: "2026-10-28" },
       { title: "Poster Topic Choice", kind: "COURSEWORK", due: "2026-10-30" },
-      { title: "Assessment #2 — In-Person Class Test", kind: "COURSEWORK", due: "2026-11-11" },
+      { title: "Assessment #2 - In-Person Class Test", kind: "COURSEWORK", due: "2026-11-11" },
       { title: "Poster Submission", kind: "COURSEWORK", due: "2026-11-20" },
       { title: "Poster Presentation", kind: "COURSEWORK", due: "2026-11-25" },
     ],

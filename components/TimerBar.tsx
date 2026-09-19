@@ -45,7 +45,7 @@ export function TimerBar({
 
   // Keep the running time in the tab title — glanceable from another app.
   useEffect(() => {
-    const base = "Study Planner — 26/27";
+    const base = "Studio - 26/27";
     document.title = startMs ? `${fmtClock(elapsed)} · Studying` : base;
     return () => {
       document.title = base;

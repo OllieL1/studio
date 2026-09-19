@@ -98,7 +98,7 @@ export default async function CourseNotesPage({
                       <span className="font-medium">{l.title}</span>
                       <span className="mx-1 min-w-4 flex-1 self-center border-b border-dotted border-n-300" />
                       <span className="font-num shrink-0 text-[11.5px] text-n-400">
-                        {l.dueAt ? fmtDate(l.dueAt) : "—"}
+                        {l.dueAt ? fmtDate(l.dueAt) : "-"}
                       </span>
                     </a>
                     {sub.length > 0 && (

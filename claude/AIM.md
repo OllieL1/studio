@@ -139,3 +139,10 @@ I had a study planner for my third year exams and it worked incredibly well. I r
 - **Server components must not call functions from "use client" modules** —
   `scripts/check-boundaries.mjs` enforces it in `npm test`.
 - Task editing lives in a modal (**E**); revision only shows for courses with an exam.
+
+
+---
+
+## Name (18 Sep 2026)
+
+The app is called **Studio** — *study* + *IO*. Wordmark: all in the display serif, with "io" in rust. Tab icon: a house.

@@ -143,7 +143,7 @@ export async function upsertEvent(
     end: input.allDay
       ? { date: isoDate(addDay(input.end)) } // Google treats all-day end as exclusive
       : { dateTime: input.end.toISOString(), timeZone: tz() },
-    source: { title: "Study Planner", url: "http://localhost:3000" },
+    source: { title: "Studio", url: "http://localhost:3000" },
   };
 
   const url = existingEventId

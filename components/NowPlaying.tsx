@@ -70,7 +70,7 @@ export function NowPlaying({ studying = false }: { studying?: boolean }) {
       href={data.url ?? "https://open.spotify.com"}
       target="_blank"
       rel="noreferrer noopener"
-      title={`${data.title} — ${data.artist}`}
+      title={`${data.title} - ${data.artist}`}
       className="animate-fade-in group pointer-events-auto hidden max-w-[260px] items-center gap-2.5 rounded-full border border-n-200 bg-n-0/95 py-1.5 pl-1.5 pr-3.5 backdrop-blur-md transition-colors duration-[120ms] hover:border-n-300 sm:flex"
       style={{ boxShadow: "var(--shadow-pop)" }}
     >

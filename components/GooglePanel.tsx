@@ -137,7 +137,7 @@ export function GooglePanel({
             {[
               <>Go to <ExtLink href="https://console.cloud.google.com/projectcreate">console.cloud.google.com</ExtLink> and create a project (any name).</>,
               <>Under <b>APIs &amp; Services → Library</b>, search for <b>Google Calendar API</b> and enable it.</>,
-              <>Under <b>OAuth consent screen</b>, choose <b>External</b>, fill in the app name and your email, and add yourself under <b>Test users</b>. It can stay in Testing mode — it&apos;s only ever you.</>,
+              <>Under <b>OAuth consent screen</b>, choose <b>External</b>, fill in the app name and your email, and add yourself under <b>Test users</b>. It can stay in Testing mode - it&apos;s only ever you.</>,
               <>Under <b>Credentials → Create credentials → OAuth client ID</b>, pick <b>Web application</b> and add this exact <b>Authorised redirect URI</b>:
                 <code className="mt-1 block rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] text-n-700">http://localhost:3000/api/google/callback</code></>,
               <>Copy the client ID and secret into <code className="rounded bg-n-50 px-1 py-0.5 font-num text-[11px]">.env</code>:

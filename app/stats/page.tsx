@@ -100,12 +100,12 @@ export default async function StatsPage({
         />
         <Stat
           label="Best day"
-          value={h.bestDay?.label ?? "—"}
+          value={h.bestDay?.label ?? "-"}
           sub={h.bestDay ? `${fmtDuration(h.bestDay.avgMinutes)} avg` : undefined}
         />
         <Stat
           label="Best hour"
-          value={h.bestHour ? fmtTime(h.bestHour.hour * 60) : "—"}
+          value={h.bestHour ? fmtTime(h.bestHour.hour * 60) : "-"}
           sub={h.bestHour ? `${fmtDuration(h.bestHour.minutes)} total` : undefined}
         />
       </Card>
@@ -180,7 +180,7 @@ export default async function StatsPage({
                     <div className="mb-1 flex items-baseline justify-between text-[12px]">
                       <span className="text-n-600">{b.label}</span>
                       <span className="font-num text-n-500">
-                        {b.focus != null ? `${b.focus.toFixed(0)}%` : "—"}
+                        {b.focus != null ? `${b.focus.toFixed(0)}%` : "-"}
                         <span className="ml-1.5 text-n-400">
                           {b.sessions > 0 ? `${b.sessions}×` : ""}
                         </span>
@@ -262,7 +262,7 @@ export default async function StatsPage({
             <span className="font-num font-semibold text-n-700">
               {fmtDuration(h.adjustedDownMinutes)}
             </span>{" "}
-            off tracked time across {h.sessions} sessions — every figure on this page uses the
+            off tracked time across {h.sessions} sessions - every figure on this page uses the
             adjusted number, not the raw clock.
           </p>
         </Card>

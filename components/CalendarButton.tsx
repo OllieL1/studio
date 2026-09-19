@@ -49,7 +49,7 @@ export function CalendarButton({
         disabled={pending}
         title={
           onCalendar
-            ? "On your Google Calendar — click to remove"
+            ? "On your Google Calendar - click to remove"
             : "Add to Google Calendar"
         }
         aria-label={onCalendar ? "Remove from Google Calendar" : "Add to Google Calendar"}

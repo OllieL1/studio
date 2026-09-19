@@ -143,7 +143,7 @@ export function SubjectSplit({
         {mode === "equal"
           ? `${fmtDuration(totalMinutes)} shared evenly.`
           : mode === "percent"
-            ? "Proportional — these needn't add to exactly 100."
+            ? "Proportional - these needn't add to exactly 100."
             : "Scaled to fit the session if they don't add up."}{" "}
         Recorded minutes always total {fmtDuration(totalMinutes)}.
       </p>

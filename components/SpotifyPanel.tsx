@@ -41,7 +41,7 @@ export function SpotifyPanel({
           <p className="mt-0.5 text-[12px] text-n-500">
             {connected
               ? `${displayName ?? "Signed in"} · what you're playing shows beside the timer and is logged with each session`
-              : "Shows what's playing beside the timer and logs it with each study session. Read-only — it can't control playback."}
+              : "Shows what's playing beside the timer and logs it with each study session. Read-only - it can't control playback."}
           </p>
           {connected && !historyScope && (
             <p className="mt-2 flex flex-wrap items-center gap-x-2 rounded-sm bg-warn-soft px-2.5 py-1.5 text-[12px] text-[#7a5f16]">
@@ -93,7 +93,7 @@ export function SpotifyPanel({
           <ol className="animate-fade-in mt-3 space-y-2.5 text-[12.5px] leading-5 text-n-600">
             {[
               <>Go to the <ExtLink href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</ExtLink> and <b>Create app</b> (any name and description).</>,
-              <>Under <b>Redirect URIs</b>, add exactly this — Spotify rejects <code className="font-num text-[11px]">localhost</code>, so it has to be the IP:
+              <>Under <b>Redirect URIs</b>, add exactly this - Spotify rejects <code className="font-num text-[11px]">localhost</code>, so it has to be the IP:
                 <code className="mt-1 block rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] text-n-700">http://127.0.0.1:3000/api/spotify/callback</code></>,
               <>Tick <b>Web API</b> under the APIs used, and save.</>,
               <>Open the app&apos;s <b>Settings</b>, copy the client ID and secret into <code className="rounded bg-n-50 px-1 py-0.5 font-num text-[11px]">.env</code>:

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { OPEN_PALETTE_EVENT } from "./CommandPalette";
+import { Wordmark } from "./Wordmark";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -29,9 +30,15 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
       <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-1 px-5 sm:px-8">
         <Link href="/" className="mr-4 flex items-center gap-2.5 shrink-0">
           <Mark />
-          <span className="font-display text-[15px] font-semibold tracking-tight text-n-900">
-            Study Planner
-          </span>
+          <Wordmark className="text-[17px]" />
+          {process.env.NODE_ENV === "development" && (
+            <span
+              title="Development server - this is a copy of your data, not the live copy on the USB stick"
+              className="rounded-full bg-warn-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#7a5f16]"
+            >
+              Dev copy
+            </span>
+          )}
           <span className="font-num hidden text-[11px] font-medium text-n-400 sm:inline">26/27</span>
         </Link>
 
