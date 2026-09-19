@@ -10,6 +10,7 @@ import { buildTaskPatch, type TaskEdit } from "@/lib/taskEdit";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
 import { buildListening } from "@/lib/music";
+import { backupNow } from "@/lib/backup";
 import {
   addTaskItem, removeTaskItem, renameTaskItem, setCourseRevisionMode, setTaskDone, toggleTaskItem,
 } from "@/lib/tasks";
@@ -110,7 +111,7 @@ export async function createTask(input: NewTaskInput) {
   let onCalendar = false;
   if (input.addToCalendar) {
     if (!dueAt) {
-      calendarWarning = "Task added, but not put on your calendar — it has no date.";
+      calendarWarning = "Task added, but not put on your calendar - it has no date.";
     } else {
       const res = await pushToCalendar(task.id);
       if (res.ok) onCalendar = true;
@@ -330,8 +331,10 @@ export async function stopTimer(input: StopTimerInput) {
     music = null;
   }
 
+  // Session saved - now refresh the local backup. Never fails the session.
+  const backup = await backupNow().catch(() => null);
   refresh();
-  return { ok: true as const, music };
+  return { ok: true as const, music, backup };
 }
 
 /**
@@ -447,8 +450,9 @@ export async function logManualSession(input: {
       tasks: { create: input.taskIds.map((taskId) => ({ taskId })) },
     },
   });
+  const backup = await backupNow().catch(() => null);
   refresh();
-  return { ok: true as const };
+  return { ok: true as const, backup };
 }
 
 
@@ -461,7 +465,7 @@ export async function logManualSession(input: {
  */
 export async function pushToCalendar(taskId: string) {
   if (!isGoogleConfigured()) {
-    return { ok: false as const, error: "Google Calendar isn't set up yet — see Settings." };
+    return { ok: false as const, error: "Google Calendar isn't set up yet - see Settings." };
   }
 
   const task = await db.task.findUnique({
@@ -491,7 +495,7 @@ export async function pushToCalendar(taskId: string) {
         task.notes,
         task.gradeWeight != null ? `Worth ${task.gradeWeight}% of the course.` : null,
         task.course ? `${task.course.name} (${task.course.code})` : null,
-        `Added from Study Planner.`,
+        `Added from Studio.`,
       ].filter(Boolean).join("\n\n"),
       start,
       end,
@@ -561,7 +565,7 @@ async function syncEventToGoogle(eventId: string): Promise<string | null> {
   const res = await upsertEvent(
     {
       summary: ev.course ? `${ev.course.shortName}: ${ev.title}` : ev.title,
-      description: [ev.location ? `Where: ${ev.location}` : null, ev.notes, "Added from Study Planner."]
+      description: [ev.location ? `Where: ${ev.location}` : null, ev.notes, "Added from Studio."]
         .filter(Boolean)
         .join("\n\n"),
       start: ev.startAt,
@@ -660,4 +664,14 @@ export async function deleteUniEvent(id: string) {
 export async function disconnectSpotify() {
   await db.spotifyAuth.deleteMany({ where: { id: "singleton" } });
   refresh();
+}
+
+
+/* ── Local backup ───────────────────────────────────────────────────────── */
+
+/** Back up now, from Settings. Same rules as the automatic one. */
+export async function runBackup() {
+  const res = await backupNow();
+  refresh();
+  return res;
 }

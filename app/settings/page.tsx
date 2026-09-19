@@ -3,6 +3,8 @@ import { isGoogleConfigured, listCalendars } from "@/lib/google";
 import { Card, Eyebrow } from "@/components/ui";
 import { GooglePanel } from "@/components/GooglePanel";
 import { SpotifyPanel } from "@/components/SpotifyPanel";
+import { BackupPanel } from "@/components/BackupPanel";
+import { backupDir, readBackupMeta } from "@/lib/backup";
 import { hasHistoryScope, isSpotifyConfigured } from "@/lib/spotify";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +12,7 @@ export const dynamic = "force-dynamic";
 const MESSAGES: Record<string, { tone: "ok" | "bad"; text: string }> = {
   connected: { tone: "ok", text: "Connected to Google Calendar." },
   denied: { tone: "bad", text: "You declined the permission request." },
-  unconfigured: { tone: "bad", text: "No Google credentials in .env yet — see the setup steps below." },
+  unconfigured: { tone: "bad", text: "No Google credentials in .env yet - see the setup steps below." },
   missing_code: { tone: "bad", text: "Google didn't send an authorisation code. Try again." },
   bad_state: { tone: "bad", text: "Security check failed (state mismatch). Try again." },
   no_refresh_token: { tone: "bad", text: "Google didn't issue a refresh token. Revoke the app's access in your Google account and reconnect." },
@@ -20,7 +22,7 @@ const MESSAGES: Record<string, { tone: "ok" | "bad"; text: string }> = {
 const SPOTIFY_MESSAGES: Record<string, { tone: "ok" | "bad"; text: string }> = {
   connected: { tone: "ok", text: "Connected to Spotify." },
   denied: { tone: "bad", text: "You declined Spotify's permission request." },
-  unconfigured: { tone: "bad", text: "No Spotify credentials in .env yet — see the setup steps below." },
+  unconfigured: { tone: "bad", text: "No Spotify credentials in .env yet - see the setup steps below." },
   missing_code: { tone: "bad", text: "Spotify didn't send an authorisation code. Try again." },
   bad_state: { tone: "bad", text: "Spotify security check failed (state mismatch). Try connecting again." },
   exchange_failed: { tone: "bad", text: "Couldn't finish connecting to Spotify. Check the client secret and that the redirect URI is exactly http://127.0.0.1:3000/api/spotify/callback." },
@@ -79,6 +81,12 @@ export default async function SettingsPage({
           {SPOTIFY_MESSAGES[spotify].text}
         </div>
       )}
+
+      <BackupPanel
+        live={!!process.env.STUDIO_LIVE}
+        dir={backupDir()}
+        last={(() => { const m = readBackupMeta(); return m ? { at: m.at, sessions: m.sessions, bytes: m.bytes } : null; })()}
+      />
 
       <SpotifyPanel
         configured={isSpotifyConfigured()}
