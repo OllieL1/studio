@@ -1,11 +1,19 @@
-# Study Planner — 26/27
+# Studio — 26/27
+
+*Stud(y) + IO.* My fifth-year study planner.
 
 My uni time management portal for fifth year.
+
+**Day to day, Studio runs from the USB stick** - plug it in and double-click
+`Start Studio.command` (Mac) or `Start Studio.bat` (Windows). See
+[Running from the USB stick](#running-from-the-usb-stick).
+
+For development:
 
 ```bash
 npm install
 npm run seed     # populate courses & timetable from claude/SUBJECTS.md
-npm run dev      # → http://localhost:3000
+npm run dev      # → http://localhost:3000  (shows a "Dev copy" badge)
 ```
 
 ---
@@ -262,6 +270,44 @@ destroys completion state, sessions or tasks you added yourself.
 
 ---
 
+## Running from the USB stick
+
+The stick (`STUDIO`, FAT32 so both Mac and Windows can use it) carries a
+production build of the site, Node for both machines, and **the live
+database**. Nothing needs installing on either computer.
+
+```
+STUDIO/
+  Start Studio.command     double-click on the Mac
+  Start Studio.bat         double-click on Windows
+  README.txt               how to use it, and what to do if it's lost
+  studio/
+    app/                   the built site
+    runtime/               Node 22 for Mac (Apple Silicon) and Windows (x64)
+    data/studio.db         the live data
+    config.env             Google / Spotify credentials
+    launcher.mjs           one launcher for both machines
+```
+
+The launcher checks nothing else is on port 3000, starts the server **bound
+to 127.0.0.1 only** (nothing on the network can reach it), waits until it can
+read the database, and opens the browser. The server runs inside the
+launcher's own process, so closing the window always stops it - on Windows a
+separate process would survive the window and keep the stick busy.
+
+| | |
+|---|---|
+| `npm run usb:runtimes` | Download Node 22 for Mac + Windows, checksum-verified |
+| `npm run usb:deploy` | Build and update the stick. Copies only changed files (by content hash). **Never overwrites the stick's database** - it copies data across only on the first deploy, then applies any new migrations |
+| `npm run usb:pull` | Copy the stick's live data into `prisma/dev.db` for development |
+
+**The stick is the live copy.** `npm run dev` runs against `prisma/dev.db`,
+which is only a copy - the nav shows a "Dev copy" badge, and the stick's
+launcher refuses to start while the dev server is running, so data can't end
+up in the wrong place.
+
+---
+
 ## Commands
 
 | | |
@@ -271,7 +317,7 @@ destroys completion state, sessions or tasks you added yourself.
 | `npm test` | All unit and integration tests, plus a server/client boundary check (183) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run seed` | Populate/refresh courses and timetable |
-| `npm run backup` | Snapshot the database |
+| `npm run backup` | Snapshot the local development database |
 | `npm run demo` / `demo:clear` | Add or remove sample sessions to preview the stats page |
 
 ---

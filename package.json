@@ -1,5 +1,5 @@
 {
-  "name": "study-planner",
+  "name": "studio",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -13,7 +13,10 @@
     "test": "tsx test/progress.test.ts && tsx test/parse.test.ts && tsx test/split.test.ts && tsx test/subtasks.test.ts && tsx test/revision.test.ts && tsx test/markdown.test.ts && tsx test/taskStats.test.ts && tsx test/taskEdit.test.ts && tsx test/calendar.test.ts && tsx test/events.test.ts && tsx test/music.test.ts && tsx test/musicStats.test.ts && node scripts/check-boundaries.mjs",
     "demo": "tsx scripts/demo-sessions.ts",
     "demo:clear": "tsx scripts/demo-sessions.ts --clear",
-    "typecheck": "next build --no-lint 2>&1 | grep -E \"error TS\" || echo \"no type errors\""
+    "typecheck": "next build --no-lint 2>&1 | grep -E \"error TS\" || echo \"no type errors\"",
+    "usb:runtimes": "bash scripts/usb/runtimes.sh",
+    "usb:deploy": "node scripts/usb/deploy.mjs",
+    "usb:pull": "node scripts/usb/pull.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

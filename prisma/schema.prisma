@@ -1,4 +1,4 @@
-// Study Planner 26/27 — data model
+// Studio 26/27 — data model
 //
 // Deliberately portable: no SQLite-specific types are used, so migrating to
 // Postgres is a `provider` + `DATABASE_URL` change and `prisma migrate dev`.
@@ -7,6 +7,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // The app runs from a USB stick on both a Mac (Apple Silicon) and a Windows
+  // laptop, so the engine for each is generated — "native" covers whichever
+  // machine is doing the build.
+  binaryTargets = ["native", "darwin-arm64", "windows"]
 }
 
 datasource db {
