@@ -38,6 +38,11 @@ type CourseSpec = {
   colour: string;
   /** 1 = semester 1, 2 = semester 2, 3 = all year. See lib/types.ts. */
   semester: number;
+  /** The dissertation project - gets the /project workspace and a pace tracker. */
+  isProject?: boolean;
+  hoursTarget?: number;
+  /** Credits (default 10). Overall progress is weighted by these. */
+  credits?: number;
   lectureWeight: number;
   labWeight: number;
   assessmentWeight: number;
@@ -176,12 +181,17 @@ const COURSES: CourseSpec[] = [
     name: "Project",
     shortName: "Project",
     colour: "#A35760",
+    isProject: true,
+    hoursTarget: 400, // 40 credits at ~10 notional hours each
+    credits: 40,
     semester: 3, // spans the whole year
     lectureWeight: 0, labWeight: 0, assessmentWeight: 100,
     slots: [],
     tasks: [
       // Break this down into subtasks in the app as the work takes shape.
-      { title: "Final Project", kind: "COURSEWORK", due: "2027-03-26" },
+      // The final submission works like an exam: it lands at the very end, so
+      // it's kept out of the progress bar and tracked by readiness instead.
+      { title: "Final Project", kind: "EXAM", due: "2027-03-26" },
     ],
   },
 
@@ -239,6 +249,8 @@ async function main() {
         colour: spec.colour,
         position: index,
         semester: spec.semester,
+        ...(spec.isProject ? { isProject: true } : {}),
+        ...(spec.hoursTarget ? { hoursTarget: spec.hoursTarget } : {}),
       },
       create: {
         code: spec.code,
@@ -247,6 +259,9 @@ async function main() {
         colour: spec.colour,
         position: index,
         semester: spec.semester,
+        isProject: spec.isProject ?? false,
+        hoursTarget: spec.hoursTarget ?? null,
+        credits: spec.credits ?? 10,
         lectureWeight: spec.lectureWeight,
         labWeight: spec.labWeight,
         assessmentWeight: spec.assessmentWeight,

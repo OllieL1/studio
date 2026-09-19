@@ -44,7 +44,7 @@ export default async function RootLayout({
     db.course.findMany({
       where: visibleCourseWhere(),
       orderBy: { position: "asc" },
-      select: { id: true, name: true, shortName: true, colour: true, code: true },
+      select: { id: true, name: true, shortName: true, colour: true, code: true, isProject: true },
     }),
   ]);
 

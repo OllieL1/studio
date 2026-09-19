@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { computeCourseProgress, examReadiness, overallProgress, type CourseProgress, type ExamReadiness } from "./progress";
+import { computeCourseProgress, overallProgress, readinessFor, type CourseProgress, type ExamReadiness } from "./progress";
 import { endOfDay, startOfDay, startOfWeek, addDays } from "./dates";
 import { visibleCourseWhere } from "./types";
 
@@ -29,8 +29,10 @@ export type CourseWithProgress = {
   lectureWeight: number;
   labWeight: number;
   assessmentWeight: number;
+  credits: number;
+  isProject: boolean;
   progress: CourseProgress;
-  exams: { id: string; title: string; examDiet: string | null; dueAt: Date | null; readiness: ExamReadiness }[];
+  exams: { id: string; title: string; examDiet: string | null; dueAt: Date | null; readiness: ExamReadiness & { basis: "lectures" | "tasks" } }[];
   nextDue: { id: string; title: string; dueAt: Date | null; kind: string } | null;
   minutes: number;
 };
@@ -77,7 +79,7 @@ export async function getCourses(): Promise<CourseWithProgress[]> {
         title: t.title,
         examDiet: t.examDiet,
         dueAt: t.dueAt,
-        readiness: examReadiness(prereqsByExam.get(t.id) ?? []),
+        readiness: readinessFor(t, c, prereqsByExam.get(t.id) ?? [], c.tasks),
       }));
 
     const nextDue =
@@ -95,6 +97,8 @@ export async function getCourses(): Promise<CourseWithProgress[]> {
       lectureWeight: c.lectureWeight,
       labWeight: c.labWeight,
       assessmentWeight: c.assessmentWeight,
+      credits: c.credits,
+      isProject: c.isProject,
       progress,
       exams,
       nextDue: nextDue

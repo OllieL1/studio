@@ -2,7 +2,7 @@ import { db } from "./db";
 import { addDays, startOfDay } from "./dates";
 import { visibleCourseWhere } from "./types";
 import { dietOrder, isBlocked, type CalendarItem } from "./calendar";
-import { isTaskDone, examReadiness } from "./progress";
+import { isTaskDone, readinessFor } from "./progress";
 import { isGoogleConfigured, listEventsInRange } from "./google";
 
 const CLASS_KINDS = ["LECTURE", "LAB", "SEMINAR"];
@@ -106,12 +106,42 @@ export async function getCalendarItems(start: Date, end: Date) {
     });
   }
 
+  // Project meetings.
+  const meetings = await db.meeting.findMany({
+    where: { startAt: { lt: end }, endAt: { gt: start } },
+    include: { course: true, prep: { include: { task: { include: { items: { select: { doneAt: true } } } } } } },
+  });
+  for (const m of meetings) {
+    const prepDone = m.prep.filter((p) => isTaskDone(p.task)).length;
+    items.push({
+      id: `meeting-${m.id}`,
+      source: "meeting",
+      title: m.title,
+      start: m.startAt.toISOString(),
+      end: m.endAt.toISOString(),
+      allDay: false,
+      colour: m.course?.colour ?? null,
+      courseShort: m.course?.shortName ?? null,
+      courseId: m.courseId,
+      href: `/project/meetings/${m.id}`,
+      blocked: false,
+      done: m.endAt < new Date(),
+      kind: null,
+      gradeWeight: null,
+      location: m.location,
+      editable: false,
+      onGoogle: !!m.calendarEventId,
+      notes: m.prep.length ? `Prep ${prepDone}/${m.prep.length} done` : null,
+    });
+  }
+  const meetingGoogleIds = meetings.map((m) => m.calendarEventId).filter(Boolean) as string[];
+
   let googleError: string | null = null;
   const googleConnected = !!auth;
 
   if (googleConnected) {
     const ours = new Set(
-      [...syncedTaskIds, ...syncedEventIds].map((x) => x.calendarEventId).filter(Boolean) as string[],
+      [...[...syncedTaskIds, ...syncedEventIds].map((x) => x.calendarEventId).filter(Boolean) as string[], ...meetingGoogleIds],
     );
     const { events: google, error } = await listEventsInRange(start, end);
     googleError = error;
@@ -167,7 +197,10 @@ export async function getCalendarSidebar(now: Date = new Date(), weeks = 6) {
         kind: "EXAM",
         OR: [{ courseId: null }, { course: { is: courseWhere } }],
       },
-      include: { course: true, items: { select: { doneAt: true } } },
+      include: {
+        course: { include: { tasks: { where: { cancelled: false }, include: { items: { select: { doneAt: true } } } } } },
+        items: { select: { doneAt: true } },
+      },
     }),
     db.taskDependency.findMany({
       where: { dependent: { kind: "EXAM" } },
@@ -198,7 +231,7 @@ export async function getCalendarSidebar(now: Date = new Date(), weeks = 6) {
     exams: exams
       .filter((e) => !isTaskDone(e))
       .map((e) => {
-        const r = examReadiness(prereqs.get(e.id) ?? []);
+        const r = readinessFor(e, e.course, prereqs.get(e.id) ?? [], e.course?.tasks ?? []);
         return {
           id: e.id,
           title: e.title,
@@ -209,6 +242,7 @@ export async function getCalendarSidebar(now: Date = new Date(), weeks = 6) {
           courseShort: e.course?.shortName ?? null,
           ready: r.ready,
           total: r.total,
+          basis: r.basis,
         };
       })
       .sort((a, b) => {

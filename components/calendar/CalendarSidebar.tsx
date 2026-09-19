@@ -16,7 +16,7 @@ export type SidebarData = {
   exams: {
     id: string; title: string; dueAt: string | null; examDiet: string | null;
     colour: string | null; courseName: string | null; courseShort: string | null;
-    ready: number; total: number;
+    ready: number; total: number; basis: "lectures" | "tasks";
   }[];
   windowWeeks: number;
 };
@@ -151,7 +151,7 @@ export function CalendarSidebar({ data }: { data: SidebarData }) {
               </Link>
             ))}
           </div>
-          <p className="mt-2.5 text-[10.5px] leading-4 text-n-400">Lectures covered, per exam.</p>
+          <p className="mt-2.5 text-[10.5px] leading-4 text-n-400">Lectures covered per exam; project tasks done for the final submission.</p>
         </Card>
       )}
     </aside>

@@ -204,13 +204,17 @@ export async function updateCourseWeights(
   lecture: number,
   lab: number,
   assessment: number,
+  credits?: number,
 ) {
   const w = normaliseWeights(lecture, lab, assessment);
+  const c = credits != null && Number.isFinite(credits) ? Math.round(credits) : undefined;
+  if (c !== undefined && (c < 1 || c > 200)) return { ok: false as const, error: "Credits must be between 1 and 200." };
   await db.course.update({
     where: { id: courseId },
-    data: { lectureWeight: w.lecture, labWeight: w.lab, assessmentWeight: w.assessment },
+    data: { lectureWeight: w.lecture, labWeight: w.lab, assessmentWeight: w.assessment, ...(c !== undefined ? { credits: c } : {}) },
   });
   refresh();
+  return { ok: true as const };
 }
 
 /**

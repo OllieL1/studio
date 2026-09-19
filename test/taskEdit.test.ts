@@ -101,6 +101,18 @@ test("empty notes, course and diet become null", () => {
   assert.equal(p.examDiet, null);
 });
 
+test("planned start is stored as local midnight, and can be cleared", () => {
+  const p = patch(deadline, { startDate: "2026-11-02" });
+  assert.equal(p.startsAt!.getDate(), 2);
+  assert.equal(p.startsAt!.getHours(), 0);
+  assert.equal(patch(deadline, { startDate: null }).startsAt, null);
+});
+
+test("a start after the due date is refused", () => {
+  fails(deadline, { startDate: "2026-12-01" }); // due 24 Nov
+  fails(deadline, { startDate: "2026-11-10", dueDate: "2026-11-05" });
+});
+
 let passed = 0, failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); passed++; console.log(`  \x1b[32m✓\x1b[0m ${name}`); }

@@ -35,6 +35,7 @@ export type ProgressCourse = {
   lectureWeight: number;
   labWeight: number;
   assessmentWeight: number;
+  isProject?: boolean;
 };
 
 export type CategoryProgress = {
@@ -95,7 +96,7 @@ export function computeCourseProgress(
   };
 
   for (const t of live) {
-    const cat = categoryOf(t.kind);
+    const cat = categoryOf(t.kind, course.isProject ?? false);
     if (cat) buckets[cat].push(t);
   }
 
@@ -199,16 +200,19 @@ function weightedRatio(tasks: ProgressTask[]): number {
   return den < EPSILON ? 0 : num / den;
 }
 
-/** Overall progress across courses — the mean of each course's percentage,
- *  so a course with 60 lecture instances doesn't drown out one with 8. */
+/** Overall progress across courses, weighted by credits - a 40-credit
+ *  project counts four times a 10-credit course. Weighting by credits (not
+ *  task count) means a course with 60 lectures doesn't drown out one with 8.
+ *  Courses with no tasks yet (e.g. semester 2 before it's populated) are left
+ *  out rather than counted as 0%. */
 export function overallProgress(
-  courses: { progress: CourseProgress }[],
+  courses: { progress: CourseProgress; credits?: number | null }[],
 ): number {
   const counted = courses.filter((c) => c.progress.tasksTotal > 0);
-  if (counted.length === 0) return 0;
-  return clamp(
-    counted.reduce((s, c) => s + c.progress.percent, 0) / counted.length,
-  );
+  const weight = (c: (typeof counted)[number]) => (c.credits != null && c.credits > 0 ? c.credits : 10);
+  const total = counted.reduce((s, c) => s + weight(c), 0);
+  if (total === 0) return 0;
+  return clamp(counted.reduce((s, c) => s + c.progress.percent * weight(c), 0) / total);
 }
 
 /** Exam readiness: how much of the exam's advisory prerequisite chain is
@@ -218,6 +222,24 @@ export type ExamReadiness = {
   total: number;
   ratio: number;
 };
+
+/**
+ * Readiness for an exam. A normal exam is ready as its lectures are covered
+ * (its advisory prerequisites). The project's final submission has no
+ * lectures - it's ready as the project's own tasks get done.
+ */
+export function readinessFor(
+  exam: { id: string },
+  course: { isProject?: boolean } | null,
+  prereqs: ProgressTask[],
+  courseTasks: ProgressTask[],
+): ExamReadiness & { basis: "lectures" | "tasks" } {
+  if (course?.isProject) {
+    const work = courseTasks.filter((t) => t.id !== exam.id && t.kind !== "EXAM");
+    return { ...examReadiness(work), basis: "tasks" };
+  }
+  return { ...examReadiness(prereqs), basis: "lectures" };
+}
 
 export function examReadiness(prereqs: ProgressTask[]): ExamReadiness {
   const live = prereqs.filter((t) => !t.cancelled);

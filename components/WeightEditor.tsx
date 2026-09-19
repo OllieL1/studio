@@ -13,22 +13,25 @@ export function WeightEditor({
   lecture,
   lab,
   assessment,
+  credits,
   colour,
 }: {
   courseId: string;
   lecture: number;
   lab: number;
   assessment: number;
+  credits: number;
   colour: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [vals, setVals] = useState({ lecture, lab, assessment });
+  const [cr, setCr] = useState(credits);
   const [pending, startTransition] = useTransition();
 
   const preview = normaliseWeights(vals.lecture, vals.lab, vals.assessment);
   const dirty =
-    preview.lecture !== lecture || preview.lab !== lab || preview.assessment !== assessment;
+    preview.lecture !== lecture || preview.lab !== lab || preview.assessment !== assessment || cr !== credits;
 
   return (
     <div className="rounded-md border border-n-100 bg-n-25 p-3">
@@ -39,7 +42,7 @@ export function WeightEditor({
       >
         <Eyebrow>Progress weights</Eyebrow>
         <span className="font-num text-[11px] text-n-500">
-          {lecture} / {lab} / {assessment}
+          {credits} cr · {lecture} / {lab} / {assessment}
           <svg
             width="10" height="10" viewBox="0 0 10 10" fill="none"
             className={clsx("ml-1.5 inline transition-transform duration-[180ms]", open && "rotate-180")}
@@ -51,6 +54,19 @@ export function WeightEditor({
 
       {open && (
         <div className="animate-fade-in mt-3 space-y-2.5">
+          <div className="flex items-center gap-2.5 border-b border-n-100 pb-2.5">
+            <span className="w-[74px] shrink-0 text-[11.5px] text-n-600">Credits</span>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              value={cr}
+              onChange={(e) => setCr(Number(e.target.value) || 0)}
+              aria-label="Credits"
+              className="font-num h-7 w-16 rounded-sm border border-n-200 bg-n-0 px-2 text-[12px] font-semibold text-n-800 outline-none focus:border-rust-400"
+            />
+            <span className="text-[10.5px] leading-4 text-n-400">Weights this course in overall progress.</span>
+          </div>
           {(["lecture", "lab", "assessment"] as const).map((k) => (
             <div key={k} className="flex items-center gap-2.5">
               <span className="w-[74px] shrink-0 text-[11.5px] capitalize text-n-600">
@@ -79,7 +95,7 @@ export function WeightEditor({
               disabled={!dirty || pending}
               onClick={() =>
                 startTransition(async () => {
-                  await updateCourseWeights(courseId, vals.lecture, vals.lab, vals.assessment);
+                  await updateCourseWeights(courseId, vals.lecture, vals.lab, vals.assessment, cr);
                   router.refresh();
                 })
               }

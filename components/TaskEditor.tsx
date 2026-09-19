@@ -20,6 +20,7 @@ type Editable = {
   priority: boolean;
   cancelled: boolean;
   examDiet: string | null;
+  startDate: string;
 };
 
 /**
@@ -71,6 +72,7 @@ export function TaskEditor({
         priority: draft.priority,
         cancelled: draft.cancelled,
         examDiet: isExam ? draft.examDiet : draft.examDiet ?? null,
+        startDate: isClass ? undefined : draft.startDate || null,
       });
       if (!res.ok) {
         setMessage({ tone: "bad", text: res.error });
@@ -156,6 +158,18 @@ export function TaskEditor({
             </Field>
           )}
         </div>
+
+        {!isClass && (
+          <Field label="Planned start" hint="Optional. Shows the task as a bar on the project timeline.">
+            <input
+              type="date"
+              value={draft.startDate}
+              max={draft.dueDate || undefined}
+              onChange={(e) => set("startDate", e.target.value)}
+              className={clsx(inputCls, "font-num")}
+            />
+          </Field>
+        )}
 
         {isClass && (
           <div className="grid grid-cols-2 gap-2">

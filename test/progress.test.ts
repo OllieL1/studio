@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import {
   computeCourseProgress, examReadiness, normaliseWeights,
-  overallProgress, type ProgressTask,
+  overallProgress, readinessFor, type ProgressTask,
 } from "../lib/progress";
 
 let passed = 0;
@@ -191,6 +191,51 @@ test("courses with no tasks are left out of the overall mean", () => {
   const empty = computeCourseProgress(W(35, 0, 65), []);
   const done = computeCourseProgress(W(100, 0, 0), [task("LECTURE", 1, 1)]);
   approx(overallProgress([{ progress: empty }, { progress: done }]), 100, "empty course ignored");
+});
+
+/* ── Project and credits ───────────────────────────────────────────── */
+
+test("on the project, ad-hoc tasks (e.g. meeting actions) count", () => {
+  const tasks = [task("OTHER", 0, 1), task("OTHER", 0, 0), task("COURSEWORK", 0, 1)];
+  approx(computeCourseProgress({ ...W(0, 0, 100), isProject: true }, tasks).percent, 200 / 3, "2 of 3 done");
+});
+
+test("elsewhere, ad-hoc tasks still don't move the bar", () => {
+  const tasks = [task("OTHER", 0, 0), task("COURSEWORK", 0, 1)];
+  approx(computeCourseProgress(W(0, 0, 100), tasks).percent, 100, "OTHER ignored");
+});
+
+test("the project's final submission (an exam) doesn't count towards the bar", () => {
+  const tasks = [task("OTHER", 0, 1), task("EXAM", 0, 0)];
+  approx(computeCourseProgress({ ...W(0, 0, 100), isProject: true }, tasks).percent, 100, "exam excluded");
+});
+
+test("overall progress is weighted by credits", () => {
+  const project = { progress: computeCourseProgress(W(0, 0, 100), [task("COURSEWORK", 0, 0)]), credits: 40 }; // 0%
+  const course = { progress: computeCourseProgress(W(100, 0, 0), [task("LECTURE", 1, 1)]), credits: 10 }; // 100%
+  approx(overallProgress([project, course]), 20, "10/50 of credits are complete");
+});
+
+test("courses without credits default to 10", () => {
+  const a = { progress: computeCourseProgress(W(100, 0, 0), [task("LECTURE", 1, 1)]) };
+  const b = { progress: computeCourseProgress(W(100, 0, 0), [task("LECTURE", 1, 0)]), credits: 10 };
+  approx(overallProgress([a, b]), 50, "equal weight");
+});
+
+test("project exam readiness counts project tasks, not lectures", () => {
+  const work = [task("OTHER", 0, 1), task("COURSEWORK", 0, 0)];
+  const exam = task("EXAM", 0, 0);
+  const r = readinessFor(exam, { isProject: true }, [], [...work, exam]);
+  assert.equal(r.basis, "tasks");
+  assert.equal(r.ready, 1);
+  assert.equal(r.total, 2, "the exam itself isn't one of its own prerequisites");
+});
+
+test("a normal exam's readiness still counts its lectures", () => {
+  const lectures = [task("LECTURE", 3, 3), task("LECTURE", 3, 0)];
+  const r = readinessFor(task("EXAM", 0, 0), { isProject: false }, lectures, []);
+  assert.equal(r.basis, "lectures");
+  assert.equal(r.ready, 1);
 });
 
 /* ── Exam readiness ─────────────────────────────────────────────────── */

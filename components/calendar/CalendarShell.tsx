@@ -61,7 +61,7 @@ export function CalendarShell({
       items.filter((i) =>
         i.source === "deadline" ? filters.deadlines
           : i.source === "class" ? filters.classes
-          : i.source === "event" ? filters.events
+          : i.source === "event" || i.source === "meeting" ? filters.events
           : filters.google,
       ),
     [items, filters],
@@ -134,7 +134,7 @@ export function CalendarShell({
   const counts = {
     deadlines: items.filter((i) => i.source === "deadline").length,
     classes: items.filter((i) => i.source === "class").length,
-    events: items.filter((i) => i.source === "event").length,
+    events: items.filter((i) => i.source === "event" || i.source === "meeting").length,
     google: items.filter((i) => i.source === "google").length,
   };
 
@@ -207,7 +207,7 @@ export function CalendarShell({
           onToggle={() => setFilters((f) => ({ ...f, deadlines: !f.deadlines }))} />
         <FilterChip label="Classes" count={counts.classes} on={filters.classes} swatch={<ClassSwatch />}
           onToggle={() => setFilters((f) => ({ ...f, classes: !f.classes }))} />
-        <FilterChip label="Uni events" count={counts.events} on={filters.events} swatch={<EventSwatch />}
+        <FilterChip label="Events & meetings" count={counts.events} on={filters.events} swatch={<EventSwatch />}
           onToggle={() => setFilters((f) => ({ ...f, events: !f.events }))} />
         {googleConnected && (
           <FilterChip label="Google" count={counts.google} on={filters.google} swatch={<GoogleSwatch />}

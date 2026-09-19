@@ -1,7 +1,8 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { visibleCourseWhere, TASK_KIND_LABEL } from "@/lib/types";
+import { courseHref, visibleCourseWhere, TASK_KIND_LABEL } from "@/lib/types";
 import { taskRatio, isTaskDone } from "@/lib/progress";
 import { fmtDateLong, fmtRelative, fmtTime, toISODate, urgencyOf, fmtHM } from "@/lib/dates";
 import { isGoogleConfigured } from "@/lib/google";
@@ -56,7 +57,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       <div className="animate-fade-up">
         <div className="flex flex-wrap items-center gap-2 text-[12px]">
           {task.course ? (
-            <Link href={`/courses/${task.course.id}`} className="font-medium hover:underline" style={{ color: task.course.colour }}>
+            <Link href={courseHref(task.course) as Route} className="font-medium hover:underline" style={{ color: task.course.colour }}>
               ← {task.course.name}
             </Link>
           ) : (
@@ -120,6 +121,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
                 priority: task.priority > 0,
                 cancelled: task.cancelled,
                 examDiet: task.examDiet,
+                startDate: task.startsAt ? toISODate(task.startsAt) : "",
               }}
               courses={courses}
             />

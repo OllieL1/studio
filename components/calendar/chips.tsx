@@ -46,6 +46,13 @@ export function chipStyle(item: CalendarItem): { className: string; style: React
       style: {},
     };
   }
+  if (item.source === "meeting") {
+    // Filled in the course colour: meetings are the fixed points of the project.
+    return {
+      className: "border-l-[3px] font-semibold text-n-900",
+      style: { borderColor: c ?? "var(--color-rust-600)", background: tint(c ?? "var(--color-rust-600)", 28) },
+    };
+  }
   if (item.source === "event") {
     return {
       className: "border text-n-800",

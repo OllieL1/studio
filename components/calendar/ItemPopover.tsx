@@ -14,6 +14,7 @@ const SOURCE_LABEL: Record<CalendarItem["source"], string> = {
   deadline: "Deadline",
   class: "Class",
   event: "Uni event",
+  meeting: "Project meeting",
   google: "Google Calendar",
 };
 
@@ -135,6 +136,11 @@ export function ItemPopover({
             >
               Edit
             </button>
+          )}
+          {item.source === "meeting" && item.href && (
+            <Link href={item.href as Route} className="rounded-md bg-rust-500 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-rust-600">
+              Open meeting
+            </Link>
           )}
           {(item.source === "deadline" || item.source === "class") && item.href && (
             <Link

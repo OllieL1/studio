@@ -1,6 +1,7 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { visibleCourseWhere } from "@/lib/types";
+import { courseHref, visibleCourseWhere } from "@/lib/types";
 import {
   getCourses, getOverall, getDayTasks, getUpcoming, getOverdue,
   getHeadlineStats, getDailySeries,
@@ -63,7 +64,7 @@ export default async function HomePage() {
               </p>
               <ProgressBar value={overall} className="mt-3" height={8} />
               <p className="mt-2 text-[12px] text-n-500">
-                Mean of {courses.filter((c) => c.progress.tasksTotal > 0).length} active courses ·
+                Weighted by credits across {courses.filter((c) => c.progress.tasksTotal > 0).reduce((n, c) => n + c.credits, 0)} credits of active courses ·
                 exams excluded
               </p>
             </div>
@@ -221,7 +222,7 @@ export default async function HomePage() {
                 </div>
                 <div className="mt-3.5">
                   <div className="mb-1.5 flex items-baseline justify-between text-[11.5px]">
-                    <span className="text-n-500">Lectures covered</span>
+                    <span className="text-n-500">{e.readiness.basis === "tasks" ? "Project tasks done" : "Lectures covered"}</span>
                     <span className="font-num text-n-600">
                       {e.readiness.ready}/{e.readiness.total}
                     </span>
@@ -242,7 +243,7 @@ function CourseCard({ course }: { course: Awaited<ReturnType<typeof getCourses>>
 
   return (
     <Card accent={course.colour} className="flex flex-col p-4 pl-5">
-      <Link href={`/courses/${course.id}`} className="group">
+      <Link href={courseHref(course) as Route} className="group">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[14.5px] font-semibold text-n-800 transition-colors duration-[120ms] group-hover:text-rust-700">

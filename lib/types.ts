@@ -21,7 +21,12 @@ export type SlotKind = (typeof SLOT_KINDS)[number];
  *  surface as a separate readiness card instead. */
 export type ProgressCategory = "lecture" | "lab" | "assessment";
 
-export function categoryOf(kind: string): ProgressCategory | null {
+/**
+ * `isProject`: on the dissertation project, ad-hoc tasks (kind OTHER, e.g.
+ * meeting actions) are the work itself, so they count as assessed work.
+ * Elsewhere they stay out of the bar.
+ */
+export function categoryOf(kind: string, isProject = false): ProgressCategory | null {
   switch (kind) {
     case "LECTURE":
     case "SEMINAR":
@@ -31,8 +36,9 @@ export function categoryOf(kind: string): ProgressCategory | null {
     case "COURSEWORK":
     case "QUIZ":
       return "assessment";
-    case "EXAM":
     case "OTHER":
+      return isProject ? "assessment" : null;
+    case "EXAM":
     default:
       return null;
   }
@@ -111,3 +117,8 @@ export const REVISION_ITEM_LABEL = "Revised";
 /** Notebooks, named by cover design rather than content. */
 export const NOTEBOOKS = ["Space", "Physics", "Computing"] as const;
 export type Notebook = (typeof NOTEBOOKS)[number];
+
+/** Where a course lives. The project has its own workspace instead of a course page. */
+export function courseHref(course: { id: string; isProject?: boolean | null }): string {
+  return course.isProject ? "/project" : `/courses/${course.id}`;
+}

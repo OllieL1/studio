@@ -8,7 +8,7 @@ import { addDays, fmtDate, fmtDateYear, fmtMonthYear, startOfDay, startOfWeek, t
    the month and week views render a single list rather than four.
    ────────────────────────────────────────────────────────────────────────── */
 
-export type CalendarSource = "deadline" | "class" | "event" | "google";
+export type CalendarSource = "deadline" | "class" | "event" | "meeting" | "google";
 export type CalendarView = "month" | "week";
 
 export type CalendarItem = {

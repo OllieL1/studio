@@ -1,5 +1,39 @@
 # Enhancement List - Check Off as we go
 
+19/09
+
+[x] The project is a very specific piece of work and I want to build essentially a project management system for it that is easy to use and hugely aids with it.
+- Features:
+  - Supervisor meetings - these should be their own type of event that I can tag tasks too (the same prerquisite system as)
+  - Research - this is a big one. I want to be able to save links to papers that I read, with some notes on them.
+  - I should be able to easily export a list of papers with their notes i.e. multiselect then export to a PDF.
+  - Project tasks - these will be the same underlying system as our other course tasks. We should see a project schedule on the project page that shows meetings, project deadlines and tasks. This should also be able to be exported to PDF.
+  - Add a space to link the GitHub. We will build github integration in future for this but not yet. 
+  Note I'm doing an MSci Project for Software Eng. with a Year Placement course at UofG (40 credits). If you have any other suggestions to what we could add to this page, let me know so we can build out this functionality as best as possible.
+[x] I have plugged in a kingston drive with 8GB and named it STUDIO. The old drive has been renamed STUDIO-OLD. Please port over our functionality to this new drive as hopefully we should see more luck with this.
+
+
+---
+
+## Status - 19/09
+
+**Project workspace** (`/project`, in the nav) - tabs for Overview, Meetings, Research, Tasks.
+- Overview: hours against 400h with needed vs recent pace per week; next meeting with prep
+  and agenda status; a week-by-week schedule to 26 March (meetings, graded deadlines, task
+  bars), exportable as a landscape PDF that also lists undated open tasks.
+- Meetings: one-off, optional Google sync, prep tasks, agenda with "Draft from recent work"
+  (hours, tasks done, papers read, open actions, prep outstanding, what's coming up), notes,
+  and action items that become project tasks.
+- Research: paste an arXiv/DOI link and details fill in (Crossref/arXiv); status, tags,
+  markdown notes; filter and search; multi-select export to PDF with notes, or BibTeX.
+- Tasks: quick-add defaults to the project; tasks get an optional planned start, which
+  draws them as bars on the schedule.
+- GitHub repo link on the project header (integration later).
+- Meetings show on the calendar; papers and meetings are in Cmd-K search.
+
+**New drive** - Studio now runs from the Kingston (`STUDIO`); data copied from the old stick
+byte-for-byte. `STUDIO-OLD` is untouched - retire it once you're happy.
+
 18/09
 
 [x] SMall bug - clicking out of the new event modal on the calendar screen seems to scroll us down the page a bit for some reason

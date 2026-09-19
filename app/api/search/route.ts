@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { visibleCourseWhere } from "@/lib/types";
+import { courseHref, visibleCourseWhere } from "@/lib/types";
 
 export type SearchHit = {
   id: string;
-  type: "course" | "lecture" | "task" | "note" | "page";
+  type: "course" | "lecture" | "task" | "note" | "page" | "paper" | "meeting";
   title: string;
   subtitle: string | null;
   href: string;
@@ -18,6 +18,7 @@ const PAGES: SearchHit[] = [
   { id: "p-stats", type: "page", title: "Stats", subtitle: "Analytics", href: "/stats", colour: null },
   { id: "p-lectures", type: "page", title: "Lectures", subtitle: "Notes and notebooks", href: "/lectures", colour: null },
   { id: "p-sessions", type: "page", title: "Sessions", subtitle: "Study history", href: "/sessions", colour: null },
+  { id: "p-project", type: "page", title: "Project", subtitle: "Meetings, research, schedule", href: "/project", colour: null },
 ];
 
 /**
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
     if (s > 0) {
       hits.push({
         id: c.id, type: "course", title: c.name, subtitle: c.code,
-        href: `/courses/${c.id}`, colour: c.colour, score: s + 3,
+        href: courseHref(c), colour: c.colour, score: s + 3,
       });
     }
   }
@@ -98,6 +99,35 @@ export async function GET(req: NextRequest) {
         });
       }
     }
+  }
+
+  // Papers: title/authors/tags rank above a match buried in the notes.
+  for (const p of await db.paper.findMany()) {
+    const head = score(`${p.title} ${p.authors} ${p.tags ?? ""} ${p.venue ?? ""}`.toLowerCase(), lower);
+    const inNotes = !head && p.notes?.toLowerCase().includes(lower);
+    if (!head && !inNotes) continue;
+    hits.push({
+      id: p.id, type: "paper", title: p.title,
+      subtitle: [p.authors.split(";")[0]?.split(",")[0], p.year].filter(Boolean).join(" · ") || null,
+      href: "/project?tab=research", colour: null,
+      excerpt: inNotes ? excerptAround(p.notes!, p.notes!.toLowerCase().indexOf(lower), lower.length) : null,
+      score: head ? head + 1 : 1,
+    });
+  }
+
+  for (const m of await db.meeting.findMany({ orderBy: { startAt: "desc" } })) {
+    const hay = `${m.title} ${m.location ?? ""}`.toLowerCase();
+    const s2 = score(hay, lower);
+    const body = !s2 ? `${m.agenda ?? ""}\n${m.notes ?? ""}` : "";
+    const inBody = !s2 && body.toLowerCase().includes(lower);
+    if (!s2 && !inBody) continue;
+    hits.push({
+      id: m.id, type: "meeting", title: m.title,
+      subtitle: m.startAt.toISOString().slice(0, 10),
+      href: `/project/meetings/${m.id}`, colour: null,
+      excerpt: inBody ? excerptAround(body, body.toLowerCase().indexOf(lower), lower.length) : null,
+      score: s2 ? s2 + 1 : 1,
+    });
   }
 
   hits.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));

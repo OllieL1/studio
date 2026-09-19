@@ -1,9 +1,10 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { renderMarkdown, extractToc, wordCount } from "@/lib/markdown";
 import { fmtDateLong, fmtTime } from "@/lib/dates";
-import { REVISION_ITEM_LABEL } from "@/lib/types";
+import { REVISION_ITEM_LABEL, courseHref } from "@/lib/types";
 import { Card, Eyebrow } from "@/components/ui";
 import { NotesEditor } from "@/components/NotesEditor";
 import { NotebookLocation } from "@/components/NotebookLocation";
@@ -57,7 +58,7 @@ export default async function LecturePage({
             <>
               <span className="text-n-300">/</span>
               <Link
-                href={`/courses/${lecture.course.id}`}
+                href={courseHref(lecture.course) as Route}
                 className="font-medium hover:underline"
                 style={{ color: lecture.course.colour }}
               >

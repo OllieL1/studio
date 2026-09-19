@@ -1,17 +1,20 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { clsx } from "@/lib/clsx";
+import { courseHref } from "@/lib/types";
 import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
 
-type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
+type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/project", label: "Project" },
   { href: "/lectures", label: "Lectures" },
   { href: "/stats", label: "Stats" },
   { href: "/sessions", label: "Sessions" },
@@ -88,7 +91,7 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
                   {courses.map((c) => (
                     <Link
                       key={c.id}
-                      href={`/courses/${c.id}`}
+                      href={courseHref(c) as Route}
                       onClick={() => setCoursesOpen(false)}
                       className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-n-700 transition-colors duration-[120ms] hover:bg-n-50"
                     >

@@ -6,7 +6,7 @@
 // reason (SQLite has no native enum; Postgres would accept either).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // The app runs from a USB stick on both a Mac (Apple Silicon) and a Windows
   // laptop, so the engine for each is generated — "native" covers whichever
   // machine is doing the build.
@@ -47,6 +47,18 @@ model Course {
   tasks    Task[]
   sessions SessionCourse[]
   events   Event[]
+  meetings Meeting[]
+  papers   Paper[]
+
+  /// Link to the code repository (the project course). GitHub integration
+  /// will build on this later.
+  repoUrl     String?
+  /// Expected hours of work, for the pace tracker (40 credits ≈ 400h).
+  hoursTarget Int?
+  /// The dissertation project, which gets the /project workspace.
+  isProject   Boolean @default(false)
+  /// Credits the course is worth. Overall progress is weighted by these.
+  credits     Int     @default(10)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -108,9 +120,20 @@ model Task {
   /// Google Calendar event id, set once this task has been pushed across, so
   /// a second push updates the event rather than duplicating it.
   calendarEventId String?
+
+  /// Planned start, for tasks drawn as bars on the project timeline. Tasks
+  /// without one are drawn as a point on their due date.
+  startsAt DateTime?
+
+  /// Set when the task was created from a meeting's action items.
+  fromMeetingId String?
+  fromMeeting   Meeting?      @relation("MeetingActions", fields: [fromMeetingId], references: [id], onDelete: SetNull)
+  /// Meetings this task is prep for (the same advisory "do this first" idea
+  /// as task dependencies).
+  prepFor       MeetingPrep[]
   /// Denormalised completion stamp. Truth lives in TaskItem; this is set when
   /// every item is done (or, for item-less tasks, when ticked directly).
-  doneAt          DateTime?
+  doneAt        DateTime?
 
   items        TaskItem[]
   /// Tasks this one depends on — advisory only, never blocking.
@@ -322,4 +345,75 @@ model ListeningSample {
   isPlaying  Boolean
 
   @@index([sampledAt])
+}
+
+/// A supervisor meeting (or any project meeting). One-off: supervisor slots
+/// move week to week. Carries prep tasks, an agenda, notes, and action items
+/// that become tasks.
+model Meeting {
+  id       String   @id @default(cuid())
+  title    String
+  startAt  DateTime
+  endAt    DateTime
+  location String?
+  /// Markdown. Can be drafted automatically from work since the last meeting.
+  agenda   String?
+  /// Markdown, written during or after the meeting.
+  notes    String?
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  prep    MeetingPrep[]
+  actions Task[]        @relation("MeetingActions")
+
+  calendarEventId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startAt])
+}
+
+/// "Do this before the meeting" — advisory, never blocking.
+model MeetingPrep {
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([meetingId, taskId])
+  @@index([taskId])
+}
+
+/// A paper (or article, book, thesis) read for research.
+model Paper {
+  id      String  @id @default(cuid())
+  title   String
+  /// "Hu, E.; Shen, Y.; …" — stored as a list joined with "; ".
+  authors String
+  year    Int?
+  venue   String?
+  url     String?
+  doi     String?
+  arxivId String?
+  /// article | inproceedings | preprint | book | thesis | misc
+  kind    String  @default("article")
+  /// to-read | reading | read
+  status  String  @default("to-read")
+  /// Comma-separated.
+  tags    String?
+  /// Markdown.
+  notes   String?
+  /// Stable citation key for BibTeX, e.g. hu2021lora.
+  citeKey String  @unique
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
 }

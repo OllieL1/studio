@@ -24,10 +24,15 @@ type ComposerCourse = ParseCourse & { colour: string };
 export function QuickAdd({
   courses,
   calendarConnected = false,
+  defaultCourseId,
+  placeholder,
 }: {
   courses: ComposerCourse[];
   /** Whether Google Calendar is connected, so the sync toggle can be offered. */
   calendarConnected?: boolean;
+  /** Pre-selects a course (e.g. the project), unless the text names another. */
+  defaultCourseId?: string;
+  placeholder?: string;
 }) {
   const router = useRouter();
   const [raw, setRaw] = useState("");
@@ -44,7 +49,7 @@ export function QuickAdd({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => parseTask(raw, courses), [raw, courses]);
-  const courseId = override.courseId ?? parsed.courseId;
+  const courseId = override.courseId ?? parsed.courseId ?? defaultCourseId ?? null;
   const kind = override.kind ?? parsed.kind ?? "COURSEWORK";
 
   // "/" focuses the composer from anywhere — this is the app's main verb.
@@ -131,7 +136,7 @@ export function QuickAdd({
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
             if (e.key === "Escape") { reset(); inputRef.current?.blur(); }
           }}
-          placeholder="Add a task - try “FP programming exercise fri 5pm 20%”"
+          placeholder={placeholder ?? "Add a task - try “FP programming exercise fri 5pm 20%”"}
           className="h-8 min-w-0 flex-1 bg-transparent text-[14px] text-n-800 outline-none placeholder:text-n-400"
           aria-label="New task"
         />

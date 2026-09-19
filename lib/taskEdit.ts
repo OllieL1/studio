@@ -25,6 +25,8 @@ export type TaskEdit = {
   priority?: boolean;
   cancelled?: boolean;
   examDiet?: string | null;
+  /** Planned start (YYYY-MM-DD), drawn as a bar on the project timeline. */
+  startDate?: string | null;
 };
 
 type Existing = { dueAt: Date | null; startMin: number | null; endMin: number | null };
@@ -41,6 +43,7 @@ export type TaskPatch = {
   startMin?: number | null;
   endMin?: number | null;
   dueAt?: Date | null;
+  startsAt?: Date | null;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -105,6 +108,20 @@ export function buildTaskPatch(
     d.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
     patch.dueAt = d;
   }
+
+  if (data.startDate !== undefined) {
+    if (!data.startDate) patch.startsAt = null;
+    else {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data.startDate)) return { ok: false, error: "That start date isn't valid." };
+      const [y, m, d] = data.startDate.split("-").map(Number);
+      patch.startsAt = new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+  }
+
+  // A task can't be planned to start after it's due.
+  const start = patch.startsAt !== undefined ? patch.startsAt : undefined;
+  const due = patch.dueAt !== undefined ? patch.dueAt : existing.dueAt;
+  if (start && due && start > due) return { ok: false, error: "The start date is after the due date." };
 
   return { ok: true, patch };
 }

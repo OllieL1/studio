@@ -81,6 +81,7 @@ I had a study planner for my third year exams and it worked incredibly well. I r
   equal-weighted until you set real values.
 - **Project** is `COMPSCI5082`, with **Final Project due Friday 26 March 2027**
   seeded as coursework. Subtasks to be added in-app as the work takes shape.
+  *(Superseded 19 Sep 2026: the Final Project is now an **exam** - see below.)*
 
 
 ---
@@ -146,3 +147,32 @@ I had a study planner for my third year exams and it worked incredibly well. I r
 ## Name (18 Sep 2026)
 
 The app is called **Studio** — *study* + *IO*. Wordmark: all in the display serif, with "io" in rust. Tab icon: a house.
+
+
+---
+
+## Project workspace (19 Sep 2026)
+
+- The dissertation course is flagged `Course.isProject` (with `hoursTarget` 400, `repoUrl`).
+- Supervisor meetings are **one-off** (`Meeting`), with prep tasks (`MeetingPrep`), agenda,
+  notes, and action items created as `Task`s of kind OTHER linked by `fromMeetingId`.
+- Papers (`Paper`) are looked up from DOI (Crossref) or arXiv; exports to PDF and BibTeX.
+- Tasks have an optional `startsAt` for the schedule timeline.
+- Chosen extras: 400-hour tracker, auto-drafted agenda, BibTeX. Not chosen: milestones/chapters.
+- The project has **no course page**: every link to it (Courses menu, home card, search, task
+  pages) goes to `/project`, and `/courses/<project id>` redirects there. Its weights/credits
+  editor lives in the project header; its time stats (the project's slice of each session only)
+  sit at the bottom of the overview.
+
+
+---
+
+## Credits & project progress (19 Sep 2026)
+
+- **Overall progress is weighted by credits** (`Course.credits`, editable next to the weights).
+  Project = 40, every other course = 10, 130 in total. Courses with no tasks yet (semester 2
+  before January) are left out rather than counted as 0%.
+- **Every project task counts towards the project's bar**, including meeting actions (OTHER
+  counts as assessment on the project course only).
+- **The Final Project submission is treated as the exam**: it's excluded from the bar, and its
+  readiness is "project tasks done" rather than prerequisite lectures.

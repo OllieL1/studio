@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { computeCourseProgress, examReadiness } from "@/lib/progress";
+import { computeCourseProgress, readinessFor } from "@/lib/progress";
 import { revisionProgress } from "@/lib/tasks";
 import { fmtDuration, fmtRelative, addWeeks } from "@/lib/dates";
 import { TERM_START, TERM_WEEKS } from "@/lib/types";
@@ -31,6 +31,8 @@ export default async function CoursePage({
     },
   });
   if (!course) notFound();
+  // The project has its own workspace; its course page would be a thinner copy.
+  if (course.isProject) redirect("/project");
 
   const deps = await db.taskDependency.findMany({
     where: { dependent: { courseId: course.id } },
@@ -191,6 +193,7 @@ export default async function CoursePage({
               lecture={course.lectureWeight}
               lab={course.labWeight}
               assessment={course.assessmentWeight}
+              credits={course.credits}
               colour={course.colour}
             />
           </div>
@@ -204,7 +207,7 @@ export default async function CoursePage({
           <div className="grid gap-4 sm:grid-cols-2">
             {exams.map((e) => {
               const prereqs = deps.filter((d) => d.dependentId === e.id).map((d) => d.prerequisite);
-              const r = examReadiness(prereqs);
+              const r = readinessFor(e, course, prereqs, course.tasks);
               return (
                 <Card key={e.id} accent={course.colour} className="p-4 pl-5">
                   <div className="flex items-start justify-between gap-3">
@@ -223,7 +226,7 @@ export default async function CoursePage({
                   </div>
                   <div className="mt-3.5">
                     <div className="mb-1.5 flex items-baseline justify-between text-[11.5px]">
-                      <span className="text-n-500">Prerequisite lectures</span>
+                      <span className="text-n-500">{r.basis === "tasks" ? "Project tasks done" : "Prerequisite lectures"}</span>
                       <span className="font-num text-n-600">{r.ready}/{r.total}</span>
                     </div>
                     <ProgressBar value={r.ratio * 100} colour={course.colour} height={5} />
