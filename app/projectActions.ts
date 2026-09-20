@@ -276,7 +276,11 @@ export async function updatePaper(
     if (data.status !== "read") patch.readAt = null;
   }
   if (data.tags !== undefined) patch.tags = normaliseTags(data.tags);
-  if (data.notes !== undefined) patch.notes = data.notes?.trim() ? data.notes : null;
+  if (data.notes !== undefined) {
+    patch.notes = data.notes?.trim() ? data.notes : null;
+    // Stamp when the notes were written - the PDF export shows it.
+    if ((patch.notes ?? null) !== (existing.notes ?? null)) patch.notesAt = patch.notes ? new Date() : null;
+  }
   if (data.title !== undefined) {
     if (!data.title.trim()) return { ok: false as const, error: "A paper needs a title." };
     patch.title = data.title.trim();

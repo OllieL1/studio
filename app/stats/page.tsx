@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { visibleCourseWhere } from "@/lib/types";
 import { getSessions, getDailySeries } from "@/lib/queries";
 import {
-  byDayOfWeek, byHourOfDay, bySubject, focusByLength,
+  byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength,
   focusDistribution, headline, rollingMean, type StatSession,
 } from "@/lib/stats";
 import { fmtDuration, fmtTime, fmtDate } from "@/lib/dates";
@@ -57,6 +57,7 @@ export default async function StatsPage({
   const subjects = bySubject(sessions, courses);
   const focusBands = focusDistribution(sessions);
   const focusLen = focusByLength(sessions);
+  const places = byLocation(sessions);
 
   const focusSeries = daily.map((d) => ({
     label: fmtDate(d.date),
@@ -251,6 +252,49 @@ export default async function StatsPage({
           </Panel>
         </div>
       </section>
+
+      {/* ── Where ─────────────────────────────────────────────────────── */}
+      {places.rows.length > 0 && (
+        <section className="animate-fade-up" style={{ animationDelay: "160ms" }}>
+          <SectionHeading
+            title="Where you work"
+            sub={
+              places.bestFocus
+                ? `Your sharpest hour is at the ${places.bestFocus.label.toLowerCase()} - ${places.bestFocus.focus!.toFixed(0)}% focus.`
+                : "Tagged when you stop the timer."
+            }
+          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title="Time by place" note={places.unknownSessions > 0 ? `${places.unknownSessions} untagged` : undefined}>
+              <HBarChart
+                rows={places.rows.map((p) => ({
+                  label: p.label,
+                  value: p.minutes,
+                  colour: "var(--color-rust-500)",
+                  secondary: `${p.sessions}× · ${(p.share * 100).toFixed(0)}%`,
+                }))}
+                format="duration"
+                emptyLabel="No locations tagged yet"
+              />
+              {places.unknownMinutes > 0 && (
+                <p className="mt-2 text-[11px] leading-4 text-n-400">
+                  {fmtDuration(places.unknownMinutes)} logged before you started tagging where you were - not counted above.
+                </p>
+              )}
+            </Panel>
+
+            <Panel title="Focus by place" note="Longest average session wins the tie">
+              <HBarChart
+                rows={places.rows
+                  .filter((p) => p.focus != null)
+                  .map((p) => ({ label: p.label, value: p.focus!, colour: "var(--color-rust-500)", secondary: `${fmtDuration(p.avgSession)} avg` }))}
+                format="percent"
+                emptyLabel="No focus ratings yet"
+              />
+            </Panel>
+          </div>
+        </section>
+      )}
 
       <MusicSection stats={music} connected={!!spotifyAuth} historyScope={historyScope} />
 

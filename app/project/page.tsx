@@ -173,7 +173,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
           <Card className="p-4">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
               <Eyebrow>Schedule to {fmtDayDate(PROJECT_DEADLINE)}</Eyebrow>
-              <a href="/project/schedule/print" target="_blank" rel="noreferrer" className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[12px] font-semibold text-n-600 hover:bg-n-50">
+              <a href="/api/project/schedule/pdf" target="_blank" rel="noreferrer" className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[12px] font-semibold text-n-600 hover:bg-n-50">
                 Export PDF
               </a>
             </div>

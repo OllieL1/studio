@@ -8,6 +8,8 @@ import { resolveSplit, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
 import { Card, Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
+import { LocationPicker } from "./LocationPicker";
+import type { StudyLocation } from "@/lib/types";
 
 type C = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -21,6 +23,8 @@ export function ManualLog({ courses }: { courses: C[] }) {
   const [startTime, setStartTime] = useState("09:00");
   const [minutes, setMinutes] = useState(60);
   const [focus, setFocus] = useState(75);
+  const [location, setLocation] = useState<StudyLocation | null>(null);
+  const [locationNote, setLocationNote] = useState("");
   const [courseIds, setCourseIds] = useState<string[]>([]);
   const [splitMode, setSplitMode] = useState<SplitMode>("equal");
   const [weights, setWeights] = useState<Record<string, number>>({});
@@ -38,7 +42,7 @@ export function ManualLog({ courses }: { courses: C[] }) {
       await logManualSession({
         name, date, startTime, minutes, focus,
         courses: courseIds.map((courseId, i) => ({ courseId, minutes: split[i] })),
-        taskIds: [], notes: null,
+        taskIds: [], notes: null, location, locationNote: locationNote || null,
       });
       setName("");
       setCourseIds([]);
@@ -133,6 +137,16 @@ export function ManualLog({ courses }: { courses: C[] }) {
           />
         </div>
       )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Eyebrow>Where</Eyebrow>
+        <LocationPicker
+          value={location}
+          note={locationNote}
+          onChange={(v, n) => { setLocation(v); setLocationNote(n); }}
+          compact
+        />
+      </div>
 
       <div className="mt-3 flex items-center gap-3">
         <Eyebrow>Focus</Eyebrow>

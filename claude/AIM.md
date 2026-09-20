@@ -176,3 +176,30 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
   counts as assessment on the project course only).
 - **The Final Project submission is treated as the exam**: it's excluded from the bar, and its
   readiness is "project tasks done" rather than prerequisite lectures.
+
+
+---
+
+## Tidy-up (20 Sep 2026)
+
+- **Research and schedule PDFs** are built programmatically with `pdfkit`
+  (`lib/pdf/`, served from `/api/project/papers/pdf` and
+  `/api/project/schedule/pdf`), not printed from a web page. Continuous
+  layout, an entry never split across a page break, clickable DOI/arXiv links,
+  notes rendered from markdown with the date they were written (`Paper.notesAt`).
+  Inter and Fraunces are committed under `assets/fonts/` and traced into the
+  standalone build so the exports work from the stick, offline. The schedule is
+  landscape: an outline band of headline numbers, the runway drawn from the same
+  timeline maths as the screen (`lib/project.ts`, so paper and app can't drift),
+  then every item week by week. Lecture notes still export through the browser's
+  print engine - that one is a markdown document, not a drawn layout.
+- **Session location** (`Session.location`, plus `locationNote` for "Other"):
+  coffee shop / library / flat / home / campus / other. The stop dialog
+  pre-selects wherever the last session was. Stats gain a "Where you work"
+  section; sessions logged before this are reported as untagged rather than
+  folded into a bucket.
+- **Sessions are editable** after the fact - name, location, focus, notes and the
+  subject split - but never their timing, which is the one figure that should
+  stay honest.
+- **Music variety** already counted a track's primary artist only, so a song
+  credited "Masego, Don Toliver" has always counted as Masego. Left as it was.

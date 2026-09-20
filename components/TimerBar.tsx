@@ -6,6 +6,7 @@ import { startTimer, cancelTimer } from "@/app/actions";
 import { fmtClock } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
 import { StopDialog } from "./StopDialog";
+import type { StudyLocation } from "@/lib/types";
 import { NowPlaying } from "./NowPlaying";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
@@ -19,10 +20,14 @@ export function TimerBar({
   startedAt,
   draftName,
   courses,
+  lastLocation,
+  lastLocationNote,
 }: {
   startedAt: string | null;
   draftName: string | null;
   courses: CourseLink[];
+  lastLocation: StudyLocation | null;
+  lastLocationNote: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -126,6 +131,8 @@ export function TimerBar({
           elapsedMinutes={Math.max(0, Math.round(elapsed / 60))}
           initialName={draftName ?? ""}
           courses={courses}
+          lastLocation={lastLocation}
+          lastLocationNote={lastLocationNote}
           onClose={() => setStopping(false)}
           onSaved={() => {
             setStopping(false);

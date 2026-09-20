@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       "./node_modules/.prisma/client/query_engine-windows.dll.node",
       "./node_modules/.prisma/client/libquery_engine-darwin-arm64.dylib.node",
       "./node_modules/.prisma/client/schema.prisma",
+      // The PDF export's own fonts, and pdfkit's built-in font metrics -
+      // both are read from disk at runtime, so tracing can't infer them.
+      "./assets/fonts/*.ttf",
+      "./node_modules/pdfkit/js/data/*.afm",
     ],
   },
 

@@ -122,3 +122,27 @@ export type Notebook = (typeof NOTEBOOKS)[number];
 export function courseHref(course: { id: string; isProject?: boolean | null }): string {
   return course.isProject ? "/project" : `/courses/${course.id}`;
 }
+
+/* ── Where you studied ───────────────────────────────────────────────────── */
+
+export const STUDY_LOCATIONS = [
+  { key: "coffee", label: "Coffee shop" },
+  { key: "library", label: "Library" },
+  { key: "flat", label: "Flat" },
+  { key: "home", label: "Home" },
+  { key: "campus", label: "Campus" },
+  { key: "other", label: "Other" },
+] as const;
+
+export type StudyLocation = (typeof STUDY_LOCATIONS)[number]["key"];
+
+export function isStudyLocation(v: string | null | undefined): v is StudyLocation {
+  return !!v && STUDY_LOCATIONS.some((l) => l.key === v);
+}
+
+/** The label to show: a free-text place for "other", the preset label otherwise. */
+export function locationLabel(location: string | null, note?: string | null): string | null {
+  if (!isStudyLocation(location)) return null;
+  if (location === "other") return note?.trim() || "Other";
+  return STUDY_LOCATIONS.find((l) => l.key === location)!.label;
+}

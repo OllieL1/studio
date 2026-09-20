@@ -6,6 +6,8 @@ import { fmtDuration } from "@/lib/dates";
 import { resolveSplit, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
 import { focusColour } from "@/lib/focus";
+import { LocationPicker } from "./LocationPicker";
+import type { StudyLocation } from "@/lib/types";
 import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
 import { Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
@@ -22,12 +24,17 @@ export function StopDialog({
   elapsedMinutes,
   initialName,
   courses,
+  lastLocation,
+  lastLocationNote,
   onClose,
   onSaved,
 }: {
   elapsedMinutes: number;
   initialName: string;
   courses: CourseLink[];
+  /** Where the last session was - pre-selected, since most days repeat. */
+  lastLocation: StudyLocation | null;
+  lastLocationNote: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -37,6 +44,8 @@ export function StopDialog({
   const [minutes, setMinutes] = useState(elapsedMinutes);
   const [focus, setFocus] = useState(75);
   const [notes, setNotes] = useState("");
+  const [location, setLocation] = useState<StudyLocation | null>(lastLocation);
+  const [locationNote, setLocationNote] = useState(lastLocationNote ?? "");
   const [splitMode, setSplitMode] = useState<SplitMode>("equal");
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [tasks, setTasks] = useState<TaskOption[]>([]);
@@ -124,6 +133,8 @@ export function StopDialog({
         minutes,
         focus,
         notes: notes || null,
+        location,
+        locationNote: locationNote || null,
       });
       if (res.ok) onSaved();
       else setError(res.error);
@@ -298,6 +309,14 @@ export function StopDialog({
                 {focus}%
               </span>
             </div>
+          </Field>
+
+          <Field label="Where" hint="Feeds the location stats. Tap again to clear.">
+            <LocationPicker
+              value={location}
+              note={locationNote}
+              onChange={(v, n) => { setLocation(v); setLocationNote(n); }}
+            />
           </Field>
 
           <Field label="Notes" hint="Optional.">

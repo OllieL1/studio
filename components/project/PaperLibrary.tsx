@@ -128,7 +128,7 @@ export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
             <button onClick={() => setSelected(new Set())} className="text-[12px] font-medium text-n-500 hover:text-n-800">Clear</button>
             <span className="ml-auto flex items-center gap-2">
               <a
-                href={`/project/papers/print?ids=${ids}`}
+                href={`/api/project/papers/pdf?ids=${ids}`}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-600"

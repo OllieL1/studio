@@ -192,6 +192,10 @@ model Session {
   /// Self-reported focus, 0–100.
   focus      Int
   notes      String?
+  /// Where you studied - one of STUDY_LOCATIONS ("coffee" | "library" | ...).
+  location     String?
+  /// Free-text place, only when location is "other" (e.g. "Train").
+  locationNote String?
 
   /// True when Spotify capture was active for this session. A tracked session
   /// with no tracks means "studied in silence"; an untracked one means "we
@@ -405,6 +409,8 @@ model Paper {
   tags    String?
   /// Markdown.
   notes   String?
+  /// When the notes were last written - blank until notes are first saved.
+  notesAt DateTime?
   /// Stable citation key for BibTeX, e.g. hu2021lora.
   citeKey String  @unique
 

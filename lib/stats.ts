@@ -1,4 +1,5 @@
 import { startOfDay, isoDayOfWeek, DAY_SHORT } from "./dates";
+import { STUDY_LOCATIONS, locationLabel } from "./types";
 
 /** Analytics computed in memory from the session log. The dataset is a year of
  *  one person's study sessions — small enough that aggregating in JS is
@@ -14,6 +15,8 @@ export type StatSession = {
   focus: number;
   courses: { courseId: string; minutes: number }[];
   tasks: { taskId: string }[];
+  location?: string | null;
+  locationNote?: string | null;
 };
 
 /** A session can span hours; attribute its minutes to each hour it actually
@@ -203,3 +206,64 @@ export function rollingMean(values: (number | null)[], window: number): (number 
     return slice.reduce((a, b) => a + b, 0) / slice.length;
   });
 }
+
+/**
+ * Where the time goes. Sessions logged before locations existed (or left
+ * blank) are reported separately rather than folded into a preset, so the
+ * shares are honest about what's actually known.
+ *
+ * "Other" is one bucket however it was labelled - the free-text place is for
+ * the session row, not for splitting the stats into one-offs.
+ */
+export function byLocation(sessions: StatSession[]) {
+  const mins = new Map<string, number>();
+  const counts = new Map<string, number>();
+  const focusWeighted = new Map<string, number>();
+  const days = new Map<string, Set<number>>();
+  let unknownMinutes = 0;
+  let unknownSessions = 0;
+
+  for (const s of sessions) {
+    const key = STUDY_LOCATIONS.find((l) => l.key === s.location)?.key;
+    if (!key) {
+      unknownMinutes += s.minutes;
+      unknownSessions++;
+      continue;
+    }
+    mins.set(key, (mins.get(key) ?? 0) + s.minutes);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    focusWeighted.set(key, (focusWeighted.get(key) ?? 0) + s.focus * s.minutes);
+    const seen = days.get(key) ?? new Set<number>();
+    seen.add(startOfDay(s.startedAt).getTime());
+    days.set(key, seen);
+  }
+
+  const known = STUDY_LOCATIONS.map((l) => {
+    const m = mins.get(l.key) ?? 0;
+    const n = counts.get(l.key) ?? 0;
+    return {
+      key: l.key,
+      label: l.label,
+      minutes: m,
+      sessions: n,
+      days: days.get(l.key)?.size ?? 0,
+      avgSession: n > 0 ? m / n : 0,
+      focus: m > 0 ? (focusWeighted.get(l.key) ?? 0) / m : null,
+    };
+  })
+    .filter((r) => r.sessions > 0)
+    .sort((a, b) => b.minutes - a.minutes);
+
+  const totalKnown = known.reduce((s, r) => s + r.minutes, 0);
+  return {
+    rows: known.map((r) => ({ ...r, share: totalKnown > 0 ? r.minutes / totalKnown : 0 })),
+    totalKnownMinutes: totalKnown,
+    unknownMinutes,
+    unknownSessions,
+    /** Best focus among places with enough time to mean anything. */
+    bestFocus: known.filter((r) => r.minutes >= 60 && r.focus != null).sort((a, b) => b.focus! - a.focus!)[0] ?? null,
+  };
+}
+
+/** One session's place, for display. Re-exported so pages have a single import. */
+export { locationLabel };

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { DEFAULT_ITEMS } from "@/lib/types";
+import { DEFAULT_ITEMS, isStudyLocation } from "@/lib/types";
 import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
 import { inclusiveEnd, resolveEventTimes, type EventInput } from "@/lib/events";
@@ -271,7 +271,16 @@ export type StopTimerInput = {
   minutes: number; // adjusted, never above the wall-clock elapsed
   focus: number;
   notes: string | null;
+  location: string | null;
+  locationNote: string | null;
 };
+
+/** An unknown location is dropped rather than stored, and the free-text place
+ *  only means anything for "other". */
+function cleanLocation(location: string | null | undefined, note: string | null | undefined) {
+  if (!isStudyLocation(location)) return { location: null, locationNote: null };
+  return { location, locationNote: location === "other" ? note?.trim().slice(0, 60) || null : null };
+}
 
 /**
  * Force the per-subject slices to sum to the session total.
@@ -318,6 +327,7 @@ export async function stopTimer(input: StopTimerInput) {
         rawMinutes,
         focus,
         notes: input.notes?.trim() || null,
+        ...cleanLocation(input.location, input.locationNote),
         courses: { create: slices },
         tasks: { create: input.taskIds.map((taskId) => ({ taskId })) },
       },
@@ -412,18 +422,6 @@ export async function deleteSession(id: string) {
   refresh();
 }
 
-export async function updateSession(
-  id: string,
-  data: { name?: string; focus?: number; notes?: string | null },
-) {
-  const patch: Record<string, unknown> = {};
-  if (data.name !== undefined) patch.name = data.name.trim() || "Study session";
-  if (data.focus !== undefined) patch.focus = Math.max(0, Math.min(100, Math.round(data.focus)));
-  if (data.notes !== undefined) patch.notes = data.notes?.trim() || null;
-  await db.session.update({ where: { id }, data: patch });
-  refresh();
-}
-
 /** Log a session that happened away from the keyboard. */
 export async function logManualSession(input: {
   name: string;
@@ -434,6 +432,8 @@ export async function logManualSession(input: {
   courses: CourseSlice[];
   taskIds: string[];
   notes: string | null;
+  location?: string | null;
+  locationNote?: string | null;
 }) {
   const [y, m, d] = input.date.split("-").map(Number);
   const [hh, mm] = input.startTime.split(":").map(Number);
@@ -450,10 +450,49 @@ export async function logManualSession(input: {
       rawMinutes: minutes,
       focus: Math.max(0, Math.min(100, Math.round(input.focus))),
       notes: input.notes?.trim() || null,
+      ...cleanLocation(input.location, input.locationNote),
       courses: { create: reconcileSlices(input.courses, minutes) },
       tasks: { create: input.taskIds.map((taskId) => ({ taskId })) },
     },
   });
+  const backup = await backupNow().catch(() => null);
+  refresh();
+  return { ok: true as const, backup };
+}
+
+/**
+ * Edit a session after the fact: what it was called, where it was, how it
+ * went, and how its time divides between subjects. Timing is deliberately not
+ * editable - the clock is the one part of the log that should stay honest.
+ */
+export async function updateSession(input: {
+  id: string;
+  name: string;
+  focus: number;
+  notes: string | null;
+  location: string | null;
+  locationNote: string | null;
+  courses: CourseSlice[];
+}) {
+  const session = await db.session.findUnique({ where: { id: input.id }, select: { minutes: true } });
+  if (!session) return { ok: false as const, error: "Session not found." };
+
+  const slices = reconcileSlices(input.courses, session.minutes);
+
+  await db.$transaction(async (tx) => {
+    await tx.sessionCourse.deleteMany({ where: { sessionId: input.id } });
+    await tx.session.update({
+      where: { id: input.id },
+      data: {
+        name: input.name.trim() || "Study session",
+        focus: Math.max(0, Math.min(100, Math.round(input.focus))),
+        notes: input.notes?.trim() || null,
+        ...cleanLocation(input.location, input.locationNote),
+        courses: { create: slices },
+      },
+    });
+  });
+
   const backup = await backupNow().catch(() => null);
   refresh();
   return { ok: true as const, backup };

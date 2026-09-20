@@ -1,10 +1,12 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSession } from "@/app/actions";
 import { fmtDuration, startOfDay, fmtDateLong, fmtHM } from "@/lib/dates";
 import { Card, Eyebrow } from "./ui";
+import { SessionEditor } from "./SessionEditor";
+import { locationLabel } from "@/lib/types";
 import { focusColour } from "@/lib/focus";
 
 type S = {
@@ -15,15 +17,20 @@ type S = {
   rawMinutes: number;
   focus: number;
   notes: string | null;
+  location: string | null;
+  locationNote: string | null;
   courses: { id: string; shortName: string; colour: string; minutes: number }[];
   tasks: { id: string; title: string }[];
   music: { topArtist: string; others: number; minutes: number; share: number | null; podcast: boolean } | null;
 };
 
+type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
+
 /** Session history, grouped by day with a per-day total. */
-export function SessionList({ sessions }: { sessions: S[] }) {
+export function SessionList({ sessions, courses }: { sessions: S[]; courses: CourseLink[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState<S | null>(null);
 
   const groups = new Map<number, S[]>();
   for (const s of sessions) {
@@ -72,6 +79,9 @@ export function SessionList({ sessions }: { sessions: S[] }) {
                       <span className="truncate text-n-400">
                         {s.tasks.map((t) => t.title).join(", ")}
                       </span>
+                    )}
+                    {locationLabel(s.location, s.locationNote) && (
+                      <span className="text-n-500">{locationLabel(s.location, s.locationNote)}</span>
                     )}
                     {s.rawMinutes > s.minutes && (
                       <span className="text-n-400">
@@ -122,6 +132,15 @@ export function SessionList({ sessions }: { sessions: S[] }) {
                     {fmtDuration(s.minutes)}
                   </span>
                   <button
+                    onClick={() => setEditing(s)}
+                    aria-label={`Edit session ${s.name}`}
+                    className="rounded-md p-1.5 text-n-300 opacity-0 transition-all duration-[120ms] hover:bg-n-100 hover:text-n-700 focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                      <path d="M8.2 1.9 10.1 3.8M2 10l.5-2.1 5.3-5.3 1.9 1.9-5.3 5.3L2 10Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <button
                     onClick={() => {
                       if (!confirm(`Delete "${s.name}"?`)) return;
                       startTransition(async () => {
@@ -143,6 +162,24 @@ export function SessionList({ sessions }: { sessions: S[] }) {
           </Card>
         );
       })}
+
+      {editing && (
+        <SessionEditor
+          session={{
+            id: editing.id,
+            name: editing.name,
+            startedAt: editing.startedAt,
+            minutes: editing.minutes,
+            focus: editing.focus,
+            notes: editing.notes,
+            location: editing.location,
+            locationNote: editing.locationNote,
+            courses: editing.courses.map((c) => ({ id: c.id, minutes: c.minutes })),
+          }}
+          courses={courses}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }

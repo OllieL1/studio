@@ -52,6 +52,7 @@ export default async function SessionsPage() {
         </Card>
       ) : (
         <SessionList
+          courses={courses}
           sessions={sessions.map((s) => ({
             id: s.id,
             name: s.name,
@@ -60,6 +61,8 @@ export default async function SessionsPage() {
             rawMinutes: s.rawMinutes,
             focus: s.focus,
             notes: s.notes,
+            location: s.location,
+            locationNote: s.locationNote,
             courses: s.courses.map((c) => ({ ...c.course, minutes: c.minutes })),
             tasks: s.tasks.map((t) => t.task),
             music: summariseMusic(s.tracks, s.rawMinutes),
