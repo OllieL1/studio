@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
       // both are read from disk at runtime, so tracing can't infer them.
       "./assets/fonts/*.ttf",
       "./node_modules/pdfkit/js/data/*.afm",
+      // MathJax typesets the equations in exported PDFs. It's loaded through
+      // createRequire (it's CommonJS-only), which tracing can't follow.
+      "./node_modules/mathjax-full/js/**/*.js",
     ],
   },
 
@@ -30,6 +33,8 @@ const nextConfig: NextConfig = {
       "./node_modules/@prisma/client/runtime/*{mysql,postgresql,sqlserver,cockroachdb}*",
       "./node_modules/@img/**",
       "./node_modules/sharp/**",
+      // MathJax's pre-bundled ES5 build (23MB); Studio uses the js/ sources.
+      "./node_modules/mathjax-full/es5/**",
     ],
   },
 };

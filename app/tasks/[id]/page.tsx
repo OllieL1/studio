@@ -12,6 +12,7 @@ import { TaskTime } from "@/components/TaskTime";
 import { SubtaskPanel } from "@/components/SubtaskPanel";
 import { DependencyEditor } from "@/components/DependencyEditor";
 import { CalendarButton } from "@/components/CalendarButton";
+import { cssColour } from "@/lib/palette";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       <div className="animate-fade-up">
         <div className="flex flex-wrap items-center gap-2 text-[12px]">
           {task.course ? (
-            <Link href={courseHref(task.course) as Route} className="font-medium hover:underline" style={{ color: task.course.colour }}>
+            <Link href={courseHref(task.course) as Route} className="font-medium hover:underline" style={{ color: cssColour(task.course.colour) }}>
               ← {task.course.name}
             </Link>
           ) : (
@@ -68,7 +69,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             {task.course && (
-              <span aria-hidden className="mt-1.5 h-9 w-[5px] shrink-0 rounded-full" style={{ background: task.course.colour }} />
+              <span aria-hidden className="mt-1.5 h-9 w-[5px] shrink-0 rounded-full" style={{ background: cssColour(task.course.colour) }} />
             )}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">

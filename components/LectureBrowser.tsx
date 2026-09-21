@@ -8,6 +8,7 @@ import { fmtDate, fmtTime } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
 import { Card, EmptyState, Pill } from "./ui";
 import { NotebookLocation } from "./NotebookLocation";
+import { cssColour } from "@/lib/palette";
 
 type Item = { id: string; label: string; done: boolean; isRevision: boolean };
 type Lecture = {
@@ -80,7 +81,7 @@ export function LectureBrowser({
               className={clsx(
                 "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-all duration-[180ms]",
                 !activeCourse
-                  ? "border-transparent bg-n-800 text-white"
+                  ? "border-transparent bg-n-800 text-n-0"
                   : "border-n-200 text-n-500 hover:bg-n-50",
               )}
             >
@@ -97,12 +98,12 @@ export function LectureBrowser({
                     "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-all duration-[180ms]",
                     on ? "border-transparent text-white" : "border-n-200 text-n-500 hover:bg-n-50",
                   )}
-                  style={on ? { background: c.colour } : undefined}
+                  style={on ? { background: cssColour(c.colour) } : undefined}
                 >
                   <span
                     aria-hidden
                     className="h-2 w-2 rounded-full"
-                    style={{ background: on ? "rgba(255,255,255,.85)" : c.colour }}
+                    style={{ background: on ? "rgba(255,255,255,.85)" : cssColour(c.colour) }}
                   />
                   {c.shortName}
                 </button>
@@ -177,7 +178,7 @@ function LectureRow({ lecture: l }: { lecture: Lecture }) {
       <span
         aria-hidden
         className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ background: l.course.colour }}
+        style={{ background: cssColour(l.course.colour) }}
       />
 
       <div className="flex items-start gap-3 py-2.5 pl-4 pr-3 hover:bg-n-25">
@@ -189,7 +190,7 @@ function LectureRow({ lecture: l }: { lecture: Lecture }) {
             >
               {l.title}
             </Link>
-            <span className="text-[11.5px] font-medium" style={{ color: l.course.colour }}>
+            <span className="text-[11.5px] font-medium" style={{ color: cssColour(l.course.colour) }}>
               {l.course.shortName}
             </span>
             {revision && (

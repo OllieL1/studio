@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { db } from "./db";
+import { uploadsDir } from "./uploads";
 
 /**
  * Local backup of the live data, in case the USB stick is lost.
@@ -29,7 +30,8 @@ import { db } from "./db";
 export const BACKUP_FILE = "studio-backup.db";
 const META_FILE = "studio-backup.json";
 
-export type BackupMeta = { at: string; sessions: number; bytes: number };
+/** `files` counts attachments mirrored beside the database copy. */
+export type BackupMeta = { at: string; sessions: number; bytes: number; files?: number };
 
 export type BackupResult =
   | { ok: true; path: string; sessions: number }
@@ -84,7 +86,8 @@ export async function backupNow(): Promise<BackupResult> {
     }
 
     renameSync(tmp, final); // atomic replace on Mac and Windows
-    const meta: BackupMeta = { at: new Date().toISOString(), sessions, bytes: statSync(final).size };
+    const files = copyUploads(dir);
+    const meta: BackupMeta = { at: new Date().toISOString(), sessions, bytes: statSync(final).size, files };
     writeFileSync(join(dir, META_FILE), JSON.stringify(meta, null, 2));
     return { ok: true, path: final, sessions };
   } catch (e) {
@@ -93,6 +96,35 @@ export async function backupNow(): Promise<BackupResult> {
     try { rmSync(tmp, { force: true }); } catch { /* nothing to clean */ }
     return { ok: false, skipped: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * Mirror attached files into the backup.
+ *
+ * They live beside the database rather than inside it, so the VACUUM above
+ * doesn't cover them. Copying is by name and size - the names are uuids, so a
+ * file that's already there is the same file.
+ */
+function copyUploads(dir: string): number {
+  const from = uploadsDir();
+  if (!existsSync(from)) return 0;
+  const to = join(dir, "uploads");
+  mkdirSync(to, { recursive: true });
+
+  let copied = 0;
+  for (const name of readdirSync(from)) {
+    const src = join(from, name);
+    const dst = join(to, name);
+    try {
+      if (!statSync(src).isFile()) continue;
+      if (existsSync(dst) && statSync(dst).size === statSync(src).size) continue;
+      copyFileSync(src, dst);
+      copied++;
+    } catch {
+      // One unreadable file shouldn't fail the whole backup.
+    }
+  }
+  return readdirSync(to).length;
 }
 
 function stamp(): string {

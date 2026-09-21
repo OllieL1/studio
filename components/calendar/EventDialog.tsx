@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { createUniEvent, deleteUniEvent, updateUniEvent } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
 import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
+import { cssColour } from "@/lib/palette";
 
 export type EventDraft = {
   /** null when creating. */
@@ -87,7 +88,7 @@ export function EventDialog({
   return (
     <Portal>
     <div
-      className="animate-fade-in fixed inset-0 z-[70] flex items-end justify-center bg-n-900/25 p-4 backdrop-blur-[2px] sm:items-center"
+      className="animate-fade-in fixed inset-0 z-[70] flex items-end justify-center bg-[var(--scrim)] p-4 backdrop-blur-[2px] sm:items-center"
       {...backdropProps(onClose)}
       role="dialog"
       aria-modal="true"
@@ -97,7 +98,7 @@ export function EventDialog({
         className="animate-scale-in w-full max-w-[480px] overflow-hidden rounded-lg border border-n-200 bg-n-0"
         style={{ boxShadow: "var(--shadow-modal)" }}
       >
-        <div className="h-1 transition-colors duration-[180ms]" style={{ background: course?.colour ?? "var(--color-rust-500)" }} />
+        <div className="h-1 transition-colors duration-[180ms]" style={{ background: cssColour(course?.colour) || "var(--color-rust-500)" }} />
 
         <div className="space-y-4 px-5 pb-4 pt-4">
           <input
@@ -248,10 +249,10 @@ function CourseChip({
       aria-pressed={on}
       className={clsx(
         "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-all duration-[180ms]",
-        on ? "border-n-800 bg-n-800 text-white" : "border-n-200 text-n-500 hover:bg-n-50",
+        on ? "border-n-800 bg-n-800 text-n-0" : "border-n-200 text-n-500 hover:bg-n-50",
       )}
     >
-      {colour && <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: colour }} />}
+      {colour && <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: cssColour(colour) }} />}
       {children}
     </button>
   );

@@ -2,6 +2,10 @@
 import assert from "node:assert/strict";
 import { buildPapersPdf } from "../lib/pdf/papers";
 import { buildSchedulePdf, type SchedItem } from "../lib/pdf/schedule";
+import { buildStatsPdf } from "../lib/pdf/stats";
+import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
+import { measureMath } from "../lib/pdf/math";
+import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
 const tests: [string, () => Promise<void>][] = [];
 const test = (n: string, f: () => Promise<void>) => tests.push([n, f]);
@@ -75,6 +79,159 @@ test("schedule: a busy project spills onto more pages", async () => {
   }
   const buf = await buildSchedulePdf(schedInput(items));
   assert.ok(pages(buf) > 1, `expected multiple pages, got ${pages(buf)}`);
+});
+
+/* ── Stats ── */
+
+const statsSessions = (n: number): StatSession[] =>
+  Array.from({ length: n }, (_, i) => {
+    const startedAt = new Date(2026, 8, 1 + (i % 28), 9 + (i % 8), 0);
+    const minutes = 30 + (i % 5) * 25;
+    return {
+      id: `s${i}`, name: `Session ${i}`, startedAt,
+      endedAt: new Date(startedAt.getTime() + minutes * 60000),
+      minutes, rawMinutes: minutes + (i % 3), focus: 50 + (i % 5) * 10,
+      courses: [{ courseId: i % 2 ? "c1" : "c2", minutes }], tasks: [],
+      location: ["library", "flat", "coffee", null][i % 4],
+    };
+  });
+
+const statsInput = (sessions: StatSession[]) => {
+  const daily = Array.from({ length: 28 }, (_, i) => {
+    const date = new Date(2026, 8, 1 + i);
+    const day = sessions.filter((s) => s.startedAt.toDateString() === date.toDateString());
+    const mins = day.reduce((t, s) => t + s.minutes, 0);
+    return { date, minutes: mins, focus: mins > 0 ? day.reduce((t, s) => t + s.focus * s.minutes, 0) / mins : null };
+  });
+  return {
+    rangeLabel: "All time", generatedAt: new Date(2026, 8, 30),
+    headline: headline(sessions), byHour: byHourOfDay(sessions), byDay: byDayOfWeek(sessions),
+    daily, focusTrend: rollingMean(daily.map((d) => d.focus), 7),
+    focusBands: focusDistribution(sessions), focusByLength: focusByLength(sessions),
+    subjects: bySubject(sessions, [
+      { id: "c1", name: "Coaching Software Teams", shortName: "Coaching", colour: "#5b7c99" },
+      { id: "c2", name: "MSci Project", shortName: "Project", colour: "#b4532a" },
+    ]),
+    places: byLocation(sessions),
+    music: null,
+  };
+};
+
+test("stats: builds a valid PDF without music", async () => {
+  const buf = await buildStatsPdf(statsInput(statsSessions(40)));
+  assert.ok(isPdf(buf));
+  assert.ok(pages(buf) >= 1);
+});
+
+test("stats: a single session still renders every section it can", async () => {
+  const buf = await buildStatsPdf(statsInput(statsSessions(1)));
+  assert.ok(isPdf(buf));
+});
+
+test("stats: sections flow onto more pages as they fill", async () => {
+  const buf = await buildStatsPdf(statsInput(statsSessions(200)));
+  assert.ok(pages(buf) > 1, `expected multiple pages, got ${pages(buf)}`);
+});
+
+/* ── Lectures ── */
+
+const lecture = (over: Partial<PdfLecture> = {}): PdfLecture => ({
+  id: "l1", title: "Lecture 1: Modularity", dueAt: new Date(2026, 8, 28),
+  notesMd: "# Overview\n\nSome notes.", notebook: null, notebookPages: null,
+  parts: [{ label: "Attendance", done: true }, { label: "Typed notes", done: true }],
+  ...over,
+});
+
+const course = { name: "Coaching Software Teams", code: "COMPSCI5079", colour: "#5b7c99" };
+
+test("lectures: a single lecture is one document, no cover", async () => {
+  const buf = await buildLecturesPdf({ course, lectures: [lecture()], generatedAt: new Date(2026, 8, 20) });
+  assert.ok(isPdf(buf));
+  assert.equal(pages(buf), 1);
+});
+
+test("lectures: a bundle gets a cover, contents and a page per lecture", async () => {
+  const lectures = Array.from({ length: 4 }, (_, i) => lecture({ id: `l${i}`, title: `Lecture ${i + 1}` }));
+  const buf = await buildLecturesPdf({ course, lectures, generatedAt: new Date(2026, 8, 20) });
+  // cover + contents + one page each, at least.
+  assert.ok(pages(buf) >= 6, `expected 6+ pages, got ${pages(buf)}`);
+});
+
+test("lectures: a lecture with no typed notes still gets its page", async () => {
+  const buf = await buildLecturesPdf({
+    course,
+    lectures: [lecture({ notesMd: null }), lecture({ id: "l2", title: "Second" })],
+    generatedAt: new Date(2026, 8, 20),
+  });
+  assert.ok(isPdf(buf));
+  assert.ok(pages(buf) >= 4);
+});
+
+test("lectures: code fences with arrows and operators don't crash the font", async () => {
+  // JetBrains Mono's ligatures for "->" and ">=" broke fontkit outright, so
+  // this is a regression guard on whichever mono face is bundled.
+  const notesMd = [
+    "```haskell",
+    "compose :: (b -> c) -> (a -> b) -> a -> c",
+    "compose g f = \\x -> g (f x)",
+    "```",
+    "",
+    "Inline `a -> b`, `x >= y`, `p != q`, `<!-- c -->` and `|>`.",
+  ].join("\n");
+  const buf = await buildLecturesPdf({ course, lectures: [lecture({ notesMd })], generatedAt: new Date(2026, 8, 20) });
+  assert.ok(isPdf(buf));
+});
+
+test("maths: LaTeX is measured as a drawable box", async () => {
+  const m = measureMath("T(n) = 2T(n/2) + O(n)", 10, true);
+  assert.ok(m, "should typeset");
+  assert.ok(m!.width > 10 && m!.height > 5, `got ${m!.width} x ${m!.height}`);
+  // The size has to be in user units: "pt" is re-scaled by svg-to-pdfkit and
+  // the equation comes out 4/3 too wide.
+  assert.match(m!.svg, /width="[\d.]+"/);
+  assert.ok(!/width="[\d.]+(ex|pt)"/.test(m!.svg), "size must be unitless");
+  assert.ok(m!.svg.includes("<path"), "glyphs should be paths, not font references");
+});
+
+test("maths: inline is smaller than display, and sits on the baseline", async () => {
+  const inline = measureMath("x^2", 10, false)!;
+  const display = measureMath("x^2", 11.5, true)!;
+  assert.ok(display.width > inline.width);
+  assert.ok(inline.descent >= 0);
+});
+
+test("maths: LaTeX that doesn't parse gives nothing back, so callers fall back", async () => {
+  assert.equal(measureMath("\\frac{1}", 10, false), null);
+  assert.equal(measureMath("\\begin{nope}x\\end{nope}", 10, true), null);
+});
+
+test("lectures: equations are typeset into the page", async () => {
+  const notesMd = "Inline $O(n \\log n)$ cost.\n\n$$\nT(n) = 2T(n/2) + O(n)\n$$\n\n$$x^2$$\n";
+  const buf = await buildLecturesPdf({ course, lectures: [lecture({ notesMd })], generatedAt: new Date(2026, 8, 20) });
+  assert.ok(isPdf(buf));
+  assert.equal(pages(buf), 1);
+  // Typeset maths is drawn as filled paths; the plain version has none.
+  const plain = await buildLecturesPdf({
+    course,
+    lectures: [lecture({ notesMd: "Inline cost.\n\nT(n) = 2T(n/2)\n" })],
+    generatedAt: new Date(2026, 8, 20),
+  });
+  assert.ok(buf.length > plain.length + 2000, `maths should add vector content (${buf.length} vs ${plain.length})`);
+});
+
+test("lectures: tables, quotes, rules and nested lists all render", async () => {
+  const notesMd = [
+    "# Heading", "", "| Term | Meaning |", "| --- | --- |", "| Cohesion | Related parts |", "",
+    "## Sub", "", "- one", "  - nested", "1. first", "", "> quoted", "", "---", "",
+    "**bold**, *em*, `code`, [link](https://example.com), ![pic](https://example.com/a.png)",
+  ].join("\n");
+  const buf = await buildLecturesPdf({ course, lectures: [lecture({ notesMd })], generatedAt: new Date(2026, 8, 20) });
+  assert.ok(isPdf(buf));
+});
+
+test("lectures: a bundle with no course still builds", async () => {
+  const buf = await buildLecturesPdf({ course: null, lectures: [lecture(), lecture({ id: "l2" })], generatedAt: new Date(2026, 8, 20) });
+  assert.ok(isPdf(buf));
 });
 
 let failed = 0;

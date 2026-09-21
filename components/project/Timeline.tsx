@@ -7,6 +7,7 @@ import { stackRows, timelinePosition, timelineWeeks } from "@/lib/project";
 import { fmtDayDate } from "@/lib/dates";
 import type { TimelineItem } from "@/lib/projectData";
 import { clsx } from "@/lib/clsx";
+import { cssColour } from "@/lib/palette";
 
 const ROW_LABEL = { meeting: "Meetings", deadline: "Deadlines", task: "Tasks" } as const;
 const LANE = 26; // px per stacked lane in the task row
@@ -114,7 +115,7 @@ export function Timeline({
                     return (
                     <Marker key={d.id} item={d} className="absolute bottom-2 top-2 -translate-x-[1px]" style={{ left: `${pos(d.end)}%` }}>
                       <span className={clsx("absolute inset-y-0 left-0 w-[2px] rounded-full", d.done ? "bg-n-300" : "bg-n-800")} />
-                      <span className={clsx("absolute top-0 whitespace-nowrap px-1 text-[9.5px] font-semibold leading-[14px]", flipped ? "right-0 rounded-l-[3px]" : "left-0 rounded-r-[3px]", d.done ? "bg-n-100 text-n-400 line-through" : "bg-n-800 text-white")}>
+                      <span className={clsx("absolute top-0 whitespace-nowrap px-1 text-[9.5px] font-semibold leading-[14px]", flipped ? "right-0 rounded-l-[3px]" : "left-0 rounded-r-[3px]", d.done ? "bg-n-100 text-n-400 line-through" : "bg-n-800 text-n-0")}>
                         {d.title.length > 18 ? d.title.slice(0, 17) + "…" : d.title}
                       </span>
                     </Marker>
@@ -138,8 +139,8 @@ export function Timeline({
                           left: `${left}%`,
                           width: isPoint ? undefined : `${width}%`,
                           minWidth: isPoint ? undefined : 8,
-                          background: `color-mix(in oklab, ${colour} ${t.done ? 12 : 22}%, var(--color-n-0))`,
-                          borderLeft: `3px solid ${colour}`,
+                          background: `color-mix(in oklab, ${cssColour(colour)} ${t.done ? 12 : 22}%, var(--color-n-0))`,
+                          borderLeft: `3px solid ${cssColour(colour)}`,
                         }}
                       >
                         {t.title}

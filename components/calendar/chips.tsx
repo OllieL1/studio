@@ -111,7 +111,7 @@ export function Chip({
       style={style}
     >
       {item.blocked && (
-        <span className="shrink-0 rounded-[3px] bg-n-900/80 px-1 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
+        <span className="shrink-0 rounded-[3px] bg-[var(--scrim-strong)] px-1 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
           {item.kind === "EXAM" ? "Exam" : `${item.gradeWeight}%`}
         </span>
       )}

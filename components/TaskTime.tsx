@@ -4,6 +4,7 @@ import { fmtDate, fmtDayDate, fmtDuration, fmtHM, fmtRelative } from "@/lib/date
 import { Card, Eyebrow, EmptyState, Stat } from "./ui";
 import { BarChart } from "./charts/BarChart";
 import { focusColour } from "@/lib/focus";
+import { cssColour } from "@/lib/palette";
 
 /**
  * Time tracked against one task, plus the sessions it came from.
@@ -104,7 +105,7 @@ export async function TaskTime({
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11.5px] text-n-500">
                     <span className="font-num">{fmtDayDate(s.startedAt)} · {fmtHM(s.startedAt)}</span>
                     {s.courses.map((c) => (
-                      <span key={c.courseId} style={{ color: c.course.colour }} className="font-medium">
+                      <span key={c.courseId} style={{ color: cssColour(c.course.colour) }} className="font-medium">
                         {c.course.shortName}
                       </span>
                     ))}

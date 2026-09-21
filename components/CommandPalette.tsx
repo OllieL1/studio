@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { clsx } from "@/lib/clsx";
 import { backdropProps, ModalLock, Portal } from "@/lib/hooks/useModal";
 import type { SearchHit } from "@/app/api/search/route";
+import { cssColour } from "@/lib/palette";
 
 /** Dispatched on window by anything that wants to open the palette. */
 export const OPEN_PALETTE_EVENT = "open-command-palette";
@@ -122,7 +123,7 @@ export function CommandPalette() {
     <ModalLock onClose={() => setOpen(false)} initialFocus={inputRef}>
     <Portal>
     <div
-      className="animate-fade-in fixed inset-0 z-[70] flex items-start justify-center bg-n-900/25 px-4 pt-[12vh] backdrop-blur-[2px]"
+      className="animate-fade-in fixed inset-0 z-[70] flex items-start justify-center bg-[var(--scrim)] px-4 pt-[12vh] backdrop-blur-[2px]"
       {...backdropProps(() => setOpen(false))}
       role="dialog"
       aria-modal="true"
@@ -189,7 +190,7 @@ export function CommandPalette() {
                 <span
                   aria-hidden
                   className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: h.colour ?? "var(--color-n-300)" }}
+                  style={{ background: cssColour(h.colour) || "var(--color-n-300)" }}
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline gap-2">

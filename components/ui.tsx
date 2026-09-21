@@ -1,4 +1,5 @@
 import { clsx } from "@/lib/clsx";
+import { cssColour } from "@/lib/palette";
 
 /* Small presentational primitives shared across pages. Kept in one file
    because each is a handful of lines and they're always used together. */
@@ -18,7 +19,7 @@ export function Card({
         <span
           aria-hidden
           className="absolute inset-y-0 left-0 w-[3px]"
-          style={{ background: accent }}
+          style={{ background: cssColour(accent) }}
         />
       )}
       {children}
@@ -77,7 +78,7 @@ export function ProgressBar({
     >
       <div
         className="bar-fill h-full rounded-full"
-        style={{ width: `${pct}%`, background: colour ?? "var(--color-rust-500)" }}
+        style={{ width: `${pct}%`, background: cssColour(colour) || "var(--color-rust-500)" }}
       />
     </div>
   );

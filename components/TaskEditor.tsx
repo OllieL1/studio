@@ -127,7 +127,7 @@ export function TaskEditor({
                 className={clsx(
                   "rounded-full border px-2 py-[3px] text-[11.5px] font-medium transition-all duration-[180ms]",
                   draft.kind === k
-                    ? "border-transparent bg-n-800 text-white"
+                    ? "border-transparent bg-n-800 text-n-0"
                     : "border-n-200 text-n-500 hover:bg-n-50",
                 )}
               >

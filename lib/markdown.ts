@@ -1,6 +1,7 @@
 import { Marked } from "marked";
 import hljs from "highlight.js";
 import DOMPurify from "isomorphic-dompurify";
+import katex from "katex";
 
 /**
  * Markdown → HTML for lecture notes.
@@ -11,12 +12,63 @@ import DOMPurify from "isomorphic-dompurify";
  *
  * Output is sanitised even though the only author is you — paste from a web
  * page and you're pasting someone else's HTML.
+ *
+ * Maths is LaTeX between dollars, rendered by KaTeX to MathML. MathML alone
+ * (rather than KaTeX's HTML) means no stylesheet and no web fonts to ship,
+ * which matters for an app that runs offline from a USB stick; browsers draw
+ * it natively.
  */
 
 const marked = new Marked({
   gfm: true,
   breaks: false,
 });
+
+/** `$$…$$` on its own lines, and `$…$` inline. */
+const mathBlock = {
+  name: "mathBlock",
+  level: "block" as const,
+  start(src: string) {
+    return src.indexOf("$$");
+  },
+  tokenizer(src: string) {
+    const m = /^\$\$\n?([\s\S]+?)\n?\$\$(?:\n|$)/.exec(src);
+    if (!m) return undefined;
+    return { type: "mathBlock", raw: m[0], text: m[1].trim() };
+  },
+  renderer(token: { text: string }) {
+    return `<div class="md-math">${renderMath(token.text, true)}</div>`;
+  },
+};
+
+const mathInline = {
+  name: "mathInline",
+  level: "inline" as const,
+  start(src: string) {
+    return src.indexOf("$");
+  },
+  tokenizer(src: string) {
+    // A single dollar either side, with no space just inside, so "$5 and $6"
+    // isn't mistaken for maths.
+    const m = /^\$(?!\s)((?:[^$\n]|\\\$)+?)(?<!\s)\$(?!\d)/.exec(src);
+    if (!m) return undefined;
+    return { type: "mathInline", raw: m[0], text: m[1] };
+  },
+  renderer(token: { text: string }) {
+    return renderMath(token.text, false);
+  },
+};
+
+/** Bad LaTeX shows as its source rather than breaking the note. */
+function renderMath(tex: string, display: boolean): string {
+  try {
+    return katex.renderToString(tex, { output: "mathml", displayMode: display, throwOnError: true });
+  } catch {
+    return `<code class="md-math-error" title="That LaTeX didn't parse">${escapeHtml(display ? `$$${tex}$$` : `$${tex}$`)}</code>`;
+  }
+}
+
+marked.use({ extensions: [mathBlock, mathInline] });
 
 // Syntax highlighting + heading ids/anchors for the table of contents.
 marked.use({

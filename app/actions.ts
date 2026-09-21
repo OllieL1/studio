@@ -11,6 +11,8 @@ import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
 import { buildListening } from "@/lib/music";
 import { backupNow } from "@/lib/backup";
+import { deleteUpload } from "@/lib/uploads";
+import { cleanHour, isThemeMode, DEFAULT_DARK_FROM, DEFAULT_DARK_TO } from "@/lib/theme";
 import {
   addTaskItem, removeTaskItem, renameTaskItem, setCourseRevisionMode, setTaskDone, toggleTaskItem,
 } from "@/lib/tasks";
@@ -496,6 +498,36 @@ export async function updateSession(input: {
   const backup = await backupNow().catch(() => null);
   refresh();
   return { ok: true as const, backup };
+}
+
+
+/* ── Appearance ────────────────────────────────────────────────────────── */
+
+/** Light, dark, or dark on a schedule - and when that schedule runs. */
+export async function updateTheme(mode: string, darkFrom?: number, darkTo?: number) {
+  if (!isThemeMode(mode)) return { ok: false as const, error: "Unknown theme." };
+
+  const data = {
+    theme: mode,
+    darkFrom: cleanHour(darkFrom ?? DEFAULT_DARK_FROM, DEFAULT_DARK_FROM),
+    darkTo: cleanHour(darkTo ?? DEFAULT_DARK_TO, DEFAULT_DARK_TO),
+  };
+  await db.preference.upsert({ where: { id: "singleton" }, create: { id: "singleton", ...data }, update: data });
+  refresh();
+  return { ok: true as const };
+}
+
+
+/* ── Attachments ───────────────────────────────────────────────────────── */
+
+/** Detach a file and remove its bytes. */
+export async function deleteAttachment(id: string) {
+  const file = await db.attachment.findUnique({ where: { id } });
+  if (!file) return { ok: false as const, error: "Already gone." };
+  await db.attachment.delete({ where: { id } });
+  deleteUpload(file.storedName);
+  refresh();
+  return { ok: true as const };
 }
 
 

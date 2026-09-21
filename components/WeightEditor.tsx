@@ -6,6 +6,7 @@ import { updateCourseWeights } from "@/app/actions";
 import { normaliseWeights } from "@/lib/progress";
 import { Eyebrow } from "./ui";
 import { clsx } from "@/lib/clsx";
+import { cssColour } from "@/lib/palette";
 
 /** Per-course weights. Always normalised to 100 so the bar stays meaningful. */
 export function WeightEditor({
@@ -100,7 +101,7 @@ export function WeightEditor({
                 })
               }
               className="shrink-0 rounded-md px-2.5 py-1 text-[11.5px] font-semibold text-white transition-opacity duration-[120ms] disabled:opacity-40"
-              style={{ background: colour }}
+              style={{ background: cssColour(colour) }}
             >
               {pending ? "Saving…" : "Save"}
             </button>

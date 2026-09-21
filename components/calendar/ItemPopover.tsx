@@ -9,6 +9,7 @@ import { TASK_KIND_LABEL } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
 import { Pill } from "../ui";
 import { timeLabel } from "./chips";
+import { cssColour } from "@/lib/palette";
 
 const SOURCE_LABEL: Record<CalendarItem["source"], string> = {
   deadline: "Deadline",
@@ -87,12 +88,12 @@ export function ItemPopover({
         boxShadow: "var(--shadow-pop)",
       }}
     >
-      <div className="h-1" style={{ background: item.colour ?? (item.source === "google" ? "var(--color-info)" : "var(--color-n-300)") }} />
+      <div className="h-1" style={{ background: cssColour(item.colour) || (item.source === "google" ? "var(--color-info)" : "var(--color-n-300)") }} />
       <div className="p-3.5">
         <div className="flex items-start justify-between gap-2">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-400">
             {item.kind ? TASK_KIND_LABEL[item.kind] ?? SOURCE_LABEL[item.source] : SOURCE_LABEL[item.source]}
-            {item.courseShort && <span style={{ color: item.colour ?? undefined }}> · {item.courseShort}</span>}
+            {item.courseShort && <span style={{ color: cssColour(item.colour) || undefined }}> · {item.courseShort}</span>}
           </p>
           <button onClick={onClose} aria-label="Close" className="-mr-1 -mt-1 rounded p-1 text-n-400 hover:bg-n-100 hover:text-n-700">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>

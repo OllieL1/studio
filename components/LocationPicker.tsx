@@ -35,7 +35,7 @@ export function LocationPicker({
                 "rounded-full border font-medium transition-all duration-[180ms]",
                 compact ? "px-2.5 py-1 text-[12px]" : "px-3 py-1.5 text-[12.5px]",
                 on
-                  ? "border-transparent bg-n-800 text-white"
+                  ? "border-transparent bg-n-800 text-n-0"
                   : "border-n-200 text-n-600 hover:bg-n-50",
               )}
             >

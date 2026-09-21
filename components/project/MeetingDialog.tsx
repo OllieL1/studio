@@ -89,7 +89,7 @@ function MeetingDialog({
   return (
     <Portal>
       <div
-        className="animate-fade-in fixed inset-0 z-[70] flex items-end justify-center bg-n-900/25 p-4 backdrop-blur-[2px] sm:items-center"
+        className="animate-fade-in fixed inset-0 z-[70] flex items-end justify-center bg-[var(--scrim)] p-4 backdrop-blur-[2px] sm:items-center"
         {...backdropProps(onClose)}
         role="dialog"
         aria-modal="true"

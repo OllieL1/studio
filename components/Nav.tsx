@@ -8,6 +8,7 @@ import { clsx } from "@/lib/clsx";
 import { courseHref } from "@/lib/types";
 import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
+import { cssColour } from "@/lib/palette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
@@ -98,7 +99,7 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
                       <span
                         aria-hidden
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ background: c.colour }}
+                        style={{ background: cssColour(c.colour) }}
                       />
                       <span className="truncate font-medium">{c.name}</span>
                     </Link>

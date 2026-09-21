@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { addDependency, removeDependency } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
 import { Card, Eyebrow, ProgressBar } from "./ui";
+import { cssColour } from "@/lib/palette";
 
 type Linked = { id: string; title: string; done: boolean; colour: string | null; courseShort: string | null };
 type Option = { id: string; title: string; courseId: string | null; kind: string };
@@ -94,7 +95,7 @@ export function DependencyEditor({
               {p.title}
             </Link>
             {p.courseShort && (
-              <span className="shrink-0 text-[10.5px] font-medium" style={{ color: p.colour ?? undefined }}>
+              <span className="shrink-0 text-[10.5px] font-medium" style={{ color: cssColour(p.colour) || undefined }}>
                 {p.courseShort}
               </span>
             )}
@@ -178,7 +179,7 @@ export function DependencyEditor({
                 href={`/tasks/${d.id}`}
                 className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-n-700 hover:bg-n-50"
               >
-                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: d.colour ?? "var(--color-n-300)" }} />
+                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cssColour(d.colour) || "var(--color-n-300)" }} />
                 <span className="min-w-0 flex-1 truncate">{d.title}</span>
               </Link>
             ))}

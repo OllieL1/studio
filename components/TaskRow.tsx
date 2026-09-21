@@ -9,6 +9,7 @@ import { TASK_KIND_LABEL, canAddSubtasks } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
 import { Pill } from "./ui";
 import { CalendarButton } from "./CalendarButton";
+import { cssColour } from "@/lib/palette";
 
 export type TaskRowData = {
   id: string;
@@ -81,7 +82,7 @@ export function TaskRow({
         <span
           aria-hidden
           className="absolute inset-y-0 left-0 w-[3px]"
-          style={{ background: task.course.colour }}
+          style={{ background: cssColour(task.course.colour) }}
         />
       )}
 
@@ -145,7 +146,7 @@ export function TaskRow({
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] leading-4 text-n-500">
             {showCourse && task.course && (
-              <span className="font-medium" style={{ color: task.course.colour }}>
+              <span className="font-medium" style={{ color: cssColour(task.course.colour) }}>
                 {task.course.shortName}
               </span>
             )}

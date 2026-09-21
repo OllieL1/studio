@@ -10,6 +10,7 @@ import { Card, Eyebrow, ProgressBar, SectionHeading, Stat, Pill } from "@/compon
 import { WeightEditor } from "@/components/WeightEditor";
 import { RevisionToggle } from "@/components/RevisionToggle";
 import { CourseTabs } from "@/components/CourseTabs";
+import { cssColour } from "@/lib/palette";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +98,7 @@ export default async function CoursePage({
             <span
               aria-hidden
               className="h-9 w-[5px] shrink-0 rounded-full"
-              style={{ background: course.colour }}
+              style={{ background: cssColour(course.colour) }}
             />
             <div>
               <Eyebrow>{course.code}</Eyebrow>
@@ -209,7 +210,7 @@ export default async function CoursePage({
               const prereqs = deps.filter((d) => d.dependentId === e.id).map((d) => d.prerequisite);
               const r = readinessFor(e, course, prereqs, course.tasks);
               return (
-                <Card key={e.id} accent={course.colour} className="p-4 pl-5">
+                <Card key={e.id} accent={cssColour(course.colour)} className="p-4 pl-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[14px] font-semibold text-n-800">{e.title}</p>

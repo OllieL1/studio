@@ -3,15 +3,14 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { renderMarkdown, extractToc, wordCount } from "@/lib/markdown";
 import { fmtDate, fmtDateLongYear } from "@/lib/dates";
-import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Every typed note for a course, in lecture order, with a contents page.
  *
- * Printed via the browser (Save as PDF). Each lecture starts on a fresh page
- * and the contents list mirrors the order below it.
+ * This is the on-screen reading view; "Export PDF" builds the bound document
+ * (lib/pdf/lectures.ts) with its own cover, contents and page numbers.
  */
 export default async function CourseNotesPage({
   params,
@@ -55,7 +54,17 @@ export default async function CourseNotesPage({
           >
             {includeEmpty ? "Only lectures with notes" : "Include empty lectures"}
           </Link>
-          <PrintButton />
+          {/* Nothing to bind into a document yet - don't offer the button. */}
+          {lectures.length > 0 && (
+            <a
+              href={`/api/lectures/pdf?course=${course.id}${includeEmpty ? "&empty=1" : ""}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md bg-rust-500 px-3 py-2 text-[12px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600"
+            >
+              Export PDF
+            </a>
+          )}
         </div>
       </div>
 

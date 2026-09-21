@@ -5,6 +5,7 @@ import { DAY_SHORT, isSameDay, toISODate, fmtDate } from "@/lib/dates";
 import { itemsByDay, viewRange, type CalendarItem } from "@/lib/calendar";
 import { clsx } from "@/lib/clsx";
 import { Chip, hatch, tint } from "./chips";
+import { cssColour } from "@/lib/palette";
 
 /** Chips shown per day before collapsing into "+N more". Classes don't count. */
 const MAX_CHIPS = 3;
@@ -110,7 +111,7 @@ export function MonthGrid({
                         key={c.id}
                         aria-hidden
                         className={clsx("h-[6px] w-[6px] rounded-full", c.done && "opacity-40")}
-                        style={{ background: c.colour ?? "var(--color-n-400)" }}
+                        style={{ background: cssColour(c.colour) || "var(--color-n-400)" }}
                       />
                     ))}
                     {classes.length > 5 && (

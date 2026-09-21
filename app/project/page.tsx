@@ -18,6 +18,7 @@ import { Sparkbar } from "@/components/charts/Sparkbar";
 import { BarChart } from "@/components/charts/BarChart";
 import { WeightEditor } from "@/components/WeightEditor";
 import { clsx } from "@/lib/clsx";
+import { cssColour } from "@/lib/palette";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
       <div className="animate-fade-up">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span aria-hidden className="h-10 w-[5px] rounded-full" style={{ background: course.colour }} />
+            <span aria-hidden className="h-10 w-[5px] rounded-full" style={{ background: cssColour(course.colour) }} />
             <div>
               <Eyebrow>{course.code} · MSci project · {course.credits} credits</Eyebrow>
               <h1 className="font-display mt-0.5 text-[34px] leading-10 font-semibold tracking-tight text-n-900">Project</h1>

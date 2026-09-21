@@ -6,6 +6,7 @@ import { BIG_WEIGHT_THRESHOLD } from "@/lib/calendar";
 import { clsx } from "@/lib/clsx";
 import { Card, ProgressBar } from "../ui";
 import { hatch, tint } from "./chips";
+import { cssColour } from "@/lib/palette";
 
 export type SidebarData = {
   upcoming: {
@@ -64,12 +65,12 @@ export function CalendarSidebar({ data }: { data: SidebarData }) {
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12.5px] font-semibold text-n-900">{t.title}</span>
-                    <span className="font-num shrink-0 rounded bg-n-900/80 px-1 text-[9.5px] font-bold text-white">
+                    <span className="font-num shrink-0 rounded bg-[var(--scrim-strong)] px-1 text-[9.5px] font-bold text-white">
                       {t.gradeWeight}%
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
-                    <span className="font-medium" style={{ color: t.colour ?? undefined }}>{t.courseShort}</span>
+                    <span className="font-medium" style={{ color: cssColour(t.colour) || undefined }}>{t.courseShort}</span>
                     <span className={clsx("font-num", n <= 3 ? "font-semibold text-danger" : n <= 10 ? "text-warn" : "text-n-500")}>
                       {fmtRelative(new Date(t.dueAt))}
                     </span>
@@ -113,7 +114,7 @@ export function CalendarSidebar({ data }: { data: SidebarData }) {
                         href={`/tasks/${t.id}`}
                         className="group flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors duration-[120ms] hover:bg-n-50"
                       >
-                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.colour ?? "var(--color-n-300)" }} />
+                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cssColour(t.colour) || "var(--color-n-300)" }} />
                         <span className={clsx("min-w-0 flex-1 truncate text-[12px]", t.blocked ? "font-semibold text-n-900" : "text-n-700")}>
                           {t.title}
                         </span>

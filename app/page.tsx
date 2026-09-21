@@ -12,6 +12,7 @@ import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
 import { isGoogleConfigured } from "@/lib/google";
+import { cssColour } from "@/lib/palette";
 
 export const dynamic = "force-dynamic";
 
@@ -208,7 +209,7 @@ export default async function HomePage() {
           />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {allExams.map((e) => (
-              <Card key={e.id} accent={e.course.colour} className="p-4 pl-5">
+              <Card key={e.id} accent={cssColour(e.course.colour)} className="p-4 pl-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-semibold text-n-800">{e.course.name}</p>
@@ -242,7 +243,7 @@ function CourseCard({ course }: { course: Awaited<ReturnType<typeof getCourses>>
   const cats = course.progress.categories.filter((c) => c.present);
 
   return (
-    <Card accent={course.colour} className="flex flex-col p-4 pl-5">
+    <Card accent={cssColour(course.colour)} className="flex flex-col p-4 pl-5">
       <Link href={courseHref(course) as Route} className="group">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

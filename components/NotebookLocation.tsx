@@ -55,7 +55,7 @@ export function NotebookLocation({
               className={clsx(
                 "rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-all duration-[180ms]",
                 on
-                  ? "border-transparent bg-n-800 text-white"
+                  ? "border-transparent bg-n-800 text-n-0"
                   : "border-n-200 text-n-500 hover:border-n-300 hover:bg-n-50 hover:text-n-700",
               )}
             >

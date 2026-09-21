@@ -3,6 +3,7 @@
 import { fmtDuration } from "@/lib/dates";
 import { resolveSplit, SPLIT_MODE_LABEL, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
+import { cssColour } from "@/lib/palette";
 
 type C = { id: string; shortName: string; name: string; colour: string };
 
@@ -74,7 +75,7 @@ export function SubjectSplit({
               className="bar-fill h-full first:rounded-l-full last:rounded-r-full"
               style={{
                 width: `${Math.max(0, pct(resolved[i]))}%`,
-                background: c?.colour ?? "var(--color-n-300)",
+                background: cssColour(c?.colour) || "var(--color-n-300)",
               }}
               title={`${c?.shortName}: ${fmtDuration(resolved[i])}`}
             />
@@ -91,7 +92,7 @@ export function SubjectSplit({
               <span
                 aria-hidden
                 className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: c.colour }}
+                style={{ background: cssColour(c.colour) }}
               />
               <span className="w-[86px] shrink-0 truncate text-[12px] font-medium text-n-700">
                 {c.shortName}

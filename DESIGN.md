@@ -226,3 +226,29 @@ where courses genuinely share an axis.
 - Empty data renders an explicit empty state, never an axis with nothing on it.
 - Sequential ramps (e.g. the hour heat strip) are **one hue, light → dark**, from
   the rust scale — never a rainbow.
+
+## Dark mode (21 Sep 2026)
+
+The neutral ramp is a **surface-to-ink scale, not light-to-dark**: `n-0` is
+whatever a card sits on and `n-900` is the strongest text. Dark mode redefines
+those variables (`:root[data-theme="dark"]` in `app/globals.css`) and every
+existing `bg-n-0` / `text-n-700` follows - no component knows which theme it
+is in.
+
+What can't hang off that ramp has its own token: `--scrim` (modal backdrops
+darken in both themes), the shadows (deeper, since a soft grey shadow is
+invisible on black), `--dot` for the lattice, and the syntax-highlighting
+colours.
+
+**Course colours** are indirected through `--c-<hex>` variables, written by
+`cssColour()` in `lib/palette.ts`. The dark counterparts were computed in
+OKLCH - hue held within a few degrees, saturation held near the original so
+the set stays muted - and pass all five checks in `scripts/palette/` against
+the dark surface. PDFs never use `cssColour`: they have no stylesheet and are
+always light.
+
+**No flash.** The theme is resolved on the server (`lib/preferences.ts`) and
+written onto `<html data-theme>` with the surface colour inline, and
+`generateViewport` sets `color-scheme` so even the browser's pre-paint canvas
+is the right colour. Verified by recording paint frames over a throttled
+connection: reload, in-app navigation and back produce no light frame.

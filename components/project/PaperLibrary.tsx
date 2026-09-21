@@ -74,7 +74,7 @@ export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
               aria-pressed={status === s}
               className={clsx(
                 "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors duration-[120ms]",
-                status === s ? "border-transparent bg-n-800 text-white" : "border-n-200 text-n-500 hover:bg-n-50",
+                status === s ? "border-transparent bg-n-800 text-n-0" : "border-n-200 text-n-500 hover:bg-n-50",
               )}
             >
               {s === "all" ? "All" : STATUS_LABEL[s as PaperStatus]}
@@ -343,7 +343,7 @@ function AddPaper() {
               <div className="flex gap-1">
                 {PAPER_STATUSES.map((s) => (
                   <button key={s} type="button" onClick={() => set("status", s)} aria-pressed={draft.status === s}
-                    className={clsx("rounded-full border px-2.5 py-1 text-[12px] font-medium", draft.status === s ? "border-transparent bg-n-800 text-white" : "border-n-200 text-n-500 hover:bg-n-50")}>
+                    className={clsx("rounded-full border px-2.5 py-1 text-[12px] font-medium", draft.status === s ? "border-transparent bg-n-800 text-n-0" : "border-n-200 text-n-500 hover:bg-n-50")}>
                     {STATUS_LABEL[s]}
                   </button>
                 ))}

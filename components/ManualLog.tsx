@@ -10,6 +10,7 @@ import { Card, Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
 import { LocationPicker } from "./LocationPicker";
 import type { StudyLocation } from "@/lib/types";
+import { cssColour } from "@/lib/palette";
 
 type C = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -116,7 +117,7 @@ export function ManualLog({ courses }: { courses: C[] }) {
                 "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-all duration-[180ms]",
                 on ? "border-transparent text-white" : "border-n-200 text-n-600 hover:bg-n-50",
               )}
-              style={on ? { background: c.colour } : undefined}
+              style={on ? { background: cssColour(c.colour) } : undefined}
             >
               {c.shortName}
             </button>

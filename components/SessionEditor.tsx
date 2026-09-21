@@ -12,6 +12,7 @@ import { SubjectSplit } from "./SubjectSplit";
 import { LocationPicker } from "./LocationPicker";
 import { isStudyLocation, type StudyLocation } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
+import { cssColour } from "@/lib/palette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -102,7 +103,7 @@ export function SessionEditor({
     <Portal>
       <div
         {...backdropProps(onClose)}
-        className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-n-900/25 p-4 pt-[8vh] backdrop-blur-[2px]"
+        className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 pt-[8vh] backdrop-blur-[2px]"
       >
         <div
           role="dialog"
@@ -144,7 +145,7 @@ export function SessionEditor({
                         "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-all duration-[180ms]",
                         on ? "border-transparent text-white" : "border-n-200 text-n-600 hover:bg-n-50",
                       )}
-                      style={on ? { background: c.colour } : undefined}
+                      style={on ? { background: cssColour(c.colour) } : undefined}
                     >
                       {c.shortName}
                     </button>

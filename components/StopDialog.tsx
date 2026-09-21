@@ -11,6 +11,7 @@ import type { StudyLocation } from "@/lib/types";
 import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
 import { Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
+import { cssColour } from "@/lib/palette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
 type TaskOption = { id: string; title: string; courseId: string | null; kind: string };
@@ -144,7 +145,7 @@ export function StopDialog({
   return (
     <Portal>
     <div
-      className="animate-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-n-900/25 p-4 backdrop-blur-[2px] sm:items-center"
+      className="animate-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-[var(--scrim)] p-4 backdrop-blur-[2px] sm:items-center"
       {...backdropProps(onClose)}
       role="dialog"
       aria-modal="true"
@@ -192,13 +193,13 @@ export function StopDialog({
                         ? "border-transparent text-white"
                         : "border-n-200 text-n-600 hover:border-n-300 hover:bg-n-50",
                     )}
-                    style={on ? { background: c.colour } : undefined}
+                    style={on ? { background: cssColour(c.colour) } : undefined}
                     aria-pressed={on}
                   >
                     <span
                       aria-hidden
                       className="h-2 w-2 rounded-full"
-                      style={{ background: on ? "rgba(255,255,255,.85)" : c.colour }}
+                      style={{ background: on ? "rgba(255,255,255,.85)" : cssColour(c.colour) }}
                     />
                     {c.shortName}
                   </button>

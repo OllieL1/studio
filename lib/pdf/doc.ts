@@ -49,6 +49,10 @@ export function newDoc({
 
   doc.registerFont("body", path.join(FONT_DIR, "Inter-Regular.ttf"));
   doc.registerFont("bold", path.join(FONT_DIR, "Inter-SemiBold.ttf"));
+  doc.registerFont("italic", path.join(FONT_DIR, "Inter-Italic.ttf"));
+  // Roboto Mono, not JetBrains Mono: the latter's coding ligatures ("->", ">=")
+  // crash fontkit when it parses those glyphs, and notes are full of them.
+  doc.registerFont("mono", path.join(FONT_DIR, "RobotoMono-Regular.ttf"));
   doc.registerFont("display", path.join(FONT_DIR, "Fraunces-SemiBold.ttf"));
 
   const chunks: Buffer[] = [];

@@ -54,6 +54,106 @@
 :root {
   color-scheme: light;
   --dot: var(--color-n-200);
+  /* Scrims sit above the page, so they darken in both themes - they can't be
+     hung off the neutral ramp, which inverts. */
+  --scrim: rgb(26 23 20 / 0.25);
+  --scrim-strong: rgb(26 23 20 / 0.8);
+  --selection-bg: var(--color-rust-200);
+  --selection-fg: var(--color-rust-900);
+  --syn-keyword: #8A4430;
+  --syn-string: #3D6924;
+  --syn-number: #2D6FA0;
+  --syn-title: #A284C6;
+  --syn-attr: #93474F;
+
+  /* Course colours, indirected so dark mode can repoint them without any
+     component knowing. lib/palette.ts writes the var() references; the dark
+     values are the validated counterparts from the same file. */
+  --c-8a4430: #8A4430; /* Coaching */
+  --c-b28944: #B28944; /* PSI */
+  --c-3d6924: #3D6924; /* RMT */
+  --c-0c9f8b: #0C9F8B; /* Placement */
+  --c-2d6fa0: #2D6FA0; /* FP */
+  --c-a284c6: #A284C6; /* CP */
+  --c-a35760: #A35760; /* Project */
+  --c-a68e30: #A68E30; /* ASP */
+  --c-93474f: #93474F; /* ANS */
+  --c-4f63a0: #4F63A0; /* SPRE */
+}
+
+/* ── Dark ──────────────────────────────────────────────────────────────────
+   The neutral ramp is a surface-to-ink scale, not a light-to-dark one, so
+   inverting it here flips every `bg-n-0` / `text-n-700` in the app at once -
+   no component knows which theme it's in.
+
+   The theme is set on <html> by the server (app/layout.tsx), which is what
+   keeps the first paint from flashing white.                                */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-n-0: #1b1815;   /* cards and panels, a step above the page */
+  --color-n-25: #141210;  /* the page itself */
+  --color-n-50: #221f1a;  /* hover fills */
+  --color-n-100: #2c2822; /* hairlines and dividers */
+  --color-n-200: #3a352c; /* borders, scrollbar */
+  --color-n-300: #57503f;
+  --color-n-400: #8b8271; /* faint text */
+  --color-n-500: #a99f8d; /* muted text */
+  --color-n-600: #c3b9a6;
+  --color-n-700: #ddd4c4; /* body */
+  --color-n-800: #ece5d9; /* headings */
+  --color-n-900: #f7f2ea;
+
+  /* Rust keeps white legible on a filled button (4.6:1) while the lighter
+     steps carry links and accents against the page. */
+  --color-rust-50: #251a13;
+  --color-rust-100: #33221a;
+  --color-rust-200: #4a3124;
+  --color-rust-300: #6b452f;
+  --color-rust-400: #8d5735;
+  --color-rust-500: #a85f39;
+  --color-rust-600: #c07c50;
+  --color-rust-700: #d59a72;
+  --color-rust-800: #e7bb9a;
+  --color-rust-900: #f5dcc6;
+
+  /* Status colours lifted off the dark page; the softs become tints of it. */
+  --color-ok: #8fb583;
+  --color-ok-soft: #1e2a1b;
+  --color-warn: #d2ad5c;
+  --color-warn-soft: #2e2617;
+  --color-danger: #d1798c;
+  --color-danger-soft: #2f1b20;
+  --color-info: #86a8c8;
+  --color-info-soft: #1a232c;
+
+  --dot: #2f2a22;
+  --scrim: rgb(0 0 0 / 0.55);
+  --scrim-strong: rgb(0 0 0 / 0.85);
+  --selection-bg: #4a3124;
+  --selection-fg: #f5dcc6;
+
+  /* Shadows read as depth on white and as nothing on black, so they go
+     deeper and pick up a lit edge instead. */
+  --shadow-pop: 0 4px 18px -4px rgb(0 0 0 / 0.55);
+  --shadow-modal: 0 20px 56px -12px rgb(0 0 0 / 0.7);
+
+  --c-8a4430: #9D4F43;
+  --c-b28944: #B5893E;
+  --c-3d6924: #44732E;
+  --c-0c9f8b: #22A891;
+  --c-2d6fa0: #2770A2;
+  --c-a284c6: #A77BD0;
+  --c-a35760: #9D4F61;
+  --c-a68e30: #A18E30;
+  --c-93474f: #A25052;
+  --c-4f63a0: #6D84C9;
+
+  --syn-keyword: #C98A6E;
+  --syn-string: #94B884;
+  --syn-number: #7FA8CC;
+  --syn-title: #BFA3DC;
+  --syn-attr: #D08A95;
 }
 
 * {
@@ -91,8 +191,8 @@ body::before {
 }
 
 ::selection {
-  background: var(--color-rust-200);
-  color: var(--color-rust-900);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 /* ── Type roles ────────────────────────────────────────────────────────── */
@@ -169,6 +269,12 @@ body::before {
     opacity: 1;
   }
 }
+@keyframes slide-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in { animation: slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
 @keyframes scale-in {
   from {
     opacity: 0;
@@ -344,6 +450,7 @@ input[type="range"]::-webkit-slider-thumb:active {
   margin: 0 0 16px;
   padding: 14px 16px;
   background: var(--color-n-50);
+  /* On dark the fill alone is too close to the card; the border carries it. */
   border: 1px solid var(--color-n-100);
   border-radius: var(--radius-md);
   overflow-x: auto;
@@ -384,11 +491,11 @@ input[type="range"]::-webkit-slider-thumb:active {
 
 /* Syntax highlighting — the design system's own hues, not a stock theme. */
 .hljs-comment, .hljs-quote { color: var(--color-n-400); font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type { color: #8A4430; font-weight: 600; }
-.hljs-string, .hljs-regexp, .hljs-addition { color: #3D6924; }
-.hljs-number, .hljs-built_in, .hljs-symbol { color: #2D6FA0; }
-.hljs-title, .hljs-name, .hljs-section, .hljs-function .hljs-title { color: #A284C6; }
-.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #93474F; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type { color: var(--syn-keyword); font-weight: 600; }
+.hljs-string, .hljs-regexp, .hljs-addition { color: var(--syn-string); }
+.hljs-number, .hljs-built_in, .hljs-symbol { color: var(--syn-number); }
+.hljs-title, .hljs-name, .hljs-section, .hljs-function .hljs-title { color: var(--syn-title); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: var(--syn-attr); }
 .hljs-meta, .hljs-deletion { color: var(--color-n-500); }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong { font-weight: 700; }
@@ -438,4 +545,20 @@ input[type="range"]::-webkit-slider-thumb:active {
 .animate-eq {
   height: 3px;
   animation: eq 900ms ease-in-out infinite;
+}
+
+/* ── Maths ─────────────────────────────────────────────────────────────────
+   KaTeX renders to MathML, which browsers draw natively - no stylesheet and
+   no web fonts to ship, which matters for running offline from the stick. */
+.prose-notes .md-math {
+  margin: 0.9em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.prose-notes math {
+  font-size: 1.06em;
+}
+.prose-notes .md-math-error {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
 }

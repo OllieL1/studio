@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatValue, type FormatKey } from "@/lib/format";
+import { cssColour } from "@/lib/palette";
 
 /**
  * Horizontal bars, direct-labelled.
@@ -52,7 +53,7 @@ export function HBarChart({
                 <span
                   aria-hidden
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: r.colour }}
+                  style={{ background: cssColour(r.colour) }}
                 />
               )}
               <span className="truncate">{r.label}</span>
@@ -67,7 +68,7 @@ export function HBarChart({
               className="bar-fill h-full rounded-full transition-opacity duration-[120ms]"
               style={{
                 width: `${(r.value / max) * 100}%`,
-                background: r.colour,
+                background: cssColour(r.colour),
                 opacity: hover === null || hover === i ? 1 : 0.45,
               }}
             />

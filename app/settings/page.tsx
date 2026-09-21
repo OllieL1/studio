@@ -4,6 +4,8 @@ import { Card, Eyebrow } from "@/components/ui";
 import { GooglePanel } from "@/components/GooglePanel";
 import { SpotifyPanel } from "@/components/SpotifyPanel";
 import { BackupPanel } from "@/components/BackupPanel";
+import { ThemePanel } from "@/components/ThemePanel";
+import { getPreferences } from "@/lib/preferences";
 import { backupDir, readBackupMeta } from "@/lib/backup";
 import { hasHistoryScope, isSpotifyConfigured } from "@/lib/spotify";
 
@@ -39,6 +41,7 @@ export default async function SettingsPage({
   const configured = isGoogleConfigured();
   const calendars = auth ? await listCalendars() : [];
   const linked = await db.task.count({ where: { calendarEventId: { not: null } } });
+  const prefs = await getPreferences();
 
   return (
     <div className="space-y-6">
@@ -48,6 +51,11 @@ export default async function SettingsPage({
           Settings
         </h1>
       </div>
+
+      <Card className="p-5">
+        <Eyebrow className="mb-3">Appearance</Eyebrow>
+        <ThemePanel darkFrom={prefs.darkFrom} darkTo={prefs.darkTo} />
+      </Card>
 
       {google && MESSAGES[google] && (
         <div

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setRevisionMode } from "@/app/actions";
 import { ProgressBar } from "./ui";
+import { cssColour } from "@/lib/palette";
 
 /**
  * Mark a course for revision.
@@ -58,7 +59,7 @@ export function RevisionToggle({
                 onClick={() => apply(true)}
                 disabled={pending}
                 className="rounded-md px-2.5 py-1.5 text-[12px] font-semibold text-white transition-opacity duration-[120ms] disabled:opacity-50"
-                style={{ background: colour }}
+                style={{ background: cssColour(colour) }}
               >
                 {pending ? "Working…" : "Mark for revision"}
               </button>

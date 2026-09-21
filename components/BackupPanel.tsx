@@ -13,7 +13,7 @@ export function BackupPanel({
 }: {
   live: boolean;
   dir: string;
-  last: { at: string; sessions: number; bytes: number } | null;
+  last: { at: string; sessions: number; bytes: number; files?: number } | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -38,7 +38,13 @@ export function BackupPanel({
           </p>
           <p className="mt-0.5 text-[12px] text-n-500">
             {last
-              ? `${last.sessions} session${last.sessions === 1 ? "" : "s"} · ${(last.bytes / 1024).toFixed(0)} KB`
+              ? [
+                  `${last.sessions} session${last.sessions === 1 ? "" : "s"}`,
+                  `${(last.bytes / 1024).toFixed(0)} KB`,
+                  last.files ? `${last.files} attached file${last.files === 1 ? "" : "s"}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : "One is written automatically each time you log a session."}
           </p>
           <p className="font-num mt-2 break-all text-[11px] text-n-400">{dir}</p>

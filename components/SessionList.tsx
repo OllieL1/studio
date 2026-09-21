@@ -8,6 +8,7 @@ import { Card, Eyebrow } from "./ui";
 import { SessionEditor } from "./SessionEditor";
 import { locationLabel } from "@/lib/types";
 import { focusColour } from "@/lib/focus";
+import { cssColour } from "@/lib/palette";
 
 type S = {
   id: string;
@@ -65,7 +66,7 @@ export function SessionList({ sessions, courses }: { sessions: S[]; courses: Cou
                       {fmtHM(new Date(s.startedAt))}
                     </span>
                     {s.courses.map((c) => (
-                      <span key={c.id} className="font-medium" style={{ color: c.colour }}>
+                      <span key={c.id} className="font-medium" style={{ color: cssColour(c.colour) }}>
                         {c.shortName}
                         {/* Only worth showing the slice when it was shared. */}
                         {s.courses.length > 1 && (

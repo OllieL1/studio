@@ -182,9 +182,10 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
 
 ## Tidy-up (20 Sep 2026)
 
-- **Research and schedule PDFs** are built programmatically with `pdfkit`
-  (`lib/pdf/`, served from `/api/project/papers/pdf` and
-  `/api/project/schedule/pdf`), not printed from a web page. Continuous
+- **Every export is a built PDF** (`lib/pdf/`, served from
+  `/api/project/papers/pdf`, `/api/project/schedule/pdf`, `/api/stats/pdf` and
+  `/api/lectures/pdf`), not printed from a web page. Nothing uses the browser's
+  print engine any more. Continuous
   layout, an entry never split across a page break, clickable DOI/arXiv links,
   notes rendered from markdown with the date they were written (`Paper.notesAt`).
   Inter and Fraunces are committed under `assets/fonts/` and traced into the
@@ -192,7 +193,19 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
   landscape: an outline band of headline numbers, the runway drawn from the same
   timeline maths as the screen (`lib/project.ts`, so paper and app can't drift),
   then every item week by week. Lecture notes still export through the browser's
-  print engine - that one is a markdown document, not a drawn layout.
+  bound document: one lecture, or a whole course with a cover, a contents list
+  with real page numbers (the body is laid out twice - once to find where each
+  lecture lands) and one lecture per page. `lib/pdf/markdown.ts` draws the notes:
+  headings, lists, quotes, fenced code, tables, rules and inline
+  bold/italic/code/links. Images are skipped by design - Studio runs offline.
+  Bundled fonts: Inter (regular/semibold/italic), Fraunces, Roboto Mono. Roboto
+  Mono rather than the UI's JetBrains Mono because fontkit crashes laying out
+  its coding ligatures - "->" in a code block killed the whole export.
+  The stats report follows the page's own order and honours the range picker;
+  its charts are drawn by `lib/pdf/charts.ts`, which follows the same rules as
+  the on-screen charts: recessive axes, thin marks, colour for identity only,
+  and selective direct labels (the peak, the series ends) rather than a number
+  on every bar - print has no hover to fall back on.
 - **Session location** (`Session.location`, plus `locationNote` for "Other"):
   coffee shop / library / flat / home / campus / other. The stop dialog
   pre-selects wherever the last session was. Stats gain a "Where you work"
@@ -203,3 +216,75 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
   stay honest.
 - **Music variety** already counted a track's primary artist only, so a song
   credited "Masego, Don Toliver" has always counted as Masego. Left as it was.
+
+
+---
+
+## Lecture editor (20 Sep 2026)
+
+- **Live editing, not write/preview.** A note is one markdown string split into
+  blocks (`lib/editor/blocks.ts`). The block the caret is in is a plain textarea
+  of raw markdown; every other block shows rendered HTML. Rendering goes through
+  `/api/render`, the same renderer as the PDF, so editor, export and print can't
+  drift. Only the block you just left re-renders, so typing never waits.
+- **The blocks array lives in a ref as well as state.** Blur, Enter and the
+  insert menu all fire before React re-renders; reading state in those handlers
+  resurrects stale text (an emptied list item, a duplicated paste).
+- **The active textarea is uncontrolled**, with `key` for identity: a controlled
+  value loses characters when typing outruns the state round trip. Programmatic
+  edits write to the DOM and then sync state, never the other way round.
+- **`[` opens the insert menu** - headings, lists, checklists, quote, code,
+  table, divider, link, callout. It owns Enter/arrows/Escape and stops
+  propagation, or the same Enter also splits the block underneath.
+- **Properties at the top**: completion, handwritten notebook reference, and
+  attached PDFs. **⌘.** is minimal mode (a restyle of the editor's own
+  container - rendering it elsewhere would remount it and lose the session),
+  **⌘/** raw markdown, **⌘⇧T** the time panel (read-only; the global timer is
+  still the only way to log time).
+- **Attachments** (`Attachment`) are PDFs stored beside the database in
+  `data/uploads`, never in it, with generated names. The local backup mirrors
+  that folder, since VACUUM only covers the database.
+
+### Editor, second pass (20 Sep 2026)
+
+- **Live is the default and says so**: a Live / Markdown segmented control,
+  rather than a button whose label was the mode you weren't in. In focus mode
+  it sits in the top bar with the save state, Time, PDF and Exit.
+- **Equations**: `$…$` and `$$…$$`, rendered by KaTeX to **MathML** - browsers
+  draw it natively, so there's no stylesheet and no web fonts to ship offline.
+  Bad LaTeX shows its source in red instead of breaking the note. `$5 and $6`
+  is not maths. **In the PDFs, equations are typeset**: MathJax renders the
+  LaTeX to SVG paths and `svg-to-pdfkit` draws them (`lib/pdf/math.ts`), inline
+  as well as display, with unparseable LaTeX falling back to its source in mono.
+  A line containing inline maths is laid out by hand, because pdfkit's text flow
+  can't carry a drawing along with the words. Size goes onto the SVG in user
+  units - stated in "pt" it gets re-scaled by 4/3 and collides with the next
+  word. MathJax is CommonJS and loaded via createRequire, so tracing can't see
+  it: `next.config.ts` includes `mathjax-full/js` and excludes its 23MB es5
+  build.
+- **Tables edit as a grid** (`lib/editor/tables.ts` + `TableEditor`): Tab walks
+  the cells and appends a row off the end, ⌘↵ leaves, and each column has
+  alignment and add/delete. The grid holds its own state - serialising trims
+  cells, so round-tripping every keystroke ate the space in "n log n".
+- **Selecting more than one block**: ⌘A takes the block then the whole note,
+  Shift+↑/↓ and Shift+click extend, and a selection can be copied (as markdown),
+  cut or deleted. Shift-click is caught on mousedown, because by click time the
+  block being edited has blurred and the anchor is gone.
+- **Block-level inserts start their own block** when the line already has text:
+  a table glued onto the end of a paragraph parses as one malformed table.
+- Shortcut keys are matched case-insensitively (Caps Lock reports "C").
+
+
+---
+
+## Dark mode (21 Sep 2026)
+
+- **Auto by default**: dark 21:00-07:00, both hours editable in Settings, plus
+  fixed Light and Dark. Stored in `Preference` (one row), so the setting follows
+  the stick between the Mac and the ThinkPad.
+- **Resolved on the server**, which is what prevents the flash - see DESIGN.md.
+  A client watcher flips a tab that's open across the boundary, and re-checks on
+  visibilitychange because a sleeping laptop wakes with a stale timer.
+- **One ramp, two themes**: the neutral scale inverts, so components didn't need
+  theme-aware markup. Course colours go through CSS variables (`cssColour`),
+  with a dark palette validated by `scripts/palette/`.
