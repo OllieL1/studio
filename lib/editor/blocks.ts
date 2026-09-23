@@ -8,7 +8,9 @@
  * of the note.
  */
 
-export type BlockKind = "paragraph" | "heading" | "list" | "quote" | "code" | "table" | "rule" | "math";
+export type BlockKind =
+  | "paragraph" | "heading" | "list" | "quote" | "code"
+  | "table" | "rule" | "math" | "callout" | "columns";
 
 export type Block = {
   id: string;
@@ -24,6 +26,11 @@ const RULE = /^\s*([-*_])\s*(\1\s*){2,}$/;
 const TABLE_ROW = /\|/;
 const TABLE_SEP = /^\s*\|?[\s:|-]*-[\s:|-]*\|/;
 const MATH = /^\s*\$\$/;
+/** `::: columns` … `:::`, with `|||` between the two sides. */
+const CONTAINER = /^\s*:::\s*(\w+)?/;
+export const COLUMN_SPLIT = "|||";
+/** Obsidian-style callout: `> [!note]`, optionally with a title after it. */
+const CALLOUT = /^\s*>\s*\[!(\w+)\]\s*(.*)$/;
 
 let counter = 0;
 /** Ids are per-session and never persisted; React just needs them stable. */
@@ -31,6 +38,8 @@ export const newId = () => `b${++counter}`;
 
 export function classify(text: string): BlockKind {
   const first = text.split("\n")[0] ?? "";
+  if (CONTAINER.test(first)) return "columns";
+  if (CALLOUT.test(first)) return "callout";
   if (FENCE.test(first)) return "code";
   if (MATH.test(first)) return "math";
   if (RULE.test(first)) return "rule";
@@ -58,6 +67,19 @@ export function splitBlocks(md: string): Block[] {
   while (i < lines.length) {
     if (!lines[i].trim()) {
       i++;
+      continue;
+    }
+
+    // A container (`::: columns`) runs to its closing `:::`.
+    if (CONTAINER.test(lines[i])) {
+      const buf = [lines[i++]];
+      while (i < lines.length) {
+        buf.push(lines[i]);
+        const closed = lines[i].trim() === ":::";
+        i++;
+        if (closed) break;
+      }
+      out.push(block(buf.join("\n")));
       continue;
     }
 
@@ -105,9 +127,10 @@ export function splitBlocks(md: string): Block[] {
     const buf: string[] = [];
     const sameRun = (line: string) => {
       if (!line.trim()) return false;
-      if (FENCE.test(line) || HEADING.test(line) || RULE.test(line) || MATH.test(line)) return false;
+      if (FENCE.test(line) || HEADING.test(line) || RULE.test(line) || MATH.test(line) || CONTAINER.test(line)) return false;
+      if (CALLOUT.test(line)) return false; // a second callout starts its own block
       if (kind === "list") return LIST.test(line) || /^\s+\S/.test(line);
-      if (kind === "quote") return QUOTE.test(line);
+      if (kind === "quote" || kind === "callout") return QUOTE.test(line);
       if (kind === "table") return TABLE_ROW.test(line);
       // A paragraph stops when the next line starts something else.
       return !LIST.test(line) && !QUOTE.test(line);
@@ -158,6 +181,50 @@ export function listContinuation(text: string, caret: number): { insert: string 
 
   const next = /^\d/.test(marker) ? `${parseInt(marker, 10) + 1}${marker.slice(-1)}` : marker;
   return { insert: `\n${indent}${next}${space}${task ? "[ ] " : ""}` };
+}
+
+const INDENT = "  ";
+
+/**
+ * Tab and Shift-Tab over the selected lines.
+ *
+ * Indenting by hand with spaces is the single most annoying thing about
+ * writing nested bullets, so Tab shifts whole lines rather than inserting a
+ * character. Outdent removes up to one indent's worth of leading space.
+ */
+export function indentLines(
+  text: string,
+  selectionStart: number,
+  selectionEnd: number,
+  outdent = false,
+): { text: string; start: number; end: number } {
+  const from = text.lastIndexOf("\n", selectionStart - 1) + 1;
+  const toEnd = text.indexOf("\n", selectionEnd);
+  const to = toEnd === -1 ? text.length : toEnd;
+
+  const before = text.slice(0, from);
+  const after = text.slice(to);
+  const lines = text.slice(from, to).split("\n");
+
+  let firstDelta = 0;
+  let total = 0;
+  const shifted = lines.map((line, i) => {
+    if (outdent) {
+      const lead = /^[ \t]{1,2}/.exec(line)?.[0] ?? "";
+      if (i === 0) firstDelta = -lead.length;
+      total -= lead.length;
+      return line.slice(lead.length);
+    }
+    if (i === 0) firstDelta = INDENT.length;
+    total += INDENT.length;
+    return INDENT + line;
+  });
+
+  return {
+    text: before + shifted.join("\n") + after,
+    start: Math.max(from, selectionStart + firstDelta),
+    end: Math.max(from, selectionEnd + total),
+  };
 }
 
 /** Which line of a textarea the caret sits on, and how many there are. */
@@ -223,6 +290,44 @@ export function sourceOffset(md: string, visibleTarget: number): number {
   return md.length;
 }
 
+/* ── Columns and callouts ────────────────────────────────────────────────── */
+
+/** The two sides of a `::: columns` block, as markdown. */
+export function parseColumns(text: string): [string, string] {
+  const lines = text.split("\n");
+  const open = lines.findIndex((l) => CONTAINER.test(l));
+  const body = lines.slice(open + 1);
+  // Drop the closing fence if it's there.
+  if (body.length && body[body.length - 1].trim() === ":::") body.pop();
+
+  const at = body.findIndex((l) => l.trim() === COLUMN_SPLIT);
+  if (at === -1) return [body.join("\n").trim(), ""];
+  return [body.slice(0, at).join("\n").trim(), body.slice(at + 1).join("\n").trim()];
+}
+
+export function serializeColumns(left: string, right: string): string {
+  return [`::: columns`, left.trim(), COLUMN_SPLIT, right.trim(), ":::"].join("\n");
+}
+
+/** A callout's title (may be empty) and its body, as markdown. */
+export function parseCallout(text: string): { title: string; body: string } {
+  const lines = text.split("\n");
+  const head = CALLOUT.exec(lines[0]);
+  const title = head?.[2]?.trim() ?? "";
+  const body = lines
+    .slice(1)
+    .map((l) => l.replace(/^\s*>\s?/, ""))
+    .join("\n")
+    .trim();
+  return { title, body };
+}
+
+export function serializeCallout(title: string, body: string): string {
+  const head = `> [!note]${title.trim() ? ` ${title.trim()}` : ""}`;
+  const rest = body.trim() ? body.trim().split("\n").map((l) => `> ${l}`.trimEnd()) : [];
+  return [head, ...rest].join("\n");
+}
+
 /* ── The insert menu ─────────────────────────────────────────────────────── */
 
 export type Insert = {
@@ -238,8 +343,11 @@ export type Insert = {
 };
 
 export const INSERTS: Insert[] = [
-  { block: true as const, key: "h2", label: "Heading", hint: "Section title", terms: ["h2", "title", "section"], snippet: "## |" },
-  { block: true as const, key: "h3", label: "Subheading", hint: "Smaller title", terms: ["h3", "sub"], snippet: "### |" },
+  // The levels skip a step each time so the three sizes are obviously apart:
+  // "##" and "###" render too alike to be worth separate menu entries.
+  { block: true as const, key: "h1", label: "Heading 1", hint: "Biggest · #", terms: ["h1", "title", "section"], snippet: "# |" },
+  { block: true as const, key: "h2", label: "Heading 2", hint: "Middle · ###", terms: ["h2", "sub", "section"], snippet: "### |" },
+  { block: true as const, key: "h3", label: "Heading 3", hint: "Smallest · ######", terms: ["h3", "sub", "minor"], snippet: "###### |" },
   { block: true as const, key: "bullet", label: "Bullet list", hint: "- item", terms: ["ul", "list", "point"], snippet: "- |" },
   { block: true as const, key: "number", label: "Numbered list", hint: "1. item", terms: ["ol", "ordered", "step"], snippet: "1. |" },
   { block: true as const, key: "todo", label: "Checklist", hint: "- [ ] task", terms: ["task", "check", "todo"], snippet: "- [ ] |" },
@@ -260,21 +368,69 @@ export const INSERTS: Insert[] = [
   { key: "link", label: "Link", hint: "[text](url)", terms: ["url", "href"], snippet: "[|]()" },
   { key: "bold", label: "Bold", hint: "**text**", terms: ["strong", "b"], snippet: "**|**" },
   { key: "italic", label: "Italic", hint: "*text*", terms: ["em", "i"], snippet: "*|*" },
-  { block: true as const, key: "callout", label: "Callout", hint: "A highlighted note", terms: ["note", "aside", "warning"], snippet: "> **Note** |" },
+  { block: true as const, key: "callout", label: "Callout", hint: "A highlighted box", terms: ["note", "aside", "highlight", "warning"], snippet: "> [!note] |" },
+  {
+    block: true as const,
+    key: "columns",
+    label: "Two columns",
+    hint: "Side by side",
+    // "2" as well as "two" - it's what you reach for in a hurry.
+    terms: ["column", "2", "2col", "split", "side"],
+    snippet: `::: columns\n|\n${COLUMN_SPLIT}\n\n:::`,
+  },
 ];
 
-/** Filter the insert menu by what's been typed after the trigger. */
+/** Digits and their words are interchangeable when searching the menu. */
+const NUMBER_WORDS: [digit: string, word: string][] = [
+  ["1", "one"], ["2", "two"], ["3", "three"], ["4", "four"], ["5", "five"],
+];
+
+/** "2 col" and "two col" are the same search. */
+function numberVariants(q: string): string[] {
+  const out = new Set([q]);
+  for (const [digit, word] of NUMBER_WORDS) {
+    if (q.includes(digit)) out.add(q.replaceAll(digit, word));
+    if (q.includes(word)) out.add(q.replaceAll(word, digit));
+  }
+  return [...out];
+}
+
+/**
+ * Filter the insert menu by what's been typed after the trigger.
+ *
+ * Three rules earn their keep. A word in an entry's own label beats a keyword
+ * borrowed by another entry, so "columns" offers Two columns rather than
+ * Table (which lists "columns" among its keywords). A bare number is treated
+ * as a keyword only, so "2" means two columns rather than the "2" sitting in
+ * the label "Heading 2". And digits stand in for their words throughout, so
+ * "2 col", "2col" and "two col" all find the same thing.
+ */
 export function filterInserts(query: string): Insert[] {
   const q = query.trim().toLowerCase();
   if (!q) return INSERTS;
-  const score = (i: Insert) => {
+
+  const scoreOne = (i: Insert, term: string) => {
     const label = i.label.toLowerCase();
-    if (label.startsWith(q)) return 3;
-    if (i.terms.some((t) => t.startsWith(q))) return 2;
-    if (label.includes(q) || i.terms.some((t) => t.includes(q))) return 1;
+    const words = label.split(/\s+/);
+    const numeric = /^\d+$/.test(term);
+
+    if (label === term) return 6;
+    if (!numeric && words.includes(term)) return 5.5;
+    if (i.terms.includes(term)) return 5;
+    if (label.startsWith(term)) return 4;
+    if (!numeric && words.some((w) => w.startsWith(term))) return 3;
+    if (i.terms.some((t) => t.startsWith(term))) return 2;
+    if (label.includes(term) || i.terms.some((t) => t.includes(term))) return 1;
     return 0;
   };
-  return INSERTS.filter((i) => score(i) > 0).sort((a, b) => score(b) - score(a));
+
+  const variants = numberVariants(q);
+  const score = (i: Insert) => Math.max(...variants.map((v) => scoreOne(i, v)));
+
+  return INSERTS.map((i) => ({ i, s: score(i) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .map((x) => x.i);
 }
 
 /**

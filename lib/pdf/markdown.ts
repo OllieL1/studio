@@ -1,4 +1,4 @@
-import { FAINT, INK, MARGIN, MUTED, RULE, RUST } from "./doc";
+import { newDoc, FAINT, INK, MARGIN, MUTED, RULE, RUST, CALLOUT_BG } from "./doc";
 import { ascent, drawMath, measureMath } from "./math";
 
 /**
@@ -87,6 +87,29 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
           doc.fillColor(INK);
         }
       }
+      continue;
+    }
+
+    // ── Callout: `> [!note]`, drawn as a tinted box around its content.
+    const callout = /^\s*>\s*\[!(\w+)\][ \t]*(.*)$/.exec(line);
+    if (callout) {
+      const body: string[] = [];
+      i++;
+      while (i < lines.length && /^\s*>/.test(lines[i])) body.push(lines[i++].replace(/^\s*>\s?/, ""));
+      i--;
+      drawCallout(doc, callout[2].trim(), body.join("\n").trim(), style);
+      continue;
+    }
+
+    // ── Two columns: `::: columns` … `|||` … `:::`.
+    if (/^\s*:::\s*columns/.test(line)) {
+      const body: string[] = [];
+      i++;
+      while (i < lines.length && lines[i].trim() !== ":::") body.push(lines[i++]);
+      const at = body.findIndex((l) => l.trim() === "|||");
+      const left = (at === -1 ? body : body.slice(0, at)).join("\n").trim();
+      const right = at === -1 ? "" : body.slice(at + 1).join("\n").trim();
+      drawColumns(doc, left, right, style);
       continue;
     }
 
@@ -293,6 +316,85 @@ function richLine(doc: PDFKit.PDFDocument, parts: Inline[], style: MdStyle & { c
   doc.x = style.x;
   doc.y = y + lineHeight;
   doc.fillColor(INK);
+}
+
+/**
+ * A callout, drawn twice: once to measure how tall its content is, then for
+ * real on top of the box. pdfkit has no way to draw a background behind
+ * content that hasn't been laid out yet.
+ */
+function drawCallout(doc: PDFKit.PDFDocument, title: string, body: string, style: MdStyle) {
+  const pad = 9;
+  const inner = { ...style, x: style.x + pad + 3, width: style.width - pad * 2 - 3 };
+
+  const height = measure(inner.width, (probe, width) => {
+    if (title) {
+      probe.font("bold").fontSize(style.size).fillColor(INK);
+      probe.text(title, probe.x, probe.y, { width });
+    }
+    if (body) renderMarkdown(probe, body, { size: style.size, x: probe.x, width });
+  });
+
+  style.ensure?.(height + pad * 2 + 8);
+  doc.moveDown(0.3);
+  const top = doc.y;
+
+  doc.roundedRect(style.x, top, style.width, height + pad * 2, 6)
+    .fillColor(CALLOUT_BG).fill();
+  doc.rect(style.x, top, 2.5, height + pad * 2).fillColor(RUST).fill();
+
+  doc.y = top + pad;
+  if (title) {
+    doc.font("bold").fontSize(style.size).fillColor(RUST);
+    doc.text(title, inner.x, doc.y, { width: inner.width });
+  }
+  if (body) renderMarkdown(doc, body, { ...inner, ensure: undefined });
+  doc.y = top + height + pad * 2 + 6;
+  doc.fillColor(INK);
+}
+
+/** Two columns side by side; the block ends below whichever is taller. */
+function drawColumns(doc: PDFKit.PDFDocument, left: string, right: string, style: MdStyle) {
+  const gap = 18;
+  const width = (style.width - gap) / 2;
+
+  const tallest = Math.max(
+    measure(width, (probe, w) => renderMarkdown(probe, left, { size: style.size, x: probe.x, width: w })),
+    measure(width, (probe, w) => renderMarkdown(probe, right, { size: style.size, x: probe.x, width: w })),
+  );
+
+  // Measured on a throwaway document, so a tall pair breaks the page first
+  // rather than splitting one column across the fold.
+  style.ensure?.(tallest + 8);
+  const start = doc.y;
+
+  doc.y = start;
+  renderMarkdown(doc, left, { ...style, x: style.x, width, ensure: undefined });
+  const leftEnd = doc.y;
+
+  doc.y = start;
+  renderMarkdown(doc, right, { ...style, x: style.x + width + gap, width, ensure: undefined });
+
+  doc.y = Math.max(leftEnd, doc.y) + 4;
+  doc.x = style.x;
+}
+
+/**
+ * How tall something would be, without drawing it.
+ *
+ * Measuring on the real document means adding a page and taking it away
+ * again, which leaves pdfkit's page buffer and its page tree disagreeing -
+ * the columns ended up on their own pages. So measurement happens in a
+ * throwaway document that's never written out.
+ */
+let scratch: PDFKit.PDFDocument | null = null;
+
+function measure(width: number, draw: (doc: PDFKit.PDFDocument, width: number) => void): number {
+  if (!scratch) scratch = newDoc({ title: "measure", subject: "measure", createdAt: new Date() }).doc;
+  scratch.addPage();
+  const from = scratch.y;
+  draw(scratch, width);
+  return Math.max(0, scratch.y - from);
 }
 
 /* ── Blocks ──────────────────────────────────────────────────────────────── */

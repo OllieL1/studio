@@ -501,6 +501,18 @@ export async function updateSession(input: {
 }
 
 
+/** A course's Moodle page. An empty value clears it. */
+export async function updateMoodleUrl(courseId: string, url: string) {
+  const trimmed = url.trim();
+  if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+    return { ok: false as const, error: "Needs to start with http:// or https://" };
+  }
+  await db.course.update({ where: { id: courseId }, data: { moodleUrl: trimmed || null } });
+  refresh();
+  return { ok: true as const };
+}
+
+
 /* ── Appearance ────────────────────────────────────────────────────────── */
 
 /** Light, dark, or dark on a schedule - and when that schedule runs. */

@@ -6,9 +6,14 @@ import {
   serializeTable, setAlign, setCell, type Align, type Table,
 } from "@/lib/editor/tables";
 import { clsx } from "@/lib/clsx";
+import { InlineMarkdown } from "@/lib/editor/inline";
 
 /**
  * A table edited as a grid rather than as pipes.
+ *
+ * A cell shows its markdown rendered until you click into it, so **bold**,
+ * `code` and links read as formatting in the grid, the same as they do once
+ * the block is left.
  *
  * Every keystroke writes the markdown back out, so the note's source stays the
  * single truth and switching to raw markdown shows exactly this table. Tab
@@ -19,12 +24,15 @@ export function TableEditor({
   markdown,
   onChange,
   onExit,
+  onDelete,
   autoFocus,
 }: {
   markdown: string;
   onChange: (markdown: string) => void;
   /** Leave the table: `after` continues below it. */
   onExit: (where: "after" | "before") => void;
+  /** Remove the whole block. */
+  onDelete: () => void;
   autoFocus?: boolean;
 }) {
   const blank = useMemo<Table>(() => ({ header: [""], align: ["left"], rows: [[""]] }), []);
@@ -63,8 +71,22 @@ export function TableEditor({
     el?.setSelectionRange(el.value.length, el.value.length);
   }, [focus, table.rows.length, table.header.length]);
 
+  /** Anything typed in it is worth one question before it goes. */
+  const remove = () => {
+    const hasContent = [...table.header, ...table.rows.flat()].some((c) => c.trim());
+    if (hasContent && !confirm("Delete this table?")) return;
+    onDelete();
+  };
+
   const onCellKey = (e: React.KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
     const el = e.currentTarget;
+
+    // ⌘⌫ removes the table itself, not the cell's text.
+    if ((e.metaKey || e.ctrlKey) && (e.key === "Backspace" || e.key === "Delete")) {
+      e.preventDefault();
+      remove();
+      return;
+    }
 
     if (e.key === "Tab") {
       e.preventDefault();
@@ -120,22 +142,45 @@ export function TableEditor({
     }
   };
 
-  const cell = (value: string, row: number, col: number) => (
-    <input
-      data-cell={`${row}:${col}`}
-      value={value}
-      onChange={(e) => apply(setCell(table, row, col, e.target.value))}
-      onFocus={() => setFocus({ row, col })}
-      onKeyDown={(e) => onCellKey(e, row, col)}
-      className={clsx(
-        "w-full bg-transparent px-2 py-1.5 text-[13.5px] outline-none",
-        row === -1 ? "font-semibold text-n-800" : "text-n-700",
-        table.align[col] === "center" && "text-center",
-        table.align[col] === "right" && "text-right",
-      )}
-      placeholder={row === -1 ? "Column" : undefined}
-    />
-  );
+  const cell = (value: string, row: number, col: number) => {
+    const editing = focus?.row === row && focus?.col === col;
+    const shared = clsx(
+      "w-full px-2 py-1.5 text-[13.5px]",
+      row === -1 ? "font-semibold text-n-800" : "text-n-700",
+      table.align[col] === "center" && "text-center",
+      table.align[col] === "right" && "text-right",
+    );
+
+    if (!editing) {
+      return (
+        <button
+          type="button"
+          data-cell={`${row}:${col}`}
+          onClick={() => setFocus({ row, col })}
+          className={clsx(shared, "block min-h-[30px] cursor-text text-left hover:bg-n-25")}
+        >
+          {value ? <InlineMarkdown text={value} /> : <span className="text-n-300">{row === -1 ? "Column" : ""}</span>}
+        </button>
+      );
+    }
+
+    return (
+      <input
+        data-cell={`${row}:${col}`}
+        autoFocus
+        value={value}
+        onChange={(e) => apply(setCell(table, row, col, e.target.value))}
+        onFocus={() => setFocus({ row, col })}
+        onBlur={(e) => {
+          // Leaving for another cell is handled by that cell's focus.
+          if (!e.relatedTarget?.closest("[data-cell]")) setFocus(null);
+        }}
+        onKeyDown={(e) => onCellKey(e, row, col)}
+        className={clsx(shared, "bg-transparent outline-none")}
+        placeholder={row === -1 ? "Column" : undefined}
+      />
+    );
+  };
 
   return (
     <div className="group/table my-1 overflow-hidden rounded-md border border-n-200">
@@ -159,10 +204,22 @@ export function TableEditor({
         </thead>
         <tbody>
           {table.rows.map((row, r) => (
-            <tr key={r} className="border-b border-n-100 last:border-b-0">
+            <tr key={r} className="group/row border-b border-n-100 last:border-b-0">
               {row.map((c, col) => (
-                <td key={col} className="border-r border-n-100 p-0 last:border-r-0">
+                <td key={col} className="relative border-r border-n-100 p-0 last:border-r-0">
                   {cell(c, r, col)}
+                  {col === row.length - 1 && (
+                    <RowMenu
+                      onAdd={() => {
+                        apply(addRow(table, r));
+                        setFocus({ row: r + 1, col: 0 });
+                      }}
+                      onRemove={() => {
+                        apply(removeRow(table, r));
+                        setFocus(null);
+                      }}
+                    />
+                  )}
                 </td>
               ))}
             </tr>
@@ -186,8 +243,41 @@ export function TableEditor({
         >
           + Column
         </button>
-        <span className="ml-auto text-[10.5px] text-n-400">Tab moves · ⌘↵ leaves the table</span>
+        <button
+          onClick={remove}
+          className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-n-500 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger"
+        >
+          Delete table
+        </button>
+        <span className="ml-auto text-[10.5px] text-n-400">Tab moves · ⌘↵ leaves · ⌘⌫ deletes</span>
       </div>
+    </div>
+  );
+}
+
+/** Add or delete this row. Sits at the end of the row, on hover. */
+function RowMenu({ onAdd, onRemove }: { onAdd: () => void; onRemove: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Row options"
+        className="rounded p-1 text-n-300 opacity-0 transition-all duration-[120ms] hover:bg-n-100 hover:text-n-700 focus-visible:opacity-100 group-hover/row:opacity-100"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+          <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="animate-scale-in absolute right-0 top-full z-20 mt-1 w-[140px] rounded-lg border border-n-200 bg-n-0 p-1 shadow-[var(--shadow-pop)]">
+            <MenuItem label="Add row below" onClick={() => { onAdd(); setOpen(false); }} />
+            <MenuItem label="Delete row" danger onClick={() => { onRemove(); setOpen(false); }} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

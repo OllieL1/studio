@@ -48,11 +48,11 @@ export async function TaskTime({
 
   return (
     <>
-      <Card className="p-5">
+      <Card className="@container p-5">
         <div className="mb-4 flex items-baseline justify-between gap-3">
           <Eyebrow>Time tracked</Eyebrow>
           {metrics.hasSharedSessions && (
-            <span className="text-[11px] text-n-400">Sessions tagged to several tasks are shared evenly</span>
+            <span className="hidden text-[11px] text-n-400 @md:inline">Sessions tagged to several tasks are shared evenly</span>
           )}
         </div>
 
@@ -60,7 +60,7 @@ export async function TaskTime({
           <EmptyState title="No time logged yet." body={emptyHint} />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-5 @md:grid-cols-4">
               <Stat label="Total" value={fmtDuration(metrics.minutes)} sub={`${metrics.sessions} session${metrics.sessions === 1 ? "" : "s"}`} />
               <Stat label="Per session" value={fmtDuration(metrics.avgSessionMinutes ?? 0)} sub={`${metrics.activeDays} day${metrics.activeDays === 1 ? "" : "s"} active`} />
               <Stat

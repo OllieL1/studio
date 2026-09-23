@@ -1,5 +1,73 @@
 # Enhancement List - Check Off as we go
 
+23/09
+
+- Some real usability enhancements today after I've been using the site a fair bit 
+[x] The markdown editor needs to support tab/shift tab for an indent i.e. for a bullet. Currently you are forced to use spaces to make nested bullets.
+[x] 2 column support for the markdown editor. I.e. one of the options is to create 2 columns (in the [ menu)
+[x] Markdown formatting within table cells. It should not just be restricted to plain text in the table cells.
+[x] You should be able to delete table rows or columns. Currently you can only add but you cannot delete. 
+[x] Dual view mode - pull up the note on one side with the uploaded lecture PDF in preview on the other side. This is of course only possible with a PDF being uploaded.
+[x] Each course should have the ability to add its Moodle link. Once added there should be an easily accesible button to access the Moodle.
+[x] In the day of the week stats, we should provide the focus average for that day i.e. when you hover over it - in the same way it is done for time of day stats .
+[x] Callout does not work - it just makes a quote and starts it with note. Can we make a custom callout for callout this inserts a clean rounded background box around the text you put in it. The colour of this should be not the same as the rest i.e. to call it out/highlight it.  Ensure the PDF export gets the same treatment.
+[~] In all places where we have markdown text boxes, can we port in our lecture system with live and markdown and the [ menu? this should be generalised and usable throughout the site
+[x] In focus mode for writing lectures, please hide the bar at the top unless you hover up there and then we can cleanly display it. This is for ultra minimalism for when focussing on lectures.
+
+---
+
+## Status - 23/09/26
+
+`[x]` done · `[~]` done where it applies
+
+**Tab and Shift-Tab** indent and outdent whole lines, so nested bullets no
+longer mean counting spaces. A selection shifts together.
+
+**Two columns** - `[` → Two columns (or just "2"). The block edits as two panes, each a full
+editor (headings, bullets, code, maths); Escape renders it, ⌘↵ carries on
+underneath. Stored as `::: columns … ||| … :::`, so raw markdown and the PDF
+agree. The PDF lays both columns out and continues below the taller one.
+
+**Markdown in table cells** - a cell shows **bold**, `code`, *emphasis*,
+~~strikethrough~~ and links rendered, and switches to raw markdown when you
+click into it. Rendered inline in the browser rather than through the server,
+so typing stays instant.
+
+**Deleting rows and columns** - every row has a menu at its end (add below,
+delete), matching the column menu in the header. Backspace on an empty row
+still removes it. **Whole blocks** go too: "Delete table" and "Delete columns"
+sit in each block's toolbar, and ⌘⌫ does the same from inside one. A block
+with anything in it asks first, since the editor has no undo.
+
+**Dual view** - "Slides" puts the attached PDF beside the note, with a
+draggable divider and a picker when more than one is attached (⌘⇧S). It uses
+the browser's own PDF viewer, so scrolling, zoom and search come for free.
+
+**Moodle** - a link per course, set inline from the course header (and the
+project page), then a one-click button. `Course.moodleUrl`.
+
+**Day of week stats** now show focus on hover, like the hour chart:
+"82% focus · 3 Tuesdays". The printed stats report shows it on the bars.
+
+**Three heading levels** in the menu - Heading 1 / 2 / 3, inserting `#`,
+`###` and `######`. The levels skip a step each time so the sizes are
+obviously apart (30px / 18px / 15px); `##` and `###` render too alike to be
+worth separate entries.
+
+**Callout** is a real callout now: `> [!note]`, rendered as a rounded tinted
+box in a colour nothing else uses, with an optional bold title. The PDF draws
+the same box - measured first, so it never splits across a page. The syntax is
+Obsidian's, so notes stay portable.
+
+**The editor is now shared** - meeting agendas, meeting notes and paper notes
+all use it: live blocks, the `[` menu, tables as grids, callouts and maths,
+with the same Live / Markdown switch (⌘/). Task and session notes were left as
+plain fields, as agreed - they hold scraps, not structure.
+
+**Focus mode** hides the top bar until the pointer goes near the top of the
+screen, then slides it in.
+
+
 19/09
 
 [x] The project is a very specific piece of work and I want to build essentially a project management system for it that is easy to use and hugely aids with it.

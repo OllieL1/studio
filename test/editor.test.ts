@@ -1,8 +1,9 @@
 /** The live editor's block model: splitting, joining, typing helpers, inserts. */
 import assert from "node:assert/strict";
 import {
-  applyInsert, caretLine, classify, filterInserts, INSERTS,
-  joinBlocks, listContinuation, sourceOffset, splitBlocks,
+  applyInsert, caretLine, classify, filterInserts, indentLines, INSERTS,
+  joinBlocks, listContinuation, parseCallout, parseColumns, serializeCallout,
+  serializeColumns, sourceOffset, splitBlocks,
 } from "../lib/editor/blocks";
 
 const tests: [string, () => void][] = [];
@@ -122,9 +123,35 @@ test("the insert menu filters by label and by keyword", () => {
 
 test("applying an insert replaces the trigger and places the caret", () => {
   // "text [tab" with the menu open from index 5.
-  const r = applyInsert("text [tab", 5, 9, INSERTS.find((i) => i.key === "h2")!);
-  assert.equal(r.text, "text ## ");
-  assert.equal(r.caret, 8);
+  const r = applyInsert("text [tab", 5, 9, INSERTS.find((i) => i.key === "h1")!);
+  assert.equal(r.text, "text # ");
+  assert.equal(r.caret, 7);
+});
+
+test("the three heading levels skip a step each time", () => {
+  const byKey = Object.fromEntries(INSERTS.map((i) => [i.key, i]));
+  assert.equal(byKey.h1.snippet, "# |");
+  assert.equal(byKey.h2.snippet, "### |");
+  assert.equal(byKey.h3.snippet, "###### |");
+  for (const k of ["h1", "h2", "h3"]) assert.equal(classify(byKey[k].snippet.replace("|", "x")), "heading");
+});
+
+test("headings are findable by level, and by name", () => {
+  assert.equal(filterInserts("h1")[0].key, "h1");
+  assert.equal(filterInserts("h3")[0].key, "h3");
+  assert.equal(filterInserts("heading").map((i) => i.key).slice(0, 3).join(","), "h1,h2,h3");
+});
+
+test("columns answer to \"2\" as well as \"two\", spaced or not", () => {
+  for (const q of ["2", "two", "2col", "2 col", "two col", "2 columns", "two columns", "2 c"]) {
+    assert.equal(filterInserts(q)[0]?.key, "columns", `"${q}" should offer two columns`);
+  }
+});
+
+test("a digit still finds a heading when nothing else matches", () => {
+  // "3" isn't a columns keyword, so Heading 3 is the only sensible answer.
+  assert.equal(filterInserts("3")[0].key, "h3");
+  assert.equal(filterInserts("h2")[0].key, "h2");
 });
 
 test("a multi-line insert puts the caret inside it", () => {
@@ -187,6 +214,104 @@ test("block-level inserts are flagged, inline ones are not", () => {
   for (const k of ["bold", "italic", "inline", "imath", "link"]) {
     assert.equal(byKey[k].block, undefined, `${k} should stay inline`);
   }
+});
+
+/* ── Tab indentation ── */
+
+test("Tab indents the caret's line", () => {
+  const r = indentLines("- one\n- two", 8, 8);
+  assert.equal(r.text, "- one\n  - two");
+  assert.equal(r.start, 10);
+});
+
+test("Shift-Tab takes an indent back off", () => {
+  const r = indentLines("- one\n  - two", 10, 10, true);
+  assert.equal(r.text, "- one\n- two");
+});
+
+test("Shift-Tab on an unindented line changes nothing", () => {
+  const r = indentLines("- one", 2, 2, true);
+  assert.equal(r.text, "- one");
+});
+
+test("Tab shifts every line of a selection", () => {
+  const text = "- one\n- two\n- three";
+  const r = indentLines(text, 0, text.length);
+  assert.equal(r.text, "  - one\n  - two\n  - three");
+});
+
+/* ── Callouts ── */
+
+test("a callout is its own block and round-trips", () => {
+  const md = "before\n\n> [!note] Watch out\n> the pivot matters\n\nafter";
+  const b = splitBlocks(md);
+  assert.deepEqual(b.map((x) => x.kind), ["paragraph", "callout", "paragraph"]);
+  assert.equal(joinBlocks(b), md);
+});
+
+test("a callout's title and body come apart and back together", () => {
+  const md = "> [!note] Watch out\n> the pivot matters\n> in the worst case";
+  const { title, body } = parseCallout(md);
+  assert.equal(title, "Watch out");
+  assert.equal(body, "the pivot matters\nin the worst case");
+  assert.equal(serializeCallout(title, body), md);
+});
+
+test("a callout with no title still works", () => {
+  assert.equal(parseCallout("> [!note]\n> just this").title, "");
+  assert.equal(serializeCallout("", "just this"), "> [!note]\n> just this");
+});
+
+test("a plain quote is still a quote", () => {
+  assert.equal(classify("> quoted"), "quote");
+  assert.equal(classify("> [!note] hi"), "callout");
+});
+
+/* ── Columns ── */
+
+test("a columns block is kept whole", () => {
+  const md = "::: columns\nleft side\n|||\nright side\n:::";
+  const b = splitBlocks(`intro\n\n${md}\n\nafter`);
+  assert.deepEqual(b.map((x) => x.kind), ["paragraph", "columns", "paragraph"]);
+  assert.equal(b[1].text, md);
+});
+
+test("columns come apart into two sides and back", () => {
+  const md = serializeColumns("## Proof\n- base case", "## Intuition\nhalving twice");
+  const [left, right] = parseColumns(md);
+  assert.equal(left, "## Proof\n- base case");
+  assert.equal(right, "## Intuition\nhalving twice");
+  assert.equal(serializeColumns(left, right), md);
+});
+
+test("a half-typed columns block doesn't lose what's there", () => {
+  const [left, right] = parseColumns("::: columns\nonly this");
+  assert.equal(left, "only this");
+  assert.equal(right, "");
+});
+
+test("blank lines inside a column stay inside it", () => {
+  const md = serializeColumns("one\n\ntwo", "three");
+  assert.equal(splitBlocks(md).length, 1);
+  assert.deepEqual(parseColumns(md), ["one\n\ntwo", "three"]);
+});
+
+test("a word in the label beats a keyword in another entry", () => {
+  // "Table" lists "columns" as a keyword; typing "column" must still offer
+  // Two columns first.
+  assert.equal(filterInserts("column")[0].key, "columns");
+  assert.equal(filterInserts("columns")[0].key, "columns");
+  assert.equal(filterInserts("table")[0].key, "table");
+  assert.equal(filterInserts("grid")[0].key, "table");
+  assert.equal(filterInserts("callout")[0].key, "callout");
+});
+
+test("the menu offers callouts and columns as block inserts", () => {
+  const byKey = Object.fromEntries(INSERTS.map((i) => [i.key, i]));
+  assert.equal(byKey.callout.block, true);
+  assert.equal(byKey.columns.block, true);
+  assert.match(byKey.callout.snippet, /\[!note\]/);
+  assert.match(byKey.columns.snippet, /::: columns/);
 });
 
 let failed = 0;

@@ -133,7 +133,11 @@ function whenYouWork(doc: PDFKit.PDFDocument, { byHour, byDay, daily, headline }
   barChart(
     doc,
     { ...right, y: right.y + 12, height: 80 },
-    byDay.map((d) => ({ label: d.label, value: d.avgMinutes })),
+    byDay.map((d) => ({
+      label: d.label,
+      value: d.avgMinutes,
+      note: d.focus != null ? `${d.focus.toFixed(0)}%` : undefined,
+    })),
   );
   doc.y = left.y + 104;
 

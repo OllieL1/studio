@@ -4,11 +4,12 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveNotes } from "@/app/actions";
 import {
   applyInsert, caretLine, filterInserts, joinBlocks, listContinuation,
-  classify, newId, retype, sourceOffset, splitBlocks, type Block, type Insert,
+  classify, indentLines, newId, retype, sourceOffset, splitBlocks, type Block, type Insert,
 } from "@/lib/editor/blocks";
 import { clsx } from "@/lib/clsx";
 import { InsertMenu } from "./InsertMenu";
 import { TableEditor } from "./TableEditor";
+import { ColumnsEditor } from "./ColumnsEditor";
 
 /**
  * The writing surface: markdown that renders as you leave each block.
@@ -24,24 +25,51 @@ import { TableEditor } from "./TableEditor";
  */
 
 type Props = {
-  taskId: string;
+  /** Save to this task's notes. Omit it and `onSave` is used instead. */
+  taskId?: string;
+  /** Where the markdown goes when there's no task - a meeting, a paper. */
+  onSave?: (markdown: string) => void | Promise<void>;
   initial: string;
   /** Server-rendered HTML for the initial blocks, in order. */
-  initialHtml: string[];
+  /** Server-rendered HTML for the initial blocks. Rendered here when absent. */
+  initialHtml?: string[];
   minimal?: boolean;
   /** Raw markdown mode is owned by the workspace, which renders the control. */
-  raw: boolean;
-  onRawChange: (raw: boolean) => void;
+  raw?: boolean;
+  onRawChange?: (raw: boolean) => void;
+  /** Inside another editor (a column): no trailing click-to-add space. */
+  nested?: boolean;
+  /** Rough height when empty, for a field rather than a page. */
+  minRows?: number;
+  /** Report every change immediately instead of on a debounce. A column pane
+   *  does this so the block it lives in is never behind what's on screen. */
+  eager?: boolean;
+  /** Put the caret in straight away - a freshly opened column pane. */
+  autoFocus?: boolean;
   onSavedChange?: (saved: boolean) => void;
   placeholder?: string;
 };
 
-export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw, onRawChange, onSavedChange, placeholder }: Props) {
+export function LiveEditor({
+  taskId,
+  onSave,
+  initial,
+  initialHtml,
+  minimal = false,
+  raw = false,
+  onRawChange,
+  onSavedChange,
+  placeholder,
+  nested = false,
+  minRows,
+  eager = false,
+  autoFocus = false,
+}: Props) {
   // One split, used for both: splitting twice would mint different ids and the
   // server-rendered HTML would key against blocks that no longer exist.
   const [start] = useState(() => {
     const bs = splitBlocks(initial);
-    return { blocks: bs, html: Object.fromEntries(bs.map((b, i) => [b.id, initialHtml[i] ?? ""])) };
+    return { blocks: bs, html: Object.fromEntries(bs.map((b, i) => [b.id, initialHtml?.[i] ?? ""])) };
   });
   const [blocks, setBlocks] = useState<Block[]>(start.blocks);
   const [html, setHtml] = useState<Record<string, string>>(start.html);
@@ -80,23 +108,28 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
   const persist = useCallback(
     async (text: string) => {
       if (text === lastSaved.current) return;
-      await saveNotes(taskId, text);
       lastSaved.current = text;
+      if (taskId) await saveNotes(taskId, text);
+      else await onSave?.(text);
       onSavedChange?.(true);
     },
-    [taskId, onSavedChange],
+    [taskId, onSave, onSavedChange],
   );
 
   useEffect(() => {
     const dirty = markdown !== lastSaved.current;
     onSavedChange?.(!dirty);
     if (!dirty) return;
+    if (eager) {
+      void persist(markdown);
+      return;
+    }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => void persist(markdown), 900);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [markdown, persist, onSavedChange]);
+  }, [markdown, persist, onSavedChange, eager]);
 
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
@@ -126,6 +159,25 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
     } catch {
       // Leaving the previous HTML up is better than blanking the note.
     }
+  }, []);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const first = blocksRef.current[0];
+    if (first) {
+      caretTarget.current = -1;
+      setActiveId(first.id);
+    }
+    // Mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A field that wasn't server-rendered needs its first pass here.
+  useEffect(() => {
+    if (initialHtml) return;
+    void render(blocksRef.current.filter((b) => b.text.trim()));
+    // Mount only: later renders happen as blocks are left.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── Moving between blocks ────────────────────────────────────────────── */
@@ -195,6 +247,29 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
     const i = bs.findIndex((b) => b.id === id);
     commit([...bs.slice(0, i + 1), fresh, ...bs.slice(i + 1)]);
     focusBlock(fresh.id, 0);
+  };
+
+  /**
+   * Drop a block entirely - how a table or a column pair gets deleted, since
+   * neither renders a textarea to backspace through.
+   */
+  const removeBlock = (id: string) => {
+    const bs = blocksRef.current;
+    const i = bs.findIndex((b) => b.id === id);
+    if (i === -1) return;
+
+    const rest = bs.filter((b) => b.id !== id);
+    const next = rest.length > 0 ? rest : splitBlocks("");
+    commit(next);
+    setHtml((h) => {
+      const { [id]: _gone, ...keep } = h;
+      return keep;
+    });
+
+    // Land where the block was: the one before it, or the one that took its place.
+    const landing = next[Math.max(0, i - 1)];
+    if (landing) focusBlock(landing.id, -1);
+    else setActiveId(null);
   };
 
   const mergeBack = (id: string) => {
@@ -315,7 +390,12 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
 
     if (e.key === "Tab") {
       e.preventDefault();
-      write(el, b.id, `${el.value.slice(0, caret)}  ${el.value.slice(el.selectionEnd)}`, caret + 2);
+      // Shift whole lines: nested bullets are the reason Tab exists here.
+      const shifted = indentLines(el.value, el.selectionStart, el.selectionEnd, e.shiftKey);
+      el.value = shifted.text;
+      el.setSelectionRange(shifted.start, shifted.end);
+      autosize(el);
+      update(b.id, shifted.text);
       return;
     }
 
@@ -483,7 +563,7 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
   }
 
   return (
-    <div className={clsx("relative", minimal ? "pb-24" : "pb-10")}>
+    <div className={clsx("relative", nested ? "pb-0" : minimal ? "pb-24" : "pb-10")}>
       {blocks.map((b, i) => (
         <div
           key={b.id}
@@ -494,7 +574,18 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
             selectedRange && i >= selectedRange.from && i <= selectedRange.to && "bg-rust-100/70",
           )}
         >
-          {b.id === activeId && b.kind === "table" ? (
+          {b.id === activeId && b.kind === "columns" ? (
+            <ColumnsEditor
+              markdown={b.text}
+              onChange={(md) => update(b.id, md)}
+              onExit={(where) => {
+                settle(b.id);
+                if (where === "after") insertAfter(b.id);
+                else setActiveId((id) => (id === b.id ? null : id));
+              }}
+              onDelete={() => removeBlock(b.id)}
+            />
+          ) : b.id === activeId && b.kind === "table" ? (
             // Tables edit as a grid: pipes are the worst thing about markdown.
             <TableEditor
               markdown={b.text}
@@ -505,6 +596,7 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
                 if (where === "after") insertAfter(b.id);
                 else setActiveId(null);
               }}
+              onDelete={() => removeBlock(b.id)}
             />
           ) : b.id === activeId ? (
             <div className="relative">
@@ -562,7 +654,7 @@ export function LiveEditor({ taskId, initial, initialHtml, minimal = false, raw,
 
       {/* Clicking the space under the note starts a new block, like a page. */}
       <div
-        className="min-h-[30vh] cursor-text"
+        className={clsx("cursor-text", nested ? "min-h-[16px]" : minRows ? "min-h-[40px]" : "min-h-[30vh]")}
         onMouseDown={(e) => {
           e.preventDefault();
           setSelection(null);

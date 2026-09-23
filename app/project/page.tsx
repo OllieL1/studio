@@ -12,6 +12,7 @@ import { Timeline } from "@/components/project/Timeline";
 import { PaperLibrary } from "@/components/project/PaperLibrary";
 import { MeetingButton, type MeetingDraft } from "@/components/project/MeetingDialog";
 import { RepoLink } from "@/components/project/RepoLink";
+import { MoodleLink } from "@/components/MoodleLink";
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
@@ -74,6 +75,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
               credits={course.credits}
               colour={course.colour}
             />
+            <MoodleLink courseId={course.id} url={course.moodleUrl} />
             <RepoLink url={course.repoUrl} />
             <MeetingButton draft={newMeeting} googleConnected={googleConnected} label="New meeting" />
           </div>

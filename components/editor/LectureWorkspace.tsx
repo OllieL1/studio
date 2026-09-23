@@ -45,6 +45,10 @@ export function LectureWorkspace({
   // Live is the default and stays the default; raw markdown is the detour.
   const [raw, setRaw] = useState(false);
   const [saved, setSaved] = useState(true);
+  /** The attached PDF shown beside the note, and how wide the note is. */
+  const [slides, setSlides] = useState<string | null>(null);
+  const [split, setSplit] = useState(52);
+  const [barHovered, setBarHovered] = useState(false);
   const surface = useRef<HTMLDivElement>(null);
 
   const done = items.filter((i) => i.done).length;
@@ -67,6 +71,10 @@ export function LectureWorkspace({
         e.preventDefault();
         setRaw((r) => !r);
       }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "s" && files.length > 0) {
+        e.preventDefault();
+        setSlides((id) => (id ? null : files[0].id));
+      }
       // Escape leaves minimal mode, but only when nothing else is open and the
       // caret isn't in a block (there, Escape exits the block first).
       if (e.key === "Escape" && document.activeElement?.tagName !== "TEXTAREA") {
@@ -76,7 +84,7 @@ export function LectureWorkspace({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleMinimal]);
+  }, [toggleMinimal, files]);
 
   // The page behind shouldn't scroll while the full-screen layer is up.
   useEffect(() => {
@@ -87,6 +95,22 @@ export function LectureWorkspace({
       document.documentElement.style.overflow = prev;
     };
   }, [minimal]);
+
+  const dragSplit = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const host = e.currentTarget.parentElement;
+    if (!host) return;
+    const move = (ev: PointerEvent) => {
+      const { left, width } = host.getBoundingClientRect();
+      setSplit(Math.min(75, Math.max(25, ((ev.clientX - left) / width) * 100)));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   const editor = (
     <LiveEditor
@@ -101,6 +125,9 @@ export function LectureWorkspace({
     />
   );
 
+  /** Every control in the toolbar is this tall, so they share a baseline. */
+  const CONTROL = "h-[32px]";
+
   const status = (
     <span className="flex items-center gap-1.5 text-[11px] text-n-400">
       <span aria-hidden className={clsx("h-1.5 w-1.5 rounded-full", saved ? "bg-ok" : "bg-warn")} />
@@ -110,7 +137,7 @@ export function LectureWorkspace({
 
   /** Live is first and highlighted when active, so the default is obvious. */
   const modeToggle = (
-    <div className="flex items-center gap-0.5 rounded-md border border-n-200 bg-n-0 p-0.5" role="group" aria-label="Editing mode">
+    <div className={clsx("flex items-center gap-0.5 rounded-md border border-n-200 bg-n-0 p-0.5", CONTROL)} role="group" aria-label="Editing mode">
       {([["Live", false], ["Markdown", true]] as const).map(([label, value]) => (
         <button
           key={label}
@@ -118,7 +145,7 @@ export function LectureWorkspace({
           aria-pressed={raw === value}
           title={`${label} (⌘/)`}
           className={clsx(
-            "rounded-[5px] px-2 py-[3px] text-[11px] font-semibold transition-colors duration-[120ms]",
+            "flex h-full items-center rounded-[5px] px-2 text-[11px] font-semibold transition-colors duration-[120ms]",
             raw === value ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50 hover:text-n-800",
           )}
         >
@@ -128,28 +155,77 @@ export function LectureWorkspace({
     </div>
   );
 
+  const iconButton = `flex ${CONTROL} w-[32px] items-center justify-center rounded-md border transition-colors duration-[120ms]`;
+
   const toolbar = (
     <div className="flex items-center gap-1.5">
       {status}
       {modeToggle}
+      {files.length > 0 && (
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => setSlides((id) => (id ? null : files[0].id))}
+            aria-pressed={!!slides}
+            aria-label="Show the lecture PDF beside the note"
+            title="Lecture PDF beside the note (⌘⇧S)"
+            className={clsx(
+              iconButton,
+              slides ? "border-transparent bg-rust-500 text-white" : "border-n-200 bg-n-0 text-n-600 hover:bg-n-50 hover:text-n-800",
+            )}
+          >
+            {/* Two panes, split down the middle. */}
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <rect x="1.4" y="2.6" width="11.2" height="8.8" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M7 2.6v8.8" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </button>
+          {slides && files.length > 1 && (
+            <select
+              value={slides}
+              onChange={(e) => setSlides(e.target.value)}
+              aria-label="Which PDF"
+              className={clsx("max-w-[130px] rounded-md border border-n-200 bg-n-0 px-1.5 text-[11.5px] text-n-600 outline-none", CONTROL)}
+            >
+              {files.map((f) => (
+                <option key={f.id} value={f.id}>{f.filename}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
       <button
         onClick={() => setShowTime(true)}
-        className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+        aria-label="Time on this lecture"
         title="Time on this lecture (⌘⇧T)"
+        className={clsx(iconButton, "border-n-200 bg-n-0 text-n-600 hover:bg-n-50 hover:text-n-800")}
       >
-        Time
+        {/* A clock reading ten past ten, so both hands are visible. */}
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+          <circle cx="7" cy="7" r="5.1" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M7 4.2V7l2.1 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       <a
         href={`/api/lectures/pdf?id=${taskId}`}
         target="_blank"
         rel="noreferrer"
-        className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+        aria-label="Export this lecture as a PDF"
+        title="Export as PDF"
+        className={clsx(iconButton, "border-n-200 bg-n-0 text-n-600 hover:bg-n-50 hover:text-n-800")}
       >
-        PDF
+        {/* A page with a turned corner and an arrow out of it. */}
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+          <path d="M3.2 1.8h4.4l3.2 3.2v7.2H3.2V1.8Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M7.6 1.8V5h3.2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M7 6.9v3.2M5.7 8.8 7 10.1l1.3-1.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </a>
       <button
         onClick={toggleMinimal}
-        className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+        className={clsx(
+          "flex items-center rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50",
+          CONTROL,
+        )}
         title="Minimal mode (⌘.)"
       >
         {minimal ? "Exit" : "Focus"}
@@ -212,17 +288,52 @@ export function LectureWorkspace({
         )}
       >
         {minimal && (
-          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-n-100 bg-n-0/90 px-5 py-2.5 backdrop-blur">
+          // Ultra-minimal: the bar is a 12px strip until the pointer nears it.
+          <div
+            onMouseEnter={() => setBarHovered(true)}
+            onMouseLeave={() => setBarHovered(false)}
+            className="sticky top-0 z-20 h-3"
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 border-b border-n-100 bg-n-0/95 px-5 py-2.5 backdrop-blur transition-all duration-[180ms]",
+                barHovered ? "pointer-events-auto opacity-100" : "pointer-events-none -translate-y-2 opacity-0",
+              )}
+            >
             <div className="min-w-0">
               <p className="truncate text-[13px] font-semibold text-n-800">{title}</p>
               <p className="truncate text-[11px] text-n-400">{meta}</p>
             </div>
             <div className="ml-auto shrink-0">{toolbar}</div>
+            </div>
           </div>
         )}
-        <div ref={surface} className={clsx(minimal && "mx-auto w-full max-w-[760px] px-5 py-8")}>
-          {editor}
-        </div>
+        {slides ? (
+          <div className={clsx("flex items-stretch", minimal ? "h-[calc(100vh-46px)]" : "h-[78vh]")}>
+            <div className="min-w-0 overflow-y-auto px-1" style={{ width: `${split}%` }}>
+              <div className={clsx(minimal && "mx-auto w-full max-w-[760px] px-4 py-6")}>{editor}</div>
+            </div>
+            <div
+              onPointerDown={dragSplit}
+              role="separator"
+              aria-orientation="vertical"
+              className="w-1.5 shrink-0 cursor-col-resize bg-n-100 transition-colors duration-[120ms] hover:bg-rust-300"
+            />
+            <div className="min-w-0 flex-1 bg-n-50">
+              {/* The browser's own PDF viewer: scrolling, zoom and search for free. */}
+              <iframe
+                key={slides}
+                src={`/api/uploads/${slides}#view=FitH`}
+                title="Lecture PDF"
+                className="h-full w-full border-0"
+              />
+            </div>
+          </div>
+        ) : (
+          <div ref={surface} className={clsx(minimal && "mx-auto w-full max-w-[760px] px-5 py-8")}>
+            {editor}
+          </div>
+        )}
       </div>
 
       {/* ── Time drawer ──────────────────────────────────────────────────── */}

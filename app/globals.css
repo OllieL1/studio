@@ -433,6 +433,12 @@ input[type="range"]::-webkit-slider-thumb:active {
   border-left: 3px solid var(--color-rust-200);
   color: var(--color-n-600);
 }
+/* The paragraph inside keeps its 14px bottom margin, and that margin sits
+   inside the quote's box - so the rule ran past the last line of text. The
+   PDF draws the rule from the first line to the last, which is why it looked
+   right there and wrong here. */
+.prose-notes blockquote > *:first-child { margin-top: 0; }
+.prose-notes blockquote > *:last-child { margin-bottom: 0; }
 
 .prose-notes hr { margin: 28px 0; border: 0; border-top: 1px solid var(--color-n-200); }
 
@@ -561,4 +567,37 @@ input[type="range"]::-webkit-slider-thumb:active {
 .prose-notes .md-math-error {
   color: var(--color-danger);
   background: var(--color-danger-soft);
+}
+
+/* ── Callouts and columns ─────────────────────────────────────────────────
+   A callout is a box, not a quote: tinted, rounded, and in a colour the rest
+   of the page doesn't use, so it reads as "look here".                      */
+.prose-notes .md-callout {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-rust-50);
+  border: 1px solid var(--color-rust-100);
+  border-left: 3px solid var(--color-rust-400);
+}
+.prose-notes .md-callout > *:first-child { margin-top: 0; }
+.prose-notes .md-callout > *:last-child { margin-bottom: 0; }
+.prose-notes .md-callout-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--color-rust-700);
+}
+
+.prose-notes .md-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin: 0 0 16px;
+}
+.prose-notes .md-columns > div > *:first-child { margin-top: 0; }
+.prose-notes .md-columns > div > *:last-child { margin-bottom: 0; }
+
+/* One column is easier to read than two squeezed ones. */
+@media (max-width: 640px) {
+  .prose-notes .md-columns { grid-template-columns: 1fr; gap: 0; }
 }

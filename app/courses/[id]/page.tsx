@@ -8,6 +8,7 @@ import { TERM_START, TERM_WEEKS } from "@/lib/types";
 import { parseLocalDate } from "@/lib/dates";
 import { Card, Eyebrow, ProgressBar, SectionHeading, Stat, Pill } from "@/components/ui";
 import { WeightEditor } from "@/components/WeightEditor";
+import { MoodleLink } from "@/components/MoodleLink";
 import { RevisionToggle } from "@/components/RevisionToggle";
 import { CourseTabs } from "@/components/CourseTabs";
 import { cssColour } from "@/lib/palette";
@@ -108,6 +109,7 @@ export default async function CoursePage({
             </div>
           </div>
           <div className="flex items-center gap-3">
+          <MoodleLink courseId={course.id} url={course.moodleUrl} />
           {lectureCount > 0 && (
             <Link
               href={`/lectures?course=${course.id}`}

@@ -15,6 +15,8 @@ export const MUTED = "#78716c";
 export const FAINT = "#a8a29e";
 export const RULE = "#e7e5e4";
 export const RUST = "#b4532a";
+/** The tint behind a callout box. */
+export const CALLOUT_BG = "#faf3ee";
 
 export const MARGIN = 56;
 

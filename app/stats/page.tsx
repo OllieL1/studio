@@ -143,10 +143,13 @@ export default async function StatsPage({
               bars={dow.map((d) => ({
                 label: d.label,
                 value: d.avgMinutes,
-                secondary:
-                  d.occurrences > 0
-                    ? `${d.occurrences} ${d.label}${d.occurrences === 1 ? "" : "s"}`
-                    : undefined,
+                // Focus first, like the hour chart: it's the reason to hover.
+                secondary: [
+                  d.focus != null ? `${d.focus.toFixed(0)}% focus` : null,
+                  d.occurrences > 0 ? `${d.occurrences} ${d.label}${d.occurrences === 1 ? "" : "s"}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || undefined,
                 note:
                   d.avgMinutes === bestDayAvg && bestDayAvg > 0
                     ? "best"

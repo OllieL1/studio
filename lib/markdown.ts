@@ -68,7 +68,58 @@ function renderMath(tex: string, display: boolean): string {
   }
 }
 
-marked.use({ extensions: [mathBlock, mathInline] });
+/** `::: columns` … `|||` … `:::` - two markdown columns, side by side. */
+const columns = {
+  name: "columns",
+  level: "block" as const,
+  start(src: string) {
+    return src.indexOf(":::");
+  },
+  tokenizer(src: string) {
+    const m = /^:::\s*columns\s*\n([\s\S]*?)(?:\n:::|$)(?:\n|$)/.exec(src);
+    if (!m) return undefined;
+    const at = m[1].split("\n").findIndex((l) => l.trim() === "|||");
+    const lines = m[1].split("\n");
+    const left = (at === -1 ? lines : lines.slice(0, at)).join("\n").trim();
+    const right = at === -1 ? "" : lines.slice(at + 1).join("\n").trim();
+    return { type: "columns", raw: m[0], left, right };
+  },
+  renderer(token: { left: string; right: string }) {
+    const cell = (md: string) => marked.parse(md, { async: false }) as string;
+    return `<div class="md-columns"><div>${cell(token.left)}</div><div>${cell(token.right)}</div></div>`;
+  },
+};
+
+/**
+ * `> [!note] Title` - a highlighted box rather than a quote. The syntax is
+ * Obsidian's, so a note pasted into Obsidian still reads as a callout there.
+ */
+const callout = {
+  name: "callout",
+  level: "block" as const,
+  start(src: string) {
+    return src.indexOf("> [!");
+  },
+  tokenizer(src: string) {
+    const m = /^>\s*\[!(\w+)\][ \t]*(.*)(?:\n((?:>.*(?:\n|$))*))?/.exec(src);
+    if (!m) return undefined;
+    const body = (m[3] ?? "")
+      .split("\n")
+      .map((l) => l.replace(/^>\s?/, ""))
+      .join("\n")
+      .trim();
+    return { type: "callout", raw: m[0], title: m[2].trim(), body };
+  },
+  renderer(token: { title: string; body: string }) {
+    const title = token.title
+      ? `<p class="md-callout-title">${escapeHtml(token.title)}</p>`
+      : "";
+    const body = token.body ? (marked.parse(token.body, { async: false }) as string) : "";
+    return `<div class="md-callout">${title}${body}</div>`;
+  },
+};
+
+marked.use({ extensions: [mathBlock, mathInline, columns, callout] });
 
 // Syntax highlighting + heading ids/anchors for the table of contents.
 marked.use({

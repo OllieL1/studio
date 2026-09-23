@@ -109,6 +109,7 @@ export async function getProject() {
       code: course.code,
       colour: course.colour,
       repoUrl: course.repoUrl,
+      moodleUrl: course.moodleUrl,
       hoursTarget: course.hoursTarget ?? 400,
       credits: course.credits,
       lectureWeight: course.lectureWeight,

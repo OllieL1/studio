@@ -53,6 +53,8 @@ model Course {
   /// Link to the code repository (the project course). GitHub integration
   /// will build on this later.
   repoUrl     String?
+  /// The course's Moodle page, opened straight from the course header.
+  moodleUrl   String?
   /// Expected hours of work, for the pace tracker (40 credits ≈ 400h).
   hoursTarget Int?
   /// The dissertation project, which gets the /project workspace.
