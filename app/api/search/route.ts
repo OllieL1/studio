@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { courseHref, visibleCourseWhere } from "@/lib/types";
+import { stripMentions } from "@/lib/mentions";
 
 export type SearchHit = {
   id: string;
-  type: "course" | "lecture" | "task" | "note" | "page" | "paper" | "meeting";
+  type: "course" | "lecture" | "task" | "note" | "page" | "paper" | "meeting" | "nexus";
   title: string;
   subtitle: string | null;
   href: string;
@@ -19,6 +20,7 @@ const PAGES: SearchHit[] = [
   { id: "p-lectures", type: "page", title: "Lectures", subtitle: "Notes and notebooks", href: "/lectures", colour: null },
   { id: "p-sessions", type: "page", title: "Sessions", subtitle: "Study history", href: "/sessions", colour: null },
   { id: "p-project", type: "page", title: "Project", subtitle: "Meetings, research, schedule", href: "/project", colour: null },
+  { id: "p-nexus", type: "page", title: "Nexus", subtitle: "Project notes", href: "/project?tab=nexus", colour: null },
 ];
 
 /**
@@ -102,15 +104,31 @@ export async function GET(req: NextRequest) {
   }
 
   // Papers: title/authors/tags rank above a match buried in the notes.
-  for (const p of await db.paper.findMany()) {
-    const head = score(`${p.title} ${p.authors} ${p.tags ?? ""} ${p.venue ?? ""}`.toLowerCase(), lower);
+  for (const p of await db.paper.findMany({ include: { tagLinks: { include: { tag: { select: { name: true } } } } } })) {
+    const tags = p.tagLinks.map((t) => t.tag.name).join(" ");
+    const head = score(`${p.title} ${p.authors} ${tags} ${p.venue ?? ""}`.toLowerCase(), lower);
     const inNotes = !head && p.notes?.toLowerCase().includes(lower);
     if (!head && !inNotes) continue;
     hits.push({
       id: p.id, type: "paper", title: p.title,
       subtitle: [p.authors.split(";")[0]?.split(",")[0], p.year].filter(Boolean).join(" · ") || null,
-      href: "/project?tab=research", colour: null,
+      href: `/project?tab=research&paper=${encodeURIComponent(p.citeKey)}`, colour: null,
       excerpt: inNotes ? excerptAround(p.notes!, p.notes!.toLowerCase().indexOf(lower), lower.length) : null,
+      score: head ? head + 1 : 1,
+    });
+  }
+
+  // Nexus notes: the title ranks above a match in the body.
+  for (const n of await db.note.findMany({ orderBy: { updatedAt: "desc" } })) {
+    const head = score(n.title.toLowerCase(), lower);
+    const body = stripMentions(n.body);
+    const idx = head ? -1 : body.toLowerCase().indexOf(lower);
+    if (!head && idx < 0) continue;
+    hits.push({
+      id: n.id, type: "nexus", title: n.title,
+      subtitle: n.icon ? `${n.icon} Nexus` : "Nexus",
+      href: `/project/nexus/${n.id}`, colour: null,
+      excerpt: idx >= 0 ? excerptAround(body, idx, lower.length) : null,
       score: head ? head + 1 : 1,
     });
   }

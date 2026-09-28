@@ -16,7 +16,7 @@ const isPdf = (buf: Buffer) => buf.subarray(0, 4).toString() === "%PDF";
 const paper = (over: Record<string, unknown> = {}) => ({
   title: "A paper", authors: "Surname, A.; Other, B.", year: 2026, venue: "Venue",
   url: null, doi: "10.1234/x", arxivId: null, kind: "article", status: "read",
-  tags: "one, two", notes: null, notesAt: null, citeKey: "surname2026a", ...over,
+  tags: ["one", "two"], notes: null, notesAt: null, citeKey: "surname2026a", ...over,
 });
 
 test("papers: builds a valid PDF", async () => {

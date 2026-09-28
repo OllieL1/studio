@@ -340,6 +340,8 @@ export type Insert = {
   snippet: string;
   /** Block-level inserts start their own block rather than joining the line. */
   block?: true;
+  /** The editor asks for something before inserting (the link address). */
+  prompt?: true;
 };
 
 export const INSERTS: Insert[] = [
@@ -365,7 +367,9 @@ export const INSERTS: Insert[] = [
   { block: true as const, key: "math", label: "Equation", hint: "$$ display maths $$", terms: ["latex", "formula", "maths", "equation"], snippet: "$$\n|\n$$" },
   { key: "imath", label: "Inline maths", hint: "$x^2$", terms: ["latex", "formula", "inline"], snippet: "$|$" },
   { block: true as const, key: "rule", label: "Divider", hint: "Horizontal rule", terms: ["hr", "line", "break"], snippet: "---" },
-  { key: "link", label: "Link", hint: "[text](url)", terms: ["url", "href"], snippet: "[|]()" },
+  // Handled by the editor rather than a snippet: it asks for the address and
+  // turns it into a chip with the page's title.
+  { key: "link", label: "Link", hint: "Paste a URL", terms: ["url", "href", "bookmark"], snippet: "", prompt: true as const },
   { key: "bold", label: "Bold", hint: "**text**", terms: ["strong", "b"], snippet: "**|**" },
   { key: "italic", label: "Italic", hint: "*text*", terms: ["em", "i"], snippet: "*|*" },
   { block: true as const, key: "callout", label: "Callout", hint: "A highlighted box", terms: ["note", "aside", "highlight", "warning"], snippet: "> [!note] |" },

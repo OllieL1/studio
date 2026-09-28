@@ -220,7 +220,6 @@ export async function lookupPaperDetails(input: string) {
 export type PaperInput = Omit<PaperMeta, "authors"> & {
   authors: string[];
   status: string;
-  tags: string | null;
   notes: string | null;
 };
 
@@ -250,7 +249,6 @@ export async function createPaper(input: PaperInput) {
       arxivId: input.arxivId,
       kind: input.kind,
       status,
-      tags: normaliseTags(input.tags),
       notes: input.notes?.trim() || null,
       citeKey,
       courseId: course?.id ?? null,
@@ -263,7 +261,7 @@ export async function createPaper(input: PaperInput) {
 
 export async function updatePaper(
   id: string,
-  data: { status?: string; tags?: string | null; notes?: string | null; title?: string; authors?: string; year?: number | null; venue?: string | null; url?: string | null },
+  data: { status?: string; notes?: string | null; title?: string; authors?: string; year?: number | null; venue?: string | null; url?: string | null },
 ) {
   const existing = await db.paper.findUnique({ where: { id } });
   if (!existing) return { ok: false as const, error: "Paper not found." };
@@ -275,7 +273,6 @@ export async function updatePaper(
     if (data.status === "read" && !existing.readAt) patch.readAt = new Date();
     if (data.status !== "read") patch.readAt = null;
   }
-  if (data.tags !== undefined) patch.tags = normaliseTags(data.tags);
   if (data.notes !== undefined) {
     patch.notes = data.notes?.trim() ? data.notes : null;
     // Stamp when the notes were written - the PDF export shows it.
@@ -299,8 +296,3 @@ export async function deletePaper(id: string) {
   refresh();
 }
 
-function normaliseTags(tags: string | null | undefined): string | null {
-  if (!tags) return null;
-  const list = [...new Set(tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean))];
-  return list.length ? list.join(", ") : null;
-}

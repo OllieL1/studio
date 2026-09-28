@@ -23,7 +23,7 @@ export type PdfPaper = {
   arxivId: string | null;
   kind: string;
   status: string;
-  tags: string | null;
+  tags: string[];
   notes: string | null;
   notesAt: Date | null;
   citeKey: string;
@@ -114,9 +114,9 @@ function entry(doc: PDFKit.PDFDocument, p: PdfPaper, n: number) {
       .text(link.replace(/^https?:\/\//, ""), left, doc.y, { width, link, underline: false });
   }
 
-  if (p.tags?.trim()) {
+  if (p.tags.length > 0) {
     doc.moveDown(0.25);
-    const tags = p.tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => `#${t}`).join("  ");
+    const tags = p.tags.map((t) => `#${t}`).join("  ");
     doc.font("body").fontSize(9).fillColor(MUTED).text(tags, left, doc.y, { width });
   }
 

@@ -1,5 +1,64 @@
 # Enhancement List - Check Off as we go
 
+28/09
+
+- A few more enhancements based on my use of the site. 
+[x] A general notes page for the project. This should be inspired by Notion's gallery view, we can have different pages of (markdown) notes for the project. For example, a great use of this will be links. Please ensure we use the same live/markdown editor for this feature. Please also add link as a new option in the [ menu. When link is selected, the user can paste the link and it will format it nicely (like Notions mention feature)
+[x] We need to fix the live box in the projects research notes. The [ menu gets cut off by the text box, it should layer on top of it instead even if it exceeds the boundaries of the text box.
+[x] When we have a set of bullets that may have some nested in them (i.e. sub bullets) after the sub bullet there is space rendered even if the next line is a bullet again. Essentially what I mean is that continuous bullets are all part of the same list and so the spacing should be equal until there is a different element 
+[x] The tag system should be better for research. After a tag is created, when we go to add a tag to other research, it should autocomplete i.e. either you select an existing tag or you create a new one (when you give a paper a tag). One paper can have multiple tags.
+[x] In the project notes, we should be able to @ a tag. Essentially mention it inline. We should also be able to @ a paper (using its cite code). We should also be able to @ a task. To make the @ more powerful, if we are looking for a paper we prefix @r, if we are looking for a tag we do @# and if we are looking for a task we do @t - this will filter the menu, then we can also start typing a search - the filter does not need to be mandatorily applied - it should be in the same style as the [ menu. This ties everything together cleaner and makes project notes supremely powerful. If we click on a tag, please open a page with details on that tag - what research it is mentioned in and what notes it is mentioned in. If you have any other suggestions for making project notes more powerful, please suggest them before we implement. Name the notes section Nexus
+
+---
+
+## Status - 28/09/26
+
+`[x]` done
+
+**Nexus** - the project's notebook, at `/project` → **Nexus**. A flat gallery of
+markdown pages: pinned first, then newest, each card showing its icon, title,
+excerpt, tags and word count, with instant search and tag filters. Notes open at
+`/project/nexus/[id]` on the same live editor the lectures use, with an icon,
+title, pin toggle, tag picker and autosave. Flat by design - pinning and tags do
+the organising, so there are no folders to keep tidy.
+
+**Links in the `[` menu** - pick **Link**, paste a URL, and it becomes a chip.
+The page title is fetched once when it's added (3s timeout) and stored inline, so
+the note reads the same offline; a failed fetch falls back to `domain/path`. The
+chip shows the domain, then the title.
+
+**The `[` menu no longer gets clipped** - both menus now render into `<body>` at
+fixed coordinates (`components/editor/CaretMenu.tsx`), flip above the line when
+they'd fall off the screen, and keep the textarea focused so typing still filters.
+The card's `overflow-hidden` stays where it belongs.
+
+**Bullet spacing** - a nested list is part of the list above it, not a new block.
+The 14px that separates a list from a paragraph was landing after the sub-bullet;
+now the gap between every bullet in a run is identical (measured: 4px either side
+of a nested one).
+
+**Tags are records now, not text** - `Tag` / `PaperTag` / `NoteTag` tables shared
+by research and notes. The picker autocompletes as you type: pick an existing tag
+or take the **Create #x** entry at the end of the list. A paper takes as many as
+you like. Your existing comma-separated tags were migrated automatically (the old
+column is left populated as a fallback, unread by the app).
+
+**@ mentions** - in any live editor, `@` opens a menu over papers, tags, tasks,
+notes and meetings. `@r` narrows to research, `@#` tags, `@t` tasks, `@n` notes,
+`@m` meetings - and you can keep typing to search within that, or skip the prefix
+entirely. A mention is stored in the markdown itself (`@r[key|Label]`), so it
+renders identically in the editor, on the page and in PDF exports without a
+lookup. Chips are colour-coded by kind and link straight through: a paper opens
+the library scrolled to it and expanded, a tag opens its page.
+
+**Tag pages** - `/project/tags/[key]` lists the research filed under a tag, the
+notes tagged with it, and separately the notes that merely *mention* it. Rename in
+place and it follows everywhere, including the `@#` mentions written into note
+bodies; renaming onto an existing tag merges the two.
+
+**⌘K knows about Nexus** - notes are searchable by title and body, and paper hits
+now deep-link to the paper rather than the tab.
+
 23/09
 
 - Some real usability enhancements today after I've been using the site a fair bit 

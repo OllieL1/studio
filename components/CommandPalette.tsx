@@ -19,6 +19,7 @@ const TYPE_LABEL: Record<SearchHit["type"], string> = {
   page: "Go to",
   paper: "Paper",
   meeting: "Meeting",
+  nexus: "Nexus",
 };
 
 /**

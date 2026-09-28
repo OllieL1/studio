@@ -49,6 +49,7 @@ model Course {
   events   Event[]
   meetings Meeting[]
   papers   Paper[]
+  notes    Note[]
 
   /// Link to the code repository (the project course). GitHub integration
   /// will build on this later.
@@ -408,8 +409,9 @@ model Paper {
   kind    String  @default("article")
   /// to-read | reading | read
   status  String  @default("to-read")
-  /// Comma-separated.
+  /// Superseded by the Tag relation; kept only so the migration can read it.
   tags    String?
+  tagLinks PaperTag[]
   /// Markdown.
   notes   String?
   /// When the notes were last written - blank until notes are first saved.
@@ -458,4 +460,62 @@ model Preference {
   darkTo   Int @default(7)
 
   updatedAt DateTime @updatedAt
+}
+
+/// A label shared by research papers and Nexus notes. Real records rather
+/// than comma-separated text, so a tag can be renamed in one place and every
+/// paper, note and mention follows.
+model Tag {
+  id   String @id @default(cuid())
+  /// What it's called, as typed. Unique case-insensitively (see `key`).
+  name String
+  /// Lower-cased name, for lookups and uniqueness.
+  key  String @unique
+
+  papers PaperTag[]
+  notes  NoteTag[]
+
+  createdAt DateTime @default(now())
+}
+
+model PaperTag {
+  paperId String
+  paper   Paper  @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([paperId, tagId])
+  @@index([tagId])
+}
+
+/// A page in Nexus: the project's notebook. Markdown, same editor as lectures.
+model Note {
+  id    String @id @default(cuid())
+  title String @default("Untitled")
+  /// Markdown, including @ mentions of papers, tags, tasks, notes, meetings.
+  body  String @default("")
+  /// A single emoji shown on the gallery card.
+  icon  String?
+  /// Pinned notes sort to the front of the gallery.
+  pinned Boolean @default(false)
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  tags NoteTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pinned, updatedAt])
+}
+
+model NoteTag {
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId])
 }

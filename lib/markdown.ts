@@ -2,6 +2,7 @@ import { Marked } from "marked";
 import hljs from "highlight.js";
 import DOMPurify from "isomorphic-dompurify";
 import katex from "katex";
+import { mentionHref, linkDomain, type MentionKind } from "./mentions";
 
 /**
  * Markdown → HTML for lecture notes.
@@ -119,7 +120,41 @@ const callout = {
   },
 };
 
-marked.use({ extensions: [mathBlock, mathInline, columns, callout] });
+/**
+ * `@r[key|Label]` and friends - a chip that links to the thing it names.
+ * The label travels inside the token, so this stays a pure render.
+ */
+const KIND_OF: Record<string, MentionKind> = {
+  r: "paper", "#": "tag", t: "task", n: "note", m: "meeting", u: "link",
+};
+
+const mention = {
+  name: "mention",
+  level: "inline" as const,
+  start(src: string) {
+    return src.indexOf("@");
+  },
+  tokenizer(src: string) {
+    const m = /^@([r#tnmu])\[([^\]|]+)(?:\|([^\]]*))?\]/.exec(src);
+    if (!m) return undefined;
+    return { type: "mention", raw: m[0], sigil: m[1], id: m[2].trim(), label: (m[3] ?? m[2]).trim() };
+  },
+  renderer(token: { sigil: string; id: string; label: string }) {
+    const kind = KIND_OF[token.sigil];
+    const href = mentionHref(kind, token.id);
+    const external = kind === "link";
+    const prefix =
+      kind === "tag" ? "#" : kind === "link" ? `${escapeHtml(linkDomain(token.id))} · ` : "";
+    const text = kind === "tag" ? escapeHtml(token.id) : escapeHtml(token.label);
+    return (
+      `<a class="md-chip md-chip-${kind}" href="${escapeHtml(href)}"` +
+      (external ? ' target="_blank" rel="noreferrer"' : "") +
+      `>${prefix ? `<span class="md-chip-prefix">${prefix}</span>` : ""}${text}</a>`
+    );
+  },
+};
+
+marked.use({ extensions: [mathBlock, mathInline, columns, callout, mention] });
 
 // Syntax highlighting + heading ids/anchors for the table of contents.
 marked.use({

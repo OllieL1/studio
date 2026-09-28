@@ -195,13 +195,25 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
 
 /* ── Inline ──────────────────────────────────────────────────────────────── */
 
-const SPLIT = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|\$[^$\n]+\$|!?\[[^\]]*\]\([^)]+\))/g;
+const SPLIT =
+  /(@[r#tnmu]\[[^\]|]+(?:\|[^\]]*)?\]|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|\$[^$\n]+\$|!?\[[^\]]*\]\([^)]+\))/g;
 
 export function parseInline(text: string, base: Inline["font"] = "body"): Inline[] {
   return text
     .split(SPLIT)
     .filter((p) => p !== "" && p !== undefined)
     .map((part): Inline => {
+      // A mention prints as its label, in the accent colour; a link chip also
+      // keeps its target, since a printed page can still be clicked.
+      const mention = /^@([r#tnmu])\[([^\]|]+)(?:\|([^\]]*))?\]$/.exec(part);
+      if (mention) {
+        const id = mention[2].trim();
+        const label = (mention[3] ?? mention[2]).trim();
+        if (mention[1] === "#") return { text: `#${id}`, font: "bold", colour: RUST };
+        if (mention[1] === "u") return { text: label, font: base, colour: RUST, link: id };
+        return { text: label, font: "bold", colour: RUST };
+      }
+
       const link = /^\[([^\]]*)\]\(([^)]+)\)$/.exec(part);
       const image = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(part);
       if (image) return { text: image[1] ? `[image: ${image[1]}]` : "[image]", font: "italic", colour: FAINT };

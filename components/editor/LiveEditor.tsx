@@ -8,6 +8,10 @@ import {
 } from "@/lib/editor/blocks";
 import { clsx } from "@/lib/clsx";
 import { InsertMenu } from "./InsertMenu";
+import { MentionMenu } from "./MentionMenu";
+import { LinkPrompt } from "./LinkPrompt";
+import { MENTION_KINDS, serializeMention, type MentionKind } from "@/lib/mentions";
+import type { MentionOption } from "@/app/api/mentions/route";
 import { TableEditor } from "./TableEditor";
 import { ColumnsEditor } from "./ColumnsEditor";
 
@@ -78,6 +82,10 @@ export function LiveEditor({
   /** Block indices, inclusive, when several blocks are selected at once. */
   const [selection, setSelection] = useState<{ from: number; to: number } | null>(null);
   const [menu, setMenu] = useState<{ blockId: string; start: number; query: string } | null>(null);
+  /** The `@` menu: where it started, what's been typed, and any `@r`-style filter. */
+  const [mention, setMention] = useState<{ blockId: string; start: number; query: string } | null>(null);
+  /** Where a link chip will land once the address has been typed. */
+  const [linkAt, setLinkAt] = useState<{ blockId: string; start: number; end: number } | null>(null);
 
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const rawRef = useRef<HTMLTextAreaElement>(null);
@@ -211,6 +219,7 @@ export function LiveEditor({
     caretTarget.current = caret ?? null;
     setActiveId(id);
     setMenu(null);
+    setMention(null);
   };
 
   // Put the caret where the caller asked once the textarea exists.
@@ -365,8 +374,8 @@ export function LiveEditor({
     const caret = el.selectionStart;
     const mod = e.metaKey || e.ctrlKey;
 
-    if (menu) {
-      // The menu owns the arrow keys and Enter while it's open.
+    if (menu || mention) {
+      // Whichever menu is open owns the arrow keys and Enter.
       if (["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(e.key)) return;
     }
 
@@ -487,11 +496,45 @@ export function LiveEditor({
       return;
     }
 
+    if (mention) {
+      const typedSoFar = text.slice(mention.start + 1, caret);
+      // A space with nothing chosen means it was just an @ in a sentence.
+      if (caret < mention.start + 1 || /\s$/.test(typedSoFar)) {
+        setMention(null);
+        return;
+      }
+      setMention({ ...mention, query: typedSoFar });
+      return;
+    }
+
     const typed = text[caret - 1];
     const before = text[caret - 2];
-    if (typed === "[" && (before === undefined || /[\s(]/.test(before))) {
+    const atWordStart = before === undefined || /[\s(]/.test(before);
+
+    if (typed === "[" && atWordStart) {
       setMenu({ blockId: b.id, start: caret - 1, query: "" });
     }
+    if (typed === "@" && atWordStart) {
+      setMention({ blockId: b.id, start: caret - 1, query: "" });
+    }
+  };
+
+  /** `@r…` narrows to research, `@#…` to tags, and so on. */
+  const mentionFilter = (query: string): { kind: MentionKind | null; search: string } => {
+    const prefix = MENTION_KINDS.find((k) => query.startsWith(k.prefix.slice(1)));
+    if (!prefix) return { kind: null, search: query };
+    return { kind: prefix.kind, search: query.slice(prefix.prefix.length - 1) };
+  };
+
+  const chooseMention = (option: MentionOption) => {
+    const el = areaRef.current;
+    if (!el || !mention) return;
+    const token = `${serializeMention(option.kind, option.id, option.label)} `;
+    const next = el.value.slice(0, mention.start) + token + el.value.slice(el.selectionStart);
+    const id = mention.blockId;
+    setMention(null);
+    write(el, id, next, mention.start + token.length);
+    el.focus();
   };
 
   const chooseInsert = (insert: Insert) => {
@@ -502,6 +545,12 @@ export function LiveEditor({
     const lineSoFar = before.slice(before.lastIndexOf("\n") + 1);
 
     setMenu(null);
+
+    // The link entry asks for an address first.
+    if (insert.prompt) {
+      setLinkAt({ blockId: id, start: menu.start, end: el.selectionStart });
+      return;
+    }
 
     // A table, quote or heading can't share a line with what's already there,
     // so when the line isn't empty the insert starts a block of its own.
@@ -609,7 +658,7 @@ export function LiveEditor({
                 onInput={(e) => onInput(e, b)}
                 onKeyDown={(e) => onKeyDown(e, b)}
                 onBlur={() => {
-                  if (menu) return;
+                  if (menu || mention || linkAt) return;
                   settle(b.id);
                   setActiveId((id) => (id === b.id ? null : id));
                   void persist(joinBlocks(blocksRef.current));
@@ -619,8 +668,38 @@ export function LiveEditor({
                 placeholder={blocks.length === 1 ? placeholder : undefined}
                 className="editor-raw w-full resize-none bg-rust-50/40 px-2 py-1 text-[14.5px] leading-[25px] text-n-800 outline-none placeholder:text-n-400"
               />
+              {linkAt && linkAt.blockId === b.id && (
+                <LinkPrompt
+                  anchor={areaRef.current}
+                  onInsert={(token) => {
+                    const el = areaRef.current;
+                    setLinkAt(null);
+                    if (!el) return;
+                    const next = el.value.slice(0, linkAt.start) + token + " " + el.value.slice(linkAt.end);
+                    write(el, b.id, next, linkAt.start + token.length + 1);
+                    el.focus();
+                  }}
+                  onClose={() => {
+                    setLinkAt(null);
+                    areaRef.current?.focus();
+                  }}
+                />
+              )}
+              {mention && mention.blockId === b.id && (
+                <MentionMenu
+                  anchor={areaRef.current}
+                  query={mentionFilter(mention.query).search}
+                  kind={mentionFilter(mention.query).kind}
+                  onChoose={chooseMention}
+                  onClose={() => {
+                    setMention(null);
+                    areaRef.current?.focus();
+                  }}
+                />
+              )}
               {menu && menu.blockId === b.id && (
                 <InsertMenu
+                  anchor={areaRef.current}
                   items={filterInserts(menu.query)}
                   onChoose={chooseInsert}
                   onClose={() => {

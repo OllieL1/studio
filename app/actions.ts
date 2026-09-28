@@ -13,6 +13,7 @@ import { buildListening } from "@/lib/music";
 import { backupNow } from "@/lib/backup";
 import { deleteUpload } from "@/lib/uploads";
 import { cleanHour, isThemeMode, DEFAULT_DARK_FROM, DEFAULT_DARK_TO } from "@/lib/theme";
+import { isHttpUrl, linkFallbackLabel, serializeMention } from "@/lib/mentions";
 import {
   addTaskItem, removeTaskItem, renameTaskItem, setCourseRevisionMode, setTaskDone, toggleTaskItem,
 } from "@/lib/tasks";
@@ -510,6 +511,44 @@ export async function updateMoodleUrl(courseId: string, url: string) {
   await db.course.update({ where: { id: courseId }, data: { moodleUrl: trimmed || null } });
   refresh();
   return { ok: true as const };
+}
+
+
+/* ── Links ─────────────────────────────────────────────────────────────── */
+
+/**
+ * The title of a pasted link, for the chip in a note.
+ *
+ * Best effort by design: Studio runs offline from a USB stick, so a failed
+ * fetch just means the chip shows the domain and path instead. The request is
+ * capped at three seconds so a dead link never holds up typing.
+ */
+export async function lookupLinkTitle(url: string): Promise<{ title: string | null }> {
+  if (!isHttpUrl(url)) return { title: null };
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(3000),
+      headers: { "User-Agent": "Studio/1.0 (personal study planner)" },
+    });
+    if (!res.ok) return { title: null };
+
+    const html = (await res.text()).slice(0, 60_000);
+    const raw =
+      /<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)/i.exec(html)?.[1] ??
+      /<title[^>]*>([^<]+)<\/title>/i.exec(html)?.[1];
+    if (!raw) return { title: null };
+
+    const title = raw
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+    return { title: title || null };
+  } catch {
+    return { title: null };
+  }
 }
 
 

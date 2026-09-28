@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPaper, deletePaper, lookupPaperDetails, updatePaper } from "@/app/projectActions";
+import { setPaperTags } from "@/app/nexusActions";
 import { PAPER_STATUSES, STATUS_LABEL, shortAuthors, type PaperMeta, type PaperStatus } from "@/lib/papers";
 import { clsx } from "@/lib/clsx";
 import { Card, EmptyState } from "../ui";
 import { MarkdownField } from "../MarkdownField";
+import { TagPicker } from "./TagPicker";
 
 export type LibraryPaper = {
   id: string;
@@ -19,7 +21,7 @@ export type LibraryPaper = {
   arxivId: string | null;
   kind: string;
   status: string;
-  tags: string | null;
+  tags: string[];
   notes: string | null;
   citeKey: string;
 };
@@ -35,23 +37,31 @@ const STATUS_TONE: Record<string, string> = {
  * filter by status, tag or text; tick papers and export them - with their
  * notes - to PDF, or to BibTeX for the dissertation.
  */
-export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
+export function PaperLibrary({
+  papers,
+  tags: knownTags,
+  focusCiteKey,
+}: {
+  papers: LibraryPaper[];
+  /** Every tag in the project, so a note's tag can be reused on a paper. */
+  tags: string[];
+  /** From `?paper=<citeKey>` - what a @r chip in a note links to. */
+  focusCiteKey?: string;
+}) {
   const [status, setStatus] = useState<string>("all");
   const [tag, setTag] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(papers.find((p) => p.citeKey === focusCiteKey)?.id ?? null);
 
-  const allTags = useMemo(
-    () => [...new Set(papers.flatMap((p) => (p.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean)))].sort(),
-    [papers],
-  );
+  // Only the tags actually on a paper are worth a filter chip.
+  const usedTags = useMemo(() => [...new Set(papers.flatMap((p) => p.tags))].sort((a, b) => a.localeCompare(b)), [papers]);
 
   const shown = papers.filter((p) => {
     if (status !== "all" && p.status !== status) return false;
-    if (tag && !(p.tags ?? "").split(",").map((t) => t.trim()).includes(tag)) return false;
+    if (tag && !p.tags.some((t) => t.toLowerCase() === tag.toLowerCase())) return false;
     const term = q.trim().toLowerCase();
-    if (term && !`${p.title} ${p.authors} ${p.venue ?? ""} ${p.tags ?? ""} ${p.notes ?? ""}`.toLowerCase().includes(term)) return false;
+    if (term && !`${p.title} ${p.authors} ${p.venue ?? ""} ${p.tags.join(" ")} ${p.notes ?? ""}`.toLowerCase().includes(term)) return false;
     return true;
   });
 
@@ -63,7 +73,7 @@ export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
 
   return (
     <div className="space-y-4">
-      <AddPaper />
+      <AddPaper allTags={knownTags} />
 
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -88,10 +98,10 @@ export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
             className="ml-auto h-8 w-56 rounded-sm border border-n-200 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
           />
         </div>
-        {allTags.length > 0 && (
+        {usedTags.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-n-100 pt-2">
             <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-400">Tags</span>
-            {allTags.map((t) => (
+            {usedTags.map((t) => (
               <button
                 key={t}
                 onClick={() => setTag(tag === t ? null : t)}
@@ -164,6 +174,8 @@ export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
               onToggle={() => toggle(p.id)}
               expanded={open === p.id}
               onExpand={() => setOpen(open === p.id ? null : p.id)}
+              allTags={knownTags}
+              focus={p.citeKey === focusCiteKey}
             />
           ))}
         </Card>
@@ -173,17 +185,27 @@ export function PaperLibrary({ papers }: { papers: LibraryPaper[] }) {
 }
 
 function PaperRow({
-  paper: p, selected, onToggle, expanded, onExpand,
-}: { paper: LibraryPaper; selected: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void }) {
+  paper: p, selected, onToggle, expanded, onExpand, allTags, focus,
+}: {
+  paper: LibraryPaper; selected: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void;
+  allTags: string[]; focus: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [tags, setTags] = useState(p.tags ?? "");
+  const [tags, setTags] = useState(p.tags);
+  const row = useRef<HTMLDivElement>(null);
+
+  // Arriving from a @r chip: bring the paper into view rather than leaving it
+  // opened somewhere down the list.
+  useEffect(() => {
+    if (focus) row.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focus]);
 
   const setStatus = (s: string) =>
     startTransition(async () => { await updatePaper(p.id, { status: s }); router.refresh(); });
 
   return (
-    <div className="border-b border-n-100 last:border-b-0">
+    <div ref={row} className={clsx("border-b border-n-100 last:border-b-0", focus && "bg-rust-50")}>
       <div className="flex items-start gap-3 px-3 py-2.5 hover:bg-n-25">
         <input type="checkbox" checked={selected} onChange={onToggle} aria-label={`Select ${p.title}`} className="mt-1 h-3.5 w-3.5 shrink-0 accent-[var(--color-rust-500)]" />
         <button onClick={onExpand} className="min-w-0 flex-1 text-left">
@@ -193,9 +215,9 @@ function PaperRow({
             {p.year && ` · ${p.year}`}
             {p.venue && <span className="text-n-400"> · {p.venue}</span>}
           </p>
-          {(p.tags || p.notes) && (
+          {(p.tags.length > 0 || p.notes) && (
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[11.5px]">
-              {(p.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+              {p.tags.map((t) => (
                 <span key={t} className="text-rust-600">#{t}</span>
               ))}
               {p.notes && <span className="truncate text-n-400">{p.notes.replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, "").replace(/[#*_`>]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
@@ -221,16 +243,18 @@ function PaperRow({
             {p.arxivId && <span className="font-num text-n-400">arXiv:{p.arxivId}</span>}
             <span className="font-num text-n-400">cite: {p.citeKey}</span>
           </div>
-          <label className="block">
+          <div className="max-w-md">
             <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-500">Tags</span>
-            <input
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              onBlur={() => tags !== (p.tags ?? "") && startTransition(async () => { await updatePaper(p.id, { tags }); router.refresh(); })}
-              placeholder="related work, evaluation, …"
-              className="h-8 w-full max-w-md rounded-sm border border-n-200 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
+            <TagPicker
+              selected={tags}
+              all={allTags}
+              compact
+              onChange={(next) => {
+                setTags(next);
+                startTransition(async () => { await setPaperTags(p.id, next); router.refresh(); });
+              }}
             />
-          </label>
+          </div>
           <div>
             <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-500">Notes</span>
             <MarkdownField
@@ -254,10 +278,10 @@ function PaperRow({
 
 /* ── Adding ─────────────────────────────────────────────────────────────── */
 
-type Draft = { title: string; authors: string; year: string; venue: string; url: string; doi: string | null; arxivId: string | null; kind: PaperMeta["kind"]; status: string; tags: string; notes: string };
-const EMPTY: Draft = { title: "", authors: "", year: "", venue: "", url: "", doi: null, arxivId: null, kind: "article", status: "to-read", tags: "", notes: "" };
+type Draft = { title: string; authors: string; year: string; venue: string; url: string; doi: string | null; arxivId: string | null; kind: PaperMeta["kind"]; status: string; tags: string[]; notes: string };
+const EMPTY: Draft = { title: "", authors: "", year: "", venue: "", url: "", doi: null, arxivId: null, kind: "article", status: "to-read", tags: [], notes: "" };
 
-function AddPaper() {
+function AddPaper({ allTags }: { allTags: string[] }) {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -295,10 +319,10 @@ function AddPaper() {
         arxivId: draft.arxivId,
         kind: draft.kind,
         status: draft.status,
-        tags: draft.tags || null,
         notes: draft.notes || null,
       });
       if (!res.ok) { setError(res.error); return; }
+      if (draft.tags.length) await setPaperTags(res.id, draft.tags);
       setDraft(null);
       setInput("");
       router.refresh();
@@ -349,7 +373,7 @@ function AddPaper() {
                 ))}
               </div>
             </Field>
-            <Field label="Tags"><input value={draft.tags} onChange={(e) => set("tags", e.target.value)} placeholder="related work, evaluation" className={inputCls} /></Field>
+            <Field label="Tags"><TagPicker selected={draft.tags} all={allTags} compact onChange={(t) => set("tags", t)} /></Field>
           </div>
           <Field label="Notes">
             <textarea value={draft.notes} onChange={(e) => set("notes", e.target.value)} rows={3} placeholder="Why it matters to your project (markdown)" className={clsx(inputCls, "h-auto resize-y py-2")} />

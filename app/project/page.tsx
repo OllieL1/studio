@@ -2,6 +2,8 @@ import type { Route } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getProject } from "@/lib/projectData";
+import { getNexus } from "@/lib/nexusData";
+import { allTags } from "@/lib/tags";
 import { visibleCourseWhere } from "@/lib/types";
 import { fmtDateLong, fmtDayDate, fmtDuration, fmtHM, fmtRelative, fmtTime, toISODate, addDays } from "@/lib/dates";
 import { isTaskDone } from "@/lib/progress";
@@ -10,6 +12,7 @@ import { PROJECT_DEADLINE } from "@/lib/project";
 import { Card, Eyebrow, EmptyState, Pill, ProgressBar, Stat } from "@/components/ui";
 import { Timeline } from "@/components/project/Timeline";
 import { PaperLibrary } from "@/components/project/PaperLibrary";
+import { NexusGallery } from "@/components/project/NexusGallery";
 import { MeetingButton, type MeetingDraft } from "@/components/project/MeetingDialog";
 import { RepoLink } from "@/components/project/RepoLink";
 import { MoodleLink } from "@/components/MoodleLink";
@@ -27,11 +30,12 @@ const TABS = [
   { key: "overview", label: "Overview" },
   { key: "meetings", label: "Meetings" },
   { key: "research", label: "Research" },
+  { key: "nexus", label: "Nexus" },
   { key: "tasks", label: "Tasks" },
 ] as const;
 
-export default async function ProjectPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab: tabParam } = await searchParams;
+export default async function ProjectPage({ searchParams }: { searchParams: Promise<{ tab?: string; paper?: string }> }) {
+  const { tab: tabParam, paper: focusCiteKey } = await searchParams;
   const tab = TABS.some((t) => t.key === tabParam) ? tabParam! : "overview";
   const data = await getProject();
 
@@ -42,6 +46,10 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
       </Card>
     );
   }
+
+  // Only the open tab's data: the gallery and the tag list are a query each.
+  const tagNames = tab === "nexus" || tab === "research" ? (await allTags()).map((t) => t.name) : [];
+  const nexus = tab === "nexus" ? await getNexus() : null;
 
   const googleConnected =
     isGoogleConfigured() && !!(await db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }));
@@ -204,12 +212,17 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
 
       {tab === "research" && (
         <PaperLibrary
+          tags={tagNames}
+          focusCiteKey={focusCiteKey}
           papers={papers.map((p) => ({
             id: p.id, title: p.title, authors: p.authors, year: p.year, venue: p.venue, url: p.url,
-            doi: p.doi, arxivId: p.arxivId, kind: p.kind, status: p.status, tags: p.tags, notes: p.notes, citeKey: p.citeKey,
+            doi: p.doi, arxivId: p.arxivId, kind: p.kind, status: p.status, notes: p.notes, citeKey: p.citeKey,
+            tags: p.tagLinks.map((t) => t.tag.name),
           }))}
         />
       )}
+
+      {tab === "nexus" && nexus && <NexusGallery notes={nexus} tags={tagNames} />}
 
       {tab === "tasks" && <ProjectTasks courseId={course.id} tasks={tasks} googleConnected={googleConnected} />}
     </div>

@@ -407,6 +407,11 @@ input[type="range"]::-webkit-slider-thumb:active {
 .prose-notes p { margin: 0 0 14px; }
 .prose-notes ul,
 .prose-notes ol { margin: 0 0 14px; padding-left: 22px; }
+/* A nested list is part of the list above it, not a new block: the 14px that
+   separates a list from a paragraph left a gap before the next top-level
+   bullet. */
+.prose-notes li > ul,
+.prose-notes li > ol { margin: 4px 0 0; }
 .prose-notes li { margin: 4px 0; }
 .prose-notes ul { list-style: disc; }
 .prose-notes ol { list-style: decimal; }
@@ -601,3 +606,37 @@ input[type="range"]::-webkit-slider-thumb:active {
 @media (max-width: 640px) {
   .prose-notes .md-columns { grid-template-columns: 1fr; gap: 0; }
 }
+
+/* ── Mention chips ────────────────────────────────────────────────────────
+   A mention is a thing, not a link: it gets a tinted pill so a sentence full
+   of them still reads as a sentence. Each kind has its own tint, all muted
+   enough to sit inside body text. */
+.prose-notes .md-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.93em;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  transition: background-color 120ms var(--ease-out-soft);
+}
+.prose-notes .md-chip-prefix { opacity: 0.66; font-weight: 600; }
+
+.prose-notes .md-chip-paper { background: var(--color-rust-50); border-color: var(--color-rust-100); color: var(--color-rust-700); }
+.prose-notes .md-chip-tag { background: var(--color-info-soft); border-color: transparent; color: var(--color-info); }
+.prose-notes .md-chip-task { background: var(--color-ok-soft); border-color: transparent; color: var(--color-ok); }
+.prose-notes .md-chip-note { background: var(--color-n-50); border-color: var(--color-n-100); color: var(--color-n-700); }
+.prose-notes .md-chip-meeting { background: var(--color-warn-soft); border-color: transparent; color: var(--color-warn); }
+.prose-notes .md-chip-link { background: var(--color-n-50); border-color: var(--color-n-100); color: var(--color-n-700); }
+
+.prose-notes .md-chip:hover { filter: brightness(0.97); }
+:root[data-theme="dark"] .prose-notes .md-chip:hover { filter: brightness(1.25); }

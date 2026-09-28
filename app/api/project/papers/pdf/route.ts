@@ -15,10 +15,12 @@ export async function GET(req: NextRequest) {
   const idsParam = req.nextUrl.searchParams.get("ids");
   const ids = idsParam?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
 
-  const papers = await db.paper.findMany({
+  const rows = await db.paper.findMany({
     where: ids.length > 0 ? { id: { in: ids } } : undefined,
     orderBy: [{ year: "desc" }, { title: "asc" }],
+    include: { tagLinks: { include: { tag: { select: { name: true } } } } },
   });
+  const papers = rows.map((p) => ({ ...p, tags: p.tagLinks.map((t) => t.tag.name) }));
 
   if (papers.length === 0) {
     return new Response("Nothing to export.", { status: 404 });

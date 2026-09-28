@@ -38,7 +38,10 @@ export async function getProject() {
         actions: { include: { items: true } },
       },
     }),
-    db.paper.findMany({ orderBy: { createdAt: "desc" } }),
+    db.paper.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { tagLinks: { include: { tag: { select: { name: true } } } } },
+    }),
     db.session.findMany({
       where: { courses: { some: { courseId: course.id } } },
       include: { courses: true, tasks: true },
