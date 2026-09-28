@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { LOOPBACK_ORIGIN } from "@/lib/origin";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { buildAuthUrl, isGoogleConfigured } from "@/lib/google";
@@ -7,7 +8,7 @@ import { buildAuthUrl, isGoogleConfigured } from "@/lib/google";
 export async function GET() {
   if (!isGoogleConfigured()) {
     return NextResponse.redirect(
-      new URL("/settings?google=unconfigured", "http://localhost:3000"),
+      new URL("/settings?google=unconfigured", LOOPBACK_ORIGIN),
     );
   }
 

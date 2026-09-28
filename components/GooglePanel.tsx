@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { disconnectGoogle, setCalendarTarget } from "@/app/actions";
 import { Card, Eyebrow } from "./ui";
 import { clsx } from "@/lib/clsx";
+import { GOOGLE_REDIRECT_URI } from "@/lib/origin";
 
 /** Google Calendar connection state and setup instructions. */
 export function GooglePanel({
@@ -139,7 +140,7 @@ export function GooglePanel({
               <>Under <b>APIs &amp; Services → Library</b>, search for <b>Google Calendar API</b> and enable it.</>,
               <>Under <b>OAuth consent screen</b>, choose <b>External</b>, fill in the app name and your email, and add yourself under <b>Test users</b>. It can stay in Testing mode - it&apos;s only ever you.</>,
               <>Under <b>Credentials → Create credentials → OAuth client ID</b>, pick <b>Web application</b> and add this exact <b>Authorised redirect URI</b>:
-                <code className="mt-1 block rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] text-n-700">http://localhost:3000/api/google/callback</code></>,
+                <code className="mt-1 block rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] text-n-700">{GOOGLE_REDIRECT_URI}</code></>,
               <>Copy the client ID and secret into <code className="rounded bg-n-50 px-1 py-0.5 font-num text-[11px]">.env</code>:
                 <code className="mt-1 block whitespace-pre rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] leading-5 text-n-700">{`GOOGLE_CLIENT_ID="…apps.googleusercontent.com"\nGOOGLE_CLIENT_SECRET="…"`}</code></>,
               <>Restart <code className="rounded bg-n-50 px-1 py-0.5 font-num text-[11px]">npm run dev</code>, then hit <b>Connect Google</b> above.</>,

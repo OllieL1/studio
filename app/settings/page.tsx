@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { SPOTIFY_REDIRECT_URI } from "@/lib/origin";
 import { isGoogleConfigured, listCalendars } from "@/lib/google";
 import { Card, Eyebrow } from "@/components/ui";
 import { GooglePanel } from "@/components/GooglePanel";
@@ -27,7 +28,7 @@ const SPOTIFY_MESSAGES: Record<string, { tone: "ok" | "bad"; text: string }> = {
   unconfigured: { tone: "bad", text: "No Spotify credentials in .env yet - see the setup steps below." },
   missing_code: { tone: "bad", text: "Spotify didn't send an authorisation code. Try again." },
   bad_state: { tone: "bad", text: "Spotify security check failed (state mismatch). Try connecting again." },
-  exchange_failed: { tone: "bad", text: "Couldn't finish connecting to Spotify. Check the client secret and that the redirect URI is exactly http://127.0.0.1:3000/api/spotify/callback." },
+  exchange_failed: { tone: "bad", text: `Couldn't finish connecting to Spotify. Check the client secret and that the redirect URI is exactly ${SPOTIFY_REDIRECT_URI}.` },
 };
 
 export default async function SettingsPage({

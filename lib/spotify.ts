@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { SPOTIFY_REDIRECT_URI } from "./origin";
 
 /**
  * Spotify "now playing" — read-only.
@@ -17,14 +18,14 @@ const API = "https://api.spotify.com/v1";
  *  for stretches the app wasn't open. */
 export const SPOTIFY_SCOPES = "user-read-currently-playing user-read-recently-played";
 export const HISTORY_SCOPE = "user-read-recently-played";
-export const SPOTIFY_LOOPBACK_ORIGIN = "http://127.0.0.1:3000";
+export { SPOTIFY_LOOPBACK_ORIGIN } from "./origin";
 
 export function spotifyConfig() {
   return {
     clientId: process.env.SPOTIFY_CLIENT_ID,
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
     redirectUri:
-      process.env.SPOTIFY_REDIRECT_URI ?? `${SPOTIFY_LOOPBACK_ORIGIN}/api/spotify/callback`,
+      process.env.SPOTIFY_REDIRECT_URI ?? SPOTIFY_REDIRECT_URI,
   };
 }
 

@@ -5,7 +5,14 @@ START
   Mac:      double-click "Start Studio.command"
   Windows:  double-click "Start Studio.bat"
 
-  A window opens, Studio starts, and your browser opens at http://localhost:3000.
+  A window opens, Studio starts, and your browser opens at http://studio:3111
+  (or http://localhost:3111 on a computer that doesn't know the name yet).
+
+  To use the short name on a new computer, run this once:
+    Mac/Linux   echo "127.0.0.1  studio" | sudo tee -a /etc/hosts
+    Windows     add "127.0.0.1  studio" to
+                C:\Windows\System32\drivers\etc\hosts (as Administrator)
+  It is optional - Studio works either way.
   Keep that window open while you use Studio.
 
 STOP

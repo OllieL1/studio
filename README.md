@@ -13,7 +13,7 @@ For development:
 ```bash
 npm install
 npm run seed     # populate courses & timetable from claude/SUBJECTS.md
-npm run dev      # → http://localhost:3000  (shows a "Dev copy" badge)
+npm run dev      # → http://localhost:3111  (shows a "Dev copy" badge)
 ```
 
 ---
@@ -147,7 +147,7 @@ at the deadline; date-only tasks become all-day events.
 **It needs credentials before it does anything.** Six steps, roughly five
 minutes, written out in the app at `/settings` — create a Google Cloud project,
 enable the Calendar API, make an OAuth client with redirect URI
-`http://localhost:3000/api/google/callback`, and put the ID and secret in `.env`:
+`http://localhost:3111/api/google/callback`, and put the ID and secret in `.env`:
 
 ```
 GOOGLE_CLIENT_ID="….apps.googleusercontent.com"
@@ -210,7 +210,7 @@ Connections made before 18 Sep 2026 lack the listening-history permission; the a
 prompts to reconnect.
 
 Spotify **rejects `localhost`** as a redirect URI, so register
-`http://127.0.0.1:3000/api/spotify/callback`. The connect button bounces to
+`http://127.0.0.1:3111/api/spotify/callback`. The connect button bounces to
 `127.0.0.1` first so the sign-in's security cookie lands on the right host.
 
 ---
@@ -289,7 +289,7 @@ STUDIO/
     launcher.mjs           one launcher for both machines
 ```
 
-The launcher checks nothing else is on port 3000, starts the server **bound
+The launcher checks nothing else is on port 3111, starts the server **bound
 to 127.0.0.1 only** (nothing on the network can reach it), waits until it can
 read the database, and opens the browser. The server runs inside the
 launcher's own process, so closing the window always stops it - on Windows a

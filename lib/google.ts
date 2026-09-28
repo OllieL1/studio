@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { GOOGLE_REDIRECT_URI, LOOPBACK_ORIGIN } from "./origin";
 
 /**
  * Google Calendar integration.
@@ -27,8 +28,7 @@ export const GOOGLE_SCOPES = [
 export function googleConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3000/api/google/callback";
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? GOOGLE_REDIRECT_URI;
   return { clientId, clientSecret, redirectUri };
 }
 
@@ -143,7 +143,7 @@ export async function upsertEvent(
     end: input.allDay
       ? { date: isoDate(addDay(input.end)) } // Google treats all-day end as exclusive
       : { dateTime: input.end.toISOString(), timeZone: tz() },
-    source: { title: "Studio", url: "http://localhost:3000" },
+    source: { title: "Studio", url: LOOPBACK_ORIGIN },
   };
 
   const url = existingEventId

@@ -20,10 +20,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
 import net from "node:net";
+import { lookup } from "node:dns/promises";
 
 const ROOT = dirname(fileURLToPath(import.meta.url)); // .../studio
-const PORT = 3000; // fixed: the Google and Spotify sign-in redirects point here
-const URL_ = `http://localhost:${PORT}`;
+// Fixed: the Google and Spotify sign-in redirects point here. Must match
+// PORT in lib/origin.ts - test/origin.test.ts fails if the two drift apart.
+const PORT = 3111;
+const HOST_ALIAS = "studio";
+// Filled in before the browser opens: `studio` if this machine resolves it,
+// `localhost` otherwise, so a borrowed computer still works.
+let URL_ = `http://localhost:${PORT}`;
 const IS_WIN = process.platform === "win32";
 
 const say = (m = "") => console.log(m ? `  ${m}` : "");
@@ -73,6 +79,23 @@ async function waitForPort(seconds = 12) {
   return "busy";
 }
 
+/**
+ * Prefer http://studio:PORT, which needs a line in the machine's hosts file:
+ *
+ *   127.0.0.1  studio
+ *
+ * Without it the name doesn't resolve, so fall back rather than open a URL
+ * the browser can't reach.
+ */
+async function chooseUrl() {
+  try {
+    const { address } = await lookup(HOST_ALIAS);
+    if (address === "127.0.0.1" || address === "::1") URL_ = `http://${HOST_ALIAS}:${PORT}`;
+  } catch {
+    /* not in this machine's hosts file - localhost it is */
+  }
+}
+
 function openBrowser() {
   if (process.env.STUDIO_NO_BROWSER) return; // for automated tests
   if (IS_WIN) execFile("cmd", ["/c", "start", "", URL_]);
@@ -93,6 +116,8 @@ function loadEnv(file) {
 for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => process.exit(0));
 
 say(); say("Studio"); say("──────"); say();
+
+await chooseUrl();
 
 const existing = await health();
 if (existing?.app === "studio" && existing.mode === "development") {

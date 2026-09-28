@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 /**
  * Used by the USB launcher to know when Studio is ready, and to tell "Studio
- * is already running" apart from "something else is using port 3000". It also
+ * is already running" apart from "something else is using Studio's port". It also
  * touches the database, so a bad database path shows up as a clear error at
  * startup instead of a broken page later.
  */
@@ -14,7 +14,7 @@ export async function GET() {
     // Studio's tables are there.
     await db.course.count();
     // "mode" lets the USB launcher tell the live app apart from the
-    // development server, which also answers on port 3000.
+    // development server, which also answers on the same port.
     return NextResponse.json({ app: "studio", ok: true, mode: process.env.NODE_ENV });
   } catch (e) {
     return NextResponse.json(

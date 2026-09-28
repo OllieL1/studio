@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LOOPBACK_ORIGIN } from "@/lib/origin";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { buildSpotifyAuthUrl, isSpotifyConfigured, SPOTIFY_LOOPBACK_ORIGIN } from "@/lib/spotify";
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!isSpotifyConfigured()) {
-    return NextResponse.redirect(new URL("/settings?spotify=unconfigured", "http://localhost:3000"));
+    return NextResponse.redirect(new URL("/settings?spotify=unconfigured", LOOPBACK_ORIGIN));
   }
 
   const state = randomBytes(16).toString("hex");

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { disconnectSpotify } from "@/app/actions";
 import { Card, Eyebrow } from "./ui";
 import { clsx } from "@/lib/clsx";
+import { SPOTIFY_REDIRECT_URI } from "@/lib/origin";
 
 /** Spotify connection state and one-time setup steps. */
 export function SpotifyPanel({
@@ -94,7 +95,7 @@ export function SpotifyPanel({
             {[
               <>Go to the <ExtLink href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</ExtLink> and <b>Create app</b> (any name and description).</>,
               <>Under <b>Redirect URIs</b>, add exactly this - Spotify rejects <code className="font-num text-[11px]">localhost</code>, so it has to be the IP:
-                <code className="mt-1 block rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] text-n-700">http://127.0.0.1:3000/api/spotify/callback</code></>,
+                <code className="mt-1 block rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] text-n-700">{SPOTIFY_REDIRECT_URI}</code></>,
               <>Tick <b>Web API</b> under the APIs used, and save.</>,
               <>Open the app&apos;s <b>Settings</b>, copy the client ID and secret into <code className="rounded bg-n-50 px-1 py-0.5 font-num text-[11px]">.env</code>:
                 <code className="mt-1 block whitespace-pre rounded bg-n-50 px-2 py-1.5 font-num text-[11.5px] leading-5 text-n-700">{`SPOTIFY_CLIENT_ID="…"\nSPOTIFY_CLIENT_SECRET="…"`}</code></>,
