@@ -765,11 +765,18 @@ const Rendered = memo(function Rendered({
 }) {
   const empty = !block.text.trim();
   const router = useRouter();
-  const followed = useRef(0);
+  /** Set when mousedown followed a link, and consumed by that gesture's click. */
+  const followed = useRef(false);
 
   const click = (e: React.MouseEvent<HTMLDivElement>) => {
-    // A link was already followed on mousedown; don't also open the editor.
-    if (Date.now() - followed.current < 500) return;
+    if (followed.current) {
+      // We already navigated on mousedown. Letting the anchor navigate a
+      // second time abandons the render the first one started, which the
+      // server reports as "The destination stream closed early".
+      followed.current = false;
+      e.preventDefault();
+      return;
+    }
     if ((e.target as HTMLElement).closest("a")) return;
     if (e.shiftKey) return; // handled on mousedown, before the blur
     onEnter(caretFromPoint(e, block.text));
@@ -782,15 +789,16 @@ const Rendered = memo(function Rendered({
   // editor opens instead. Shift-click has the same problem: the anchor block
   // has already blurred.
   const mouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    followed.current = false; // a gesture that never reached its click
     const link = (e.target as HTMLElement).closest("a");
     if (link) {
-      followed.current = Date.now();
       // Let the browser handle a middle- or modified click: that's "open in a
       // new tab", and it works off the native click.
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      e.preventDefault();
       const href = link.getAttribute("href");
       if (!href) return;
+      e.preventDefault();
+      followed.current = true;
       if (link.getAttribute("target") === "_blank" || /^[a-z]+:/i.test(href)) {
         window.open(href, "_blank", "noreferrer");
       } else {
