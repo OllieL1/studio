@@ -26,7 +26,7 @@ const ROOT = dirname(fileURLToPath(import.meta.url)); // .../studio
 // Fixed: the Google and Spotify sign-in redirects point here. Must match
 // PORT in lib/origin.ts - test/origin.test.ts fails if the two drift apart.
 const PORT = 3111;
-const HOST_ALIAS = "studio";
+const HOST_ALIAS = "studio.localhost";
 // Filled in before the browser opens: `studio` if this machine resolves it,
 // `localhost` otherwise, so a borrowed computer still works.
 let URL_ = `http://localhost:${PORT}`;
@@ -80,12 +80,14 @@ async function waitForPort(seconds = 12) {
 }
 
 /**
- * Prefer http://studio:PORT, which needs a line in the machine's hosts file:
+ * Prefer http://studio.localhost:PORT, which needs a line in the hosts file:
  *
- *   127.0.0.1  studio
+ *   127.0.0.1  studio.localhost
  *
- * Without it the name doesn't resolve, so fall back rather than open a URL
- * the browser can't reach.
+ * The `.localhost` suffix matters: Safari forces HTTPS on a bare name like
+ * `studio`, even from an explicit http:// URL, and then can't connect. It
+ * leaves `.localhost` alone. Without the hosts line the name doesn't resolve
+ * at all, so fall back rather than open a URL the browser can't reach.
  */
 async function chooseUrl() {
   try {

@@ -30,6 +30,12 @@ test("Spotify's redirect is a loopback IP, Google's may be localhost", () => {
   assert.match(GOOGLE_REDIRECT_URI, new RegExp(`^http://localhost:${PORT}/`));
 });
 
+test("the friendly name keeps its .localhost suffix", () => {
+  // Safari upgrades a bare hostname to HTTPS even from an explicit http:// URL
+  // and then can't connect; it speaks plain HTTP to the .localhost domain.
+  assert.match(HOST_ALIAS, /\.localhost$/, "a bare alias breaks in Safari");
+});
+
 test("nothing still points at the old port", () => {
   for (const f of ["lib/google.ts", "lib/spotify.ts", "scripts/usb/launcher.mjs", "scripts/usb/README.txt"]) {
     assert.doesNotMatch(readFileSync(f, "utf8"), /:3000\b/, `${f} still mentions port 3000`);
