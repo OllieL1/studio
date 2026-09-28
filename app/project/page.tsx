@@ -53,7 +53,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
 
   const googleConnected =
     isGoogleConfigured() && !!(await db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }));
-  const { course, pace, meetings, papers, tasks, progress } = data;
+  const { course, pace, meetings, papers, tasks, progress, noteCount } = data;
   const next = meetings.upcoming[0] ?? null;
   const daysLeft = Math.max(0, Math.ceil((PROJECT_DEADLINE.getTime() - Date.now()) / 86_400_000));
 
@@ -97,7 +97,12 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
       {/* ── Tabs ───────────────────────────────────────────────────────── */}
       <nav className="flex items-center gap-0.5 border-b border-n-200">
         {TABS.map((t) => {
-          const count = t.key === "meetings" ? meetings.all.length : t.key === "research" ? papers.length : t.key === "tasks" ? tasks.filter((x) => !isTaskDone(x)).length : null;
+          const count =
+            t.key === "meetings" ? meetings.all.length
+            : t.key === "research" ? papers.length
+            : t.key === "nexus" ? noteCount
+            : t.key === "tasks" ? tasks.filter((x) => !isTaskDone(x)).length
+            : null;
           return (
             <Link
               key={t.key}

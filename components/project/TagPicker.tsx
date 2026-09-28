@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { parseTagInput } from "@/lib/tags";
+import { parseTagInput } from "@/lib/tagText";
 import { Portal } from "@/lib/hooks/useModal";
 import { clsx } from "@/lib/clsx";
 

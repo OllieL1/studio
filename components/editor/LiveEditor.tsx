@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import { saveNotes } from "@/app/actions";
 import {
   applyInsert, caretLine, filterInserts, joinBlocks, listContinuation,
@@ -762,17 +764,40 @@ const Rendered = memo(function Rendered({
   onExtend: () => void;
 }) {
   const empty = !block.text.trim();
+  const router = useRouter();
+  const followed = useRef(0);
 
   const click = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Let a link be a link; otherwise put the caret near what was clicked.
+    // A link was already followed on mousedown; don't also open the editor.
+    if (Date.now() - followed.current < 500) return;
     if ((e.target as HTMLElement).closest("a")) return;
     if (e.shiftKey) return; // handled on mousedown, before the blur
     onEnter(caretFromPoint(e, block.text));
   };
 
-  // Shift-click has to be caught on mousedown: by the time the click fires,
-  // the block being edited has already blurred and lost the anchor.
+  // Both cases have to be caught on mousedown. Leaving the block that was
+  // being edited swaps its textarea for rendered markdown, which changes the
+  // page height - a heading moves everything below it by ~50px - so by the
+  // time the click fires the link has slid out from under the cursor and the
+  // editor opens instead. Shift-click has the same problem: the anchor block
+  // has already blurred.
   const mouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const link = (e.target as HTMLElement).closest("a");
+    if (link) {
+      followed.current = Date.now();
+      // Let the browser handle a middle- or modified click: that's "open in a
+      // new tab", and it works off the native click.
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      const href = link.getAttribute("href");
+      if (!href) return;
+      if (link.getAttribute("target") === "_blank" || /^[a-z]+:/i.test(href)) {
+        window.open(href, "_blank", "noreferrer");
+      } else {
+        router.push(href as Route);
+      }
+      return;
+    }
     if (!e.shiftKey) return;
     e.preventDefault();
     onExtend();

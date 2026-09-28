@@ -31,7 +31,6 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           id: note.id,
           title: note.title,
           body: note.body,
-          icon: note.icon,
           pinned: note.pinned,
           tags: note.tags.map((t) => t.tag.name),
         }}
@@ -49,7 +48,6 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                 href={`/project/nexus/${b.id}` as Route}
                 className="flex items-center gap-1.5 rounded-md border border-n-200 bg-n-0 px-2.5 py-1.5 text-[12.5px] text-n-700 transition-colors duration-[120ms] hover:bg-n-50"
               >
-                {b.icon && <span aria-hidden>{b.icon}</span>}
                 {b.title}
                 <span className="font-num text-[10.5px] text-n-400">{fmtRelative(b.updatedAt)}</span>
               </Link>

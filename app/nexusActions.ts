@@ -13,10 +13,22 @@ import { renameTagMentions } from "@/lib/mentions";
  * as the tag record.
  */
 
-const refresh = () => {
+/**
+ * The pages that list notes: the gallery and the tag pages.
+ *
+ * Deliberately not the note pages themselves. Invalidating the page you are
+ * currently writing on invites the server to re-render the editor underneath
+ * you, and nothing on it has changed that you didn't just type.
+ */
+const refreshIndexes = () => {
   revalidatePath("/project");
-  revalidatePath("/project/nexus", "layout");
   revalidatePath("/project/tags", "layout");
+};
+
+/** Also the note pages - only when one appears, vanishes, or is rewritten. */
+const refreshAll = () => {
+  refreshIndexes();
+  revalidatePath("/project/nexus", "layout");
 };
 
 export async function createNote(input?: { title?: string; body?: string }) {
@@ -29,29 +41,30 @@ export async function createNote(input?: { title?: string; body?: string }) {
     },
     select: { id: true },
   });
-  refresh();
+  refreshIndexes();
   return { ok: true as const, id: note.id };
 }
 
 export async function updateNote(
   id: string,
-  data: { title?: string; body?: string; icon?: string | null; pinned?: boolean },
+  data: { title?: string; body?: string; pinned?: boolean },
 ) {
   const patch: Record<string, unknown> = {};
   if (data.title !== undefined) patch.title = data.title.trim().slice(0, 120) || "Untitled";
   if (data.body !== undefined) patch.body = data.body;
-  if (data.icon !== undefined) patch.icon = data.icon?.trim() || null;
   if (data.pinned !== undefined) patch.pinned = data.pinned;
 
   await db.note.update({ where: { id }, data: patch });
-  refresh();
+  // A body save is the autosave; only what the gallery shows is worth
+  // invalidating, and the gallery is dynamic so it re-queries on arrival.
+  if (data.title !== undefined || data.pinned !== undefined) refreshIndexes();
   return { ok: true as const };
 }
 
 export async function deleteNote(id: string) {
   await db.note.delete({ where: { id } });
   await pruneOrphanTags();
-  refresh();
+  refreshAll();
   return { ok: true as const };
 }
 
@@ -65,7 +78,7 @@ export async function setNoteTags(id: string, names: string[]) {
     }
   });
   await pruneOrphanTags();
-  refresh();
+  refreshIndexes();
   return { ok: true as const };
 }
 
@@ -79,7 +92,7 @@ export async function setPaperTags(id: string, names: string[]) {
     }
   });
   await pruneOrphanTags();
-  refresh();
+  refreshIndexes();
   return { ok: true as const };
 }
 
@@ -131,12 +144,13 @@ export async function renameTag(id: string, name: string) {
     }
   });
 
-  refresh();
+  // Note bodies were rewritten, so the note pages have to go too.
+  refreshAll();
   return { ok: true as const };
 }
 
 export async function deleteTag(id: string) {
   await db.tag.delete({ where: { id } });
-  refresh();
+  refreshIndexes();
   return { ok: true as const };
 }

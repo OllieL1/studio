@@ -13,6 +13,9 @@ next-env.d.ts
 # SQLite data — your study data. Backed up via `npm run backup`.
 prisma/*.db
 prisma/*.db-journal
+# WAL sidecars (lib/db.ts switches SQLite to write-ahead logging)
+prisma/*.db-wal
+prisma/*.db-shm
 backups/
 
 # Node runtimes downloaded for the USB stick, and the staged app

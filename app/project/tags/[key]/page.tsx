@@ -73,7 +73,6 @@ export default async function TagPage({ params }: { params: Promise<{ key: strin
                   className="block border-b border-n-100 px-4 py-3 last:border-b-0 hover:bg-n-25"
                 >
                   <p className="flex items-baseline gap-2 text-[13.5px] font-medium text-n-800">
-                    {n.icon && <span aria-hidden>{n.icon}</span>}
                     {n.title}
                     <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtRelative(n.updatedAt)}</span>
                   </p>

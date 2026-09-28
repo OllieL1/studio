@@ -119,14 +119,18 @@ export async function GET(req: NextRequest) {
   }
 
   // Nexus notes: the title ranks above a match in the body.
-  for (const n of await db.note.findMany({ orderBy: { updatedAt: "desc" } })) {
+  for (const n of await db.note.findMany({
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, body: true },
+    take: 500,
+  })) {
     const head = score(n.title.toLowerCase(), lower);
     const body = stripMentions(n.body);
     const idx = head ? -1 : body.toLowerCase().indexOf(lower);
     if (!head && idx < 0) continue;
     hits.push({
       id: n.id, type: "nexus", title: n.title,
-      subtitle: n.icon ? `${n.icon} Nexus` : "Nexus",
+      subtitle: "Nexus",
       href: `/project/nexus/${n.id}`, colour: null,
       excerpt: idx >= 0 ? excerptAround(body, idx, lower.length) : null,
       score: head ? head + 1 : 1,

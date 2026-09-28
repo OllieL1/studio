@@ -15,7 +15,6 @@ export async function getNexus(tag?: string, query?: string) {
   return notes.map((n) => ({
     id: n.id,
     title: n.title,
-    icon: n.icon,
     pinned: n.pinned,
     updatedAt: n.updatedAt,
     tags: n.tags.map((t) => t.tag.name),
@@ -61,7 +60,7 @@ export async function getTagPage(key: string) {
   // Mentions live in the body as `@#[name]`, so they're found by text.
   const mentioned = await db.note.findMany({
     where: { body: { contains: `@#[${tag.name}]` } },
-    select: { id: true, title: true, icon: true, body: true, updatedAt: true },
+    select: { id: true, title: true, body: true, updatedAt: true },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -73,7 +72,6 @@ export async function getTagPage(key: string) {
     notes: tag.notes.map((n) => ({
       id: n.note.id,
       title: n.note.title,
-      icon: n.note.icon,
       updatedAt: n.note.updatedAt,
       excerpt: excerptOf(n.note.body),
     })),
@@ -82,7 +80,6 @@ export async function getTagPage(key: string) {
       .map((n) => ({
         id: n.id,
         title: n.title,
-        icon: n.icon,
         updatedAt: n.updatedAt,
         excerpt: excerptOf(n.body),
       })),
@@ -93,7 +90,7 @@ export async function getTagPage(key: string) {
 export async function getBacklinks(noteId: string) {
   const notes = await db.note.findMany({
     where: { body: { contains: `@n[${noteId}` }, NOT: { id: noteId } },
-    select: { id: true, title: true, icon: true, updatedAt: true },
+    select: { id: true, title: true, updatedAt: true },
     orderBy: { updatedAt: "desc" },
   });
   return notes;

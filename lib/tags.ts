@@ -1,29 +1,15 @@
-import { db } from "./db";
-
 /**
  * Tags are shared by research papers and Nexus notes.
  *
  * A tag is matched case-insensitively on `key` but keeps the capitalisation it
  * was first given, so "PEFT" and "peft" are one tag that reads the way you
- * typed it.
+ * typed it. The name-cleaning half lives in ./tagText so the picker can use it
+ * in the browser.
  */
+import { db } from "./db";
+import { parseTagInput, tagKey } from "./tagText";
 
-export const tagKey = (name: string) => name.trim().toLowerCase();
-
-/** Clean up what someone typed: trimmed, no commas, no empty strings. */
-export function parseTagInput(input: string): string[] {
-  const seen = new Set<string>();
-  return input
-    .split(",")
-    .map((t) => t.trim().replace(/^#/, ""))
-    .filter((t) => t.length > 0 && t.length <= 40)
-    .filter((t) => {
-      const k = tagKey(t);
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-}
+export { parseTagInput, tagKey } from "./tagText";
 
 /** Find or create each tag, returning their ids in order. */
 export async function ensureTags(names: string[]): Promise<string[]> {

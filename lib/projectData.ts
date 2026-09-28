@@ -26,7 +26,7 @@ export async function getProject() {
 
   const now = new Date();
 
-  const [slices, meetings, papers, sessions] = await Promise.all([
+  const [slices, meetings, papers, noteCount, sessions] = await Promise.all([
     db.sessionCourse.findMany({
       where: { courseId: course.id },
       select: { minutes: true, session: { select: { startedAt: true } } },
@@ -42,6 +42,7 @@ export async function getProject() {
       orderBy: { createdAt: "desc" },
       include: { tagLinks: { include: { tag: { select: { name: true } } } } },
     }),
+    db.note.count(),
     db.session.findMany({
       where: { courses: { some: { courseId: course.id } } },
       include: { courses: true, tasks: true },
@@ -127,6 +128,7 @@ export async function getProject() {
     weeklyStart: seriesStart,
     meetings: { upcoming: upcomingMeetings, past: pastMeetings, all: meetings },
     papers,
+    noteCount,
     timeline: { items, from: PROJECT_TIMELINE_START, to: PROJECT_DEADLINE },
   };
 }

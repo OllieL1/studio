@@ -172,6 +172,14 @@ marked.use({
       const id = slugify(stripTags(text));
       return `<h${depth} id="${id}" class="md-h md-h${depth}">${text}</h${depth}>`;
     },
+    // An ordinary link to the web opens in a new tab, like a link chip does -
+    // clicking one shouldn't lose the note you were writing.
+    link({ href, title, tokens }) {
+      const text = this.parser.parseInline(tokens);
+      const attrs = /^https?:\/\//i.test(href) ? ' target="_blank" rel="noreferrer"' : "";
+      const label = title ? ` title="${escapeHtml(title)}"` : "";
+      return `<a href="${escapeHtml(href)}"${label}${attrs}>${text}</a>`;
+    },
   },
 });
 

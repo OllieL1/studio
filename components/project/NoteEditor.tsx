@@ -16,13 +16,12 @@ export function NoteEditor({
   initialHtml,
   allTags,
 }: {
-  note: { id: string; title: string; body: string; icon: string | null; pinned: boolean; tags: string[] };
+  note: { id: string; title: string; body: string; pinned: boolean; tags: string[] };
   initialHtml: string[];
   allTags: string[];
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(note.title);
-  const [icon, setIcon] = useState(note.icon ?? "");
   const [pinned, setPinned] = useState(note.pinned);
   const [raw, setRaw] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -37,14 +36,6 @@ export function NoteEditor({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={icon}
-          onChange={(e) => setIcon(e.target.value.slice(0, 2))}
-          onBlur={() => icon !== (note.icon ?? "") && save({ icon: icon || null })}
-          placeholder="🗒"
-          aria-label="Note icon"
-          className="h-10 w-10 rounded-md border border-n-200 bg-n-0 text-center text-[18px] outline-none focus:border-rust-400"
-        />
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}

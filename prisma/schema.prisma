@@ -494,8 +494,6 @@ model Note {
   title String @default("Untitled")
   /// Markdown, including @ mentions of papers, tags, tasks, notes, meetings.
   body  String @default("")
-  /// A single emoji shown on the gallery card.
-  icon  String?
   /// Pinned notes sort to the front of the gallery.
   pinned Boolean @default(false)
 

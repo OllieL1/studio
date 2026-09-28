@@ -12,7 +12,6 @@ import { clsx } from "@/lib/clsx";
 export type NexusCard = {
   id: string;
   title: string;
-  icon: string | null;
   pinned: boolean;
   updatedAt: Date;
   tags: string[];
@@ -107,7 +106,6 @@ export function NexusGallery({ notes, tags }: { notes: NexusCard[]; tags: string
               className="card group flex min-h-[132px] flex-col p-4 transition-colors duration-[120ms] hover:border-n-200 hover:bg-n-25"
             >
               <div className="flex items-baseline gap-2">
-                {n.icon && <span aria-hidden className="text-[15px] leading-none">{n.icon}</span>}
                 <h3 className="min-w-0 flex-1 truncate text-[14px] font-semibold text-n-800 group-hover:text-rust-700">
                   {n.title}
                 </h3>
