@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { deleteNote, setNoteTags, updateNote } from "@/app/nexusActions";
 import { LiveEditor } from "../editor/LiveEditor";
 import { TagPicker } from "./TagPicker";
@@ -22,7 +22,9 @@ export function NoteEditor({
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(note.title);
+  const [editingTitle, setEditingTitle] = useState(false);
   const [pinned, setPinned] = useState(note.pinned);
+  const titleBeforeEdit = useRef(note.title);
   const [raw, setRaw] = useState(false);
   const [saved, setSaved] = useState(true);
   const [, startTransition] = useTransition();
@@ -33,17 +35,56 @@ export function NoteEditor({
       router.refresh();
     });
 
+  const startEditingTitle = () => {
+    titleBeforeEdit.current = title;
+    setEditingTitle(true);
+  };
+
+  /** Blur or Enter commits; Escape has already put the old title back. */
+  const commitTitle = () => {
+    setEditingTitle(false);
+    // updateNote falls back to "Untitled" for an empty title, so show that too.
+    const next = title.trim() || "Untitled";
+    if (next !== title) setTitle(next);
+    if (next !== titleBeforeEdit.current) save({ title: next });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => title !== note.title && save({ title })}
-          placeholder="Untitled"
-          aria-label="Note title"
-          className="font-display h-10 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[26px] font-semibold tracking-tight text-n-900 outline-none focus:border-n-200"
-        />
+        {editingTitle ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                setTitle(titleBeforeEdit.current);
+                setEditingTitle(false);
+              }
+            }}
+            placeholder="Untitled"
+            aria-label="Note title"
+            className="font-display h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-2 text-[24px] font-semibold tracking-tight text-n-900 outline-none focus:border-rust-400"
+          />
+        ) : (
+          <>
+            <h1
+              onDoubleClick={startEditingTitle}
+              className="font-display min-w-0 flex-1 truncate text-[26px] leading-9 font-semibold tracking-tight text-n-900"
+            >
+              {title}
+            </h1>
+            <button
+              onClick={startEditingTitle}
+              className="h-8 shrink-0 rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+            >
+              Edit
+            </button>
+          </>
+        )}
         <button
           onClick={() => {
             setPinned((p) => !p);
@@ -52,7 +93,7 @@ export function NoteEditor({
           aria-pressed={pinned}
           title="Pin to the top of Nexus"
           className={clsx(
-            "h-8 rounded-md border px-2.5 text-[11.5px] font-semibold transition-colors duration-[120ms]",
+            "h-8 shrink-0 rounded-md border px-2.5 text-[11.5px] font-semibold transition-colors duration-[120ms]",
             pinned ? "border-transparent bg-rust-500 text-white" : "border-n-200 bg-n-0 text-n-600 hover:bg-n-50",
           )}
         >
@@ -77,6 +118,15 @@ export function NoteEditor({
             </button>
           ))}
         </div>
+        <a
+          href={`/api/project/notes/pdf?ids=${note.id}`}
+          target="_blank"
+          rel="noreferrer"
+          title="Export this note to PDF"
+          className="flex h-8 shrink-0 items-center rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+        >
+          PDF
+        </a>
         <button
           onClick={() => {
             if (!confirm(`Delete "${title}"?`)) return;
@@ -85,7 +135,7 @@ export function NoteEditor({
               router.push("/project?tab=nexus");
             });
           }}
-          className="h-8 rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-500 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger"
+          className="h-8 shrink-0 rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-500 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger"
         >
           Delete
         </button>

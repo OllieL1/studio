@@ -10,6 +10,30 @@ const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
 
 const kinds = (md: string) => splitBlocks(md).map((b) => b.kind);
+
+/**
+ * Nothing a note holds may be lost by opening it. Splitting into blocks and
+ * joining them back is the round trip every note makes on the way through the
+ * editor, so it has to be lossless apart from trailing blank lines.
+ */
+test("a note survives the block round trip, mentions and all", () => {
+  const bodies = [
+    "- @u[https://example.com|Example] - a link\n\n@#[motive]",
+    "# Heading\n\nText with @r[hu2021lora|LoRA] and @t[abc|A task].\n\n- one\n  - nested\n- two",
+    "@#[tag]",
+    "Para one.\n\n@n[xyz|Another note]\n\n> quote with @m[id|Meeting]\n\n| a | b |\n| --- | --- |\n| 1 | 2 |",
+    "$$\nx^2\n$$\n\n@#[maths]",
+  ];
+  for (const body of bodies) {
+    assert.equal(joinBlocks(splitBlocks(body)), body, `lost content in: ${JSON.stringify(body)}`);
+  }
+});
+
+test("trailing blank lines are the only thing the round trip drops", () => {
+  const body = "Text.\n\n@#[motive]";
+  assert.equal(joinBlocks(splitBlocks(`${body}\n\n`)), body);
+});
+
 const texts = (md: string) => splitBlocks(md).map((b) => b.text);
 
 test("splits paragraphs on blank lines", () => {

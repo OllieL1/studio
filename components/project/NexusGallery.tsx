@@ -41,6 +41,8 @@ export function NexusGallery({ notes, tags }: { notes: NexusCard[]; tags: string
     });
   }, [notes, query, tag]);
 
+  const filtered = query.trim().length > 0 || tag !== null;
+
   const add = () =>
     startTransition(async () => {
       const res = await createNote();
@@ -53,7 +55,7 @@ export function NexusGallery({ notes, tags }: { notes: NexusCard[]; tags: string
         <button
           onClick={add}
           disabled={pending}
-          className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600 disabled:opacity-50"
+          className="flex h-8 items-center rounded-md bg-rust-500 px-3 text-[12.5px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600 disabled:opacity-50"
         >
           {pending ? "Creating…" : "+ New note"}
         </button>
@@ -64,6 +66,17 @@ export function NexusGallery({ notes, tags }: { notes: NexusCard[]; tags: string
           aria-label="Search notes"
           className="h-8 w-[220px] rounded-md border border-n-200 bg-n-0 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
         />
+        {shown.length > 0 && (
+          <a
+            href={`/api/project/notes/pdf?ids=${shown.map((n) => n.id).join(",")}`}
+            target="_blank"
+            rel="noreferrer"
+            title={filtered ? "Export the notes shown" : "Export every note"}
+            className="flex h-8 items-center rounded-md border border-n-200 bg-n-0 px-2.5 text-[12.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+          >
+            PDF
+          </a>
+        )}
         <div className="flex flex-wrap items-center gap-1">
           {tags.map((t) => (
             <button
@@ -71,7 +84,7 @@ export function NexusGallery({ notes, tags }: { notes: NexusCard[]; tags: string
               onClick={() => setTag((cur) => (cur === t ? null : t))}
               aria-pressed={tag === t}
               className={clsx(
-                "rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors duration-[120ms]",
+                "flex h-7 items-center rounded-full border px-2.5 text-[11.5px] font-medium transition-colors duration-[120ms]",
                 tag === t
                   ? "border-transparent bg-n-800 text-n-0"
                   : "border-n-200 text-n-600 hover:bg-n-50",

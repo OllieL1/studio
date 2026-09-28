@@ -4,6 +4,7 @@ import { buildPapersPdf } from "../lib/pdf/papers";
 import { buildSchedulePdf, type SchedItem } from "../lib/pdf/schedule";
 import { buildStatsPdf } from "../lib/pdf/stats";
 import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
+import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
 import { measureMath } from "../lib/pdf/math";
 import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
@@ -179,6 +180,44 @@ test("lectures: code fences with arrows and operators don't crash the font", asy
     "Inline `a -> b`, `x >= y`, `p != q`, `<!-- c -->` and `|>`.",
   ].join("\n");
   const buf = await buildLecturesPdf({ course, lectures: [lecture({ notesMd })], generatedAt: new Date(2026, 8, 20) });
+  assert.ok(isPdf(buf));
+});
+
+const note = (over: Partial<PdfNote> = {}): PdfNote => ({
+  id: "n1",
+  title: "Key links",
+  body: "Some notes.\n\n- @u[https://example.com|Example] - a link chip\n- tagged @#[motive]\n",
+  tags: ["motive"],
+  pinned: false,
+  updatedAt: new Date(2026, 8, 28),
+  ...over,
+});
+
+test("notes: a single note is one document, no cover", async () => {
+  const buf = await buildNotesPdf({ notes: [note()], course: { name: "Project", code: "CS5" }, generatedAt: new Date(2026, 8, 28) });
+  assert.ok(isPdf(buf));
+  assert.equal(pages(buf), 1);
+});
+
+test("notes: a bundle gets a cover, contents and a page per note", async () => {
+  const notes = Array.from({ length: 5 }, (_, i) => note({ id: `n${i}`, title: `Note ${i + 1}` }));
+  const buf = await buildNotesPdf({ notes, course: { name: "Project", code: "CS5" }, generatedAt: new Date(2026, 8, 28) });
+  assert.ok(pages(buf) >= 7, `expected 7+ pages, got ${pages(buf)}`);
+});
+
+test("notes: an empty note and one with no project still build", async () => {
+  const buf = await buildNotesPdf({
+    notes: [note({ body: "" }), note({ id: "n2", title: "Second", tags: [] })],
+    course: null,
+    generatedAt: new Date(2026, 8, 28),
+  });
+  assert.ok(isPdf(buf));
+  assert.ok(pages(buf) >= 4);
+});
+
+test("notes: markdown, mentions and maths all render", async () => {
+  const body = "# Heading\n\n$$x^2$$\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n> quote\n\n- one\n  - nested\n- two\n\n@r[hu2021lora|LoRA] and @t[abc|A task]\n";
+  const buf = await buildNotesPdf({ notes: [note({ body })], course: null, generatedAt: new Date(2026, 8, 28) });
   assert.ok(isPdf(buf));
 });
 
