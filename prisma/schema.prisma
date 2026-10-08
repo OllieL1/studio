@@ -135,6 +135,8 @@ model Task {
   /// as task dependencies).
   prepFor       MeetingPrep[]
   attachments   Attachment[]
+  /// GitHub issues this task tracks.
+  issues        TaskIssue[]
   /// Denormalised completion stamp. Truth lives in TaskItem; this is set when
   /// every item is done (or, for item-less tasks, when ticked directly).
   doneAt        DateTime?
@@ -516,4 +518,63 @@ model NoteTag {
 
   @@id([noteId, tagId])
   @@index([tagId])
+}
+
+/// GitHub access (id is always "singleton"). A personal access token pasted
+/// into Settings rather than an OAuth app: the repos live in a university org
+/// that can block third-party apps, a token needs no client secret or
+/// callback, and it works the same on both machines. Stored here, not in
+/// .env, so it follows the stick.
+model GitHubAuth {
+  id     String  @id @default("singleton")
+  token  String
+  /// Who the token belongs to, from /user when it was saved.
+  login  String
+  name   String?
+  /// Classic tokens report their scopes; fine-grained tokens report none.
+  scopes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A repository in the nav's Repos menu. The project's own repo isn't one of
+/// these - it's Course.repoUrl, and always listed first.
+model Repo {
+  id       String @id @default(cuid())
+  /// "owner/name", as GitHub spells it.
+  fullName String @unique
+  /// What the menu calls it, e.g. "SH28 Diss".
+  label    String
+  position Int    @default(0)
+
+  createdAt DateTime @default(now())
+}
+
+/// The last answer GitHub gave for a request, with its ETag. Lets a repeat
+/// request be a conditional one (a 304 costs nothing against the rate limit)
+/// and lets the GitHub tab show what it last knew when there's no network.
+model GitHubCache {
+  key       String   @id
+  etag      String?
+  body      String
+  fetchedAt DateTime
+}
+
+/// A Studio task tracking a GitHub issue. Title and state are a snapshot,
+/// refreshed whenever the repo's issues are fetched; when the last open issue
+/// linked to a task closes, the task is ticked.
+model TaskIssue {
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// "owner/name"
+  repo   String
+  number Int
+  title  String
+  /// "open" | "closed"
+  state  String
+  closedAt DateTime?
+  linkedAt DateTime @default(now())
+
+  @@id([taskId, repo, number])
+  @@index([repo, number])
 }

@@ -288,3 +288,26 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
 - **One ramp, two themes**: the neutral scale inverts, so components didn't need
   theme-aware markup. Course colours go through CSS variables (`cssColour`),
   with a dark palette validated by `scripts/palette/`.
+
+
+---
+
+## GitHub (8 Oct 2026)
+
+- **Token, not OAuth.** `GitHubAuth` singleton, pasted in Settings and checked
+  against `/user` before saving; `GITHUB_TOKEN` in `.env` is a dev fallback.
+  The org (`uog-cose`) can block OAuth apps; a classic `repo` token always works.
+- **Read-only.** Studio never writes to GitHub.
+- **Issue → task is one-way, on the transition.** `TaskIssue` keeps a snapshot
+  (title, state) per link. When an issue Studio last saw open is now closed and
+  it was the task's last open issue, `completeTask` ticks the task and every
+  item. Never unticks, never ticks on link (`syncIssueLinks`, pure + tested).
+- **`@i` searches the project repo only.** Ids carry the repo
+  (`@i[owner/repo#12|Title]`), so widening the scope later breaks nothing.
+- **Repos menu**: the project repo (from `Course.repoUrl`) first, then `Repo`
+  rows. The three starting repos and the project's repo link are inserted by
+  the migration, because the stick is migrated, never re-seeded.
+- **Caching**: `GitHubCache` (key = API path) with ETag; fresh for 60s,
+  conditional after, stale-but-shown offline. The GitHub tab streams behind
+  Suspense; issue sync runs in `after()`.
+

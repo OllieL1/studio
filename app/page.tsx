@@ -13,10 +13,14 @@ import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
 import { isGoogleConfigured } from "@/lib/google";
 import { cssColour } from "@/lib/palette";
+import { after } from "next/server";
+import { syncLinkedIssues } from "@/lib/githubData";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  // Tasks whose linked GitHub issues closed get ticked - after the page has gone out.
+  after(() => syncLinkedIssues().catch(() => {}));
   const now = new Date();
   const [courses, todayTasks, upcoming, overdue, stats, daily, composerCourses] =
     await Promise.all([

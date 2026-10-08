@@ -9,6 +9,8 @@ import { courseHref } from "@/lib/types";
 import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
 import { cssColour } from "@/lib/palette";
+import { ReposMenu } from "./ReposMenu";
+import type { RepoMenuEntry } from "@/lib/githubData";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
@@ -22,7 +24,7 @@ const LINKS = [
   { href: "/settings", label: "Settings" },
 ] as const;
 
-export function Nav({ courses }: { courses: CourseLink[] }) {
+export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenuEntry[] }) {
   const pathname = usePathname();
   const [coursesOpen, setCoursesOpen] = useState(false);
 
@@ -108,9 +110,19 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
               </div>
             )}
           </div>
+
+          {/* Beside Courses when there's room; next to search when there isn't. */}
+          <div className="hidden min-[1100px]:block">
+            <ReposMenu repos={repos} variant="label" />
+          </div>
         </nav>
 
-        <SearchHint />
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="min-[1100px]:hidden">
+            <ReposMenu repos={repos} variant="icon" />
+          </div>
+          <SearchHint />
+        </div>
       </div>
     </header>
   );
@@ -138,7 +150,7 @@ function SearchHint() {
   return (
     <button
       onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-      className="group ml-auto hidden h-8 w-44 items-center gap-2 rounded-full bg-n-100/60 px-3 text-[12.5px] text-n-400 transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-600 sm:flex"
+      className="group hidden h-8 w-36 min-[1100px]:w-44 items-center gap-2 rounded-full bg-n-100/60 px-3 text-[12.5px] text-n-400 transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-600 sm:flex"
       aria-label="Search"
     >
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden className="shrink-0">

@@ -2,7 +2,7 @@ import { Marked } from "marked";
 import hljs from "highlight.js";
 import DOMPurify from "isomorphic-dompurify";
 import katex from "katex";
-import { mentionHref, linkDomain, type MentionKind } from "./mentions";
+import { mentionHref, linkDomain, parseIssueRef, type MentionKind } from "./mentions";
 
 /**
  * Markdown → HTML for lecture notes.
@@ -125,7 +125,7 @@ const callout = {
  * The label travels inside the token, so this stays a pure render.
  */
 const KIND_OF: Record<string, MentionKind> = {
-  r: "paper", "#": "tag", t: "task", n: "note", m: "meeting", u: "link",
+  r: "paper", "#": "tag", t: "task", n: "note", m: "meeting", i: "issue", u: "link",
 };
 
 const mention = {
@@ -135,16 +135,19 @@ const mention = {
     return src.indexOf("@");
   },
   tokenizer(src: string) {
-    const m = /^@([r#tnmu])\[([^\]|]+)(?:\|([^\]]*))?\]/.exec(src);
+    const m = /^@([r#tnmiu])\[([^\]|]+)(?:\|([^\]]*))?\]/.exec(src);
     if (!m) return undefined;
     return { type: "mention", raw: m[0], sigil: m[1], id: m[2].trim(), label: (m[3] ?? m[2]).trim() };
   },
   renderer(token: { sigil: string; id: string; label: string }) {
     const kind = KIND_OF[token.sigil];
     const href = mentionHref(kind, token.id);
-    const external = kind === "link";
+    const external = kind === "link" || kind === "issue";
     const prefix =
-      kind === "tag" ? "#" : kind === "link" ? `${escapeHtml(linkDomain(token.id))} · ` : "";
+      kind === "tag" ? "#"
+      : kind === "link" ? `${escapeHtml(linkDomain(token.id))} · `
+      : kind === "issue" ? `#${parseIssueRef(token.id)?.number ?? "?"} `
+      : "";
     const text = kind === "tag" ? escapeHtml(token.id) : escapeHtml(token.label);
     return (
       `<a class="md-chip md-chip-${kind}" href="${escapeHtml(href)}"` +

@@ -637,6 +637,8 @@ input[type="range"]::-webkit-slider-thumb:active {
 .prose-notes .md-chip-note { background: var(--color-n-50); border-color: var(--color-n-100); color: var(--color-n-700); }
 .prose-notes .md-chip-meeting { background: var(--color-warn-soft); border-color: transparent; color: var(--color-warn); }
 .prose-notes .md-chip-link { background: var(--color-n-50); border-color: var(--color-n-100); color: var(--color-n-700); }
+.prose-notes .md-chip-issue { background: var(--color-n-0); border-color: var(--color-n-200); color: var(--color-n-800); }
+.prose-notes .md-chip-issue .md-chip-prefix { font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.9em; opacity: 0.6; }
 
 .prose-notes .md-chip:hover { filter: brightness(0.97); }
 :root[data-theme="dark"] .prose-notes .md-chip:hover { filter: brightness(1.25); }

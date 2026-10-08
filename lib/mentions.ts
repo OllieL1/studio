@@ -8,11 +8,14 @@
  * PDF and the search index.
  *
  * The prefixes are the ones typed at the keyboard: `@r` research, `@#` tag,
- * `@t` task, `@n` note, `@m` meeting. `@u` is the odd one out - it isn't
- * typed, it's what a pasted link becomes.
+ * `@t` task, `@n` note, `@m` meeting, `@i` GitHub issue. `@u` is the odd one
+ * out - it isn't typed, it's what a pasted link becomes.
+ *
+ * An issue's id carries its repo - `@i[owner/name#12|Fix login]` - so a
+ * mention stays meaningful if the project ever moves repo.
  */
 
-export type MentionKind = "paper" | "tag" | "task" | "note" | "meeting" | "link";
+export type MentionKind = "paper" | "tag" | "task" | "note" | "meeting" | "issue" | "link";
 
 const PREFIX: Record<string, MentionKind> = {
   r: "paper",
@@ -20,6 +23,7 @@ const PREFIX: Record<string, MentionKind> = {
   t: "task",
   n: "note",
   m: "meeting",
+  i: "issue",
   u: "link",
 };
 
@@ -29,6 +33,7 @@ const SIGIL: Record<MentionKind, string> = {
   task: "t",
   note: "n",
   meeting: "m",
+  issue: "i",
   link: "u",
 };
 
@@ -39,6 +44,7 @@ export const MENTION_KINDS: { kind: MentionKind; prefix: string; label: string; 
   { kind: "task", prefix: "@t", label: "Task", hint: "project tasks" },
   { kind: "note", prefix: "@n", label: "Note", hint: "another Nexus note" },
   { kind: "meeting", prefix: "@m", label: "Meeting", hint: "supervisor meetings" },
+  { kind: "issue", prefix: "@i", label: "Issue", hint: "GitHub issues in the project repo" },
 ];
 
 export type Mention = {
@@ -49,7 +55,7 @@ export type Mention = {
 };
 
 /** `@r[key|Label]`, with the label optional. */
-export const MENTION_RE = /@([r#tnmu])\[([^\]|]+)(?:\|([^\]]*))?\]/g;
+export const MENTION_RE = /@([r#tnmiu])\[([^\]|]+)(?:\|([^\]]*))?\]/g;
 
 export function serializeMention(kind: MentionKind, id: string, label?: string): string {
   const clean = (s: string) => s.replace(/[\][|]/g, "").trim();
@@ -87,15 +93,27 @@ export function mentionHref(kind: MentionKind, id: string): string {
       return `/project/nexus/${id}`;
     case "meeting":
       return `/project/meetings/${id}`;
+    case "issue": {
+      const ref = parseIssueRef(id);
+      return ref ? `https://github.com/${ref.repo}/issues/${ref.number}` : "#";
+    }
     case "link":
       return id;
   }
 }
 
+/** `owner/name#12` → its parts; null if it isn't one. */
+export function parseIssueRef(id: string): { repo: string; number: number } | null {
+  const m = /^([\w.-]+\/[\w.-]+)#(\d+)$/.exec(id.trim());
+  return m ? { repo: m[1], number: Number(m[2]) } : null;
+}
+
+export const issueRef = (repo: string, number: number) => `${repo}#${number}`;
+
 /** The mention text with chips reduced to their labels - for excerpts. */
 export function stripMentions(md: string): string {
   return md.replace(MENTION_RE, (_, sigil: string, id: string, label?: string) =>
-    sigil === "#" ? `#${id}` : (label ?? id),
+    sigil === "#" ? `#${id}` : sigil === "i" ? `#${parseIssueRef(id)?.number ?? id} ${label ?? ""}`.trim() : (label ?? id),
   );
 }
 

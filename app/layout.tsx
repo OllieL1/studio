@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
+import { repoMenu } from "@/lib/githubData";
 import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { getActiveTimer } from "@/lib/queries";
@@ -51,7 +52,7 @@ export default async function RootLayout({
 }) {
   // The timer and course list live in the shell, so they're fetched once here
   // rather than by every page.
-  const [prefs, timer, courses, lastSession] = await Promise.all([
+  const [prefs, timer, courses, lastSession, repos] = await Promise.all([
     getPreferences(),
     getActiveTimer(),
     db.course.findMany({
@@ -65,6 +66,7 @@ export default async function RootLayout({
       orderBy: { startedAt: "desc" },
       select: { location: true, locationNote: true },
     }),
+    repoMenu(),
   ]);
 
   return (
@@ -85,7 +87,7 @@ export default async function RootLayout({
           darkTo={prefs.darkTo}
         >
         <div className="relative z-10 flex min-h-screen flex-col">
-          <Nav courses={courses} />
+          <Nav courses={courses} repos={repos} />
           <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-32 pt-8 sm:px-8">
             {children}
           </main>

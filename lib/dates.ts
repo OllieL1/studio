@@ -185,3 +185,15 @@ export function urgencyOf(due: Date | null, done: boolean): Urgency {
   if (n <= 10) return "upcoming";
   return "far";
 }
+
+/** "just now", "12m ago", "3h ago", "2d ago", then the date - for activity feeds. */
+export function fmtAgo(d: Date, from: Date = new Date()): string {
+  const mins = Math.floor((from.getTime() - d.getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return fmtDayDate(d);
+}

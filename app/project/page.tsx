@@ -1,5 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { getProject } from "@/lib/projectData";
 import { getNexus } from "@/lib/nexusData";
@@ -23,6 +25,9 @@ import { BarChart } from "@/components/charts/BarChart";
 import { WeightEditor } from "@/components/WeightEditor";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
+import { GitHubTab, GitHubTabSkeleton } from "@/components/project/GitHubTab";
+import { syncLinkedIssues } from "@/lib/githubData";
+import { parseRepo } from "@/lib/repos";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +37,7 @@ const TABS = [
   { key: "research", label: "Research" },
   { key: "nexus", label: "Nexus" },
   { key: "tasks", label: "Tasks" },
+  { key: "github", label: "GitHub" },
 ] as const;
 
 export default async function ProjectPage({ searchParams }: { searchParams: Promise<{ tab?: string; paper?: string }> }) {
@@ -50,6 +56,10 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
   // Only the open tab's data: the gallery and the tag list are a query each.
   const tagNames = tab === "nexus" || tab === "research" ? (await allTags()).map((t) => t.name) : [];
   const nexus = tab === "nexus" ? await getNexus() : null;
+
+  // Linked issues that closed on GitHub tick their tasks - checked once the
+  // page has gone out, so it never waits on the network.
+  after(() => syncLinkedIssues().catch(() => {}));
 
   const googleConnected =
     isGoogleConfigured() && !!(await db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }));
@@ -145,7 +155,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
               {data.weeklyMinutes.length >= 3 && data.weeklyMinutes.some((m) => m > 0) && (
                 <div className="mt-4 border-t border-n-100 pt-3">
                   <Eyebrow className="mb-2">Hours per week</Eyebrow>
-                  <Sparkbar data={data.weeklyMinutes.map((v, i) => ({ label: addDays(data.weeklyStart, i * 7).toISOString(), value: v }))} />
+                  <Sparkbar data={data.weeklyMinutes.map((v, i) => ({ label: addDays(data.weeklyStart, i * 7).toISOString(), value: v }))} week />
                 </div>
               )}
               <p className="mt-3 text-[11px] leading-4 text-n-400">
@@ -230,6 +240,12 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
       {tab === "nexus" && nexus && <NexusGallery notes={nexus} tags={tagNames} />}
 
       {tab === "tasks" && <ProjectTasks courseId={course.id} tasks={tasks} googleConnected={googleConnected} />}
+
+      {tab === "github" && (
+        <Suspense fallback={<GitHubTabSkeleton />}>
+          <GitHubTab repo={parseRepo(course.repoUrl)} />
+        </Suspense>
+      )}
     </div>
   );
 }

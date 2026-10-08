@@ -1,5 +1,7 @@
 import { addDays, startOfDay, startOfWeek } from "./dates";
 import type { StatSession } from "./stats";
+import type { RepoWork } from "./githubModel";
+import { issueRef, serializeMention } from "./mentions";
 
 /**
  * Project maths: the 400-hour pace tracker, the week-by-week timeline, and
@@ -135,7 +137,12 @@ export type AgendaInput = {
   openActions: { title: string; fromMeeting: string | null }[];
   upcoming: { title: string; due: Date }[];
   prepOutstanding: { title: string }[];
+  /** The project repo over the same window; null when GitHub isn't set up. */
+  github?: RepoWork | { error: string } | null;
 };
+
+/** How many commit messages to list before summarising the rest. */
+export const AGENDA_COMMIT_LIMIT = 8;
 
 const fmtDay = (d: Date) =>
   `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${d.getDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]}`;
@@ -170,6 +177,8 @@ export function draftAgenda(a: AgendaInput): string {
   if (a.papersAdded > 0) lines.push(`- ${a.papersAdded} paper${a.papersAdded === 1 ? "" : "s"} added to the reading list`);
   lines.push("");
 
+  if (a.github) lines.push(...githubSection(a.github));
+
   if (a.openActions.length) {
     lines.push("## Open actions");
     lines.push("");
@@ -195,6 +204,39 @@ export function draftAgenda(a: AgendaInput): string {
   lines.push("");
   lines.push("- ");
   return lines.join("\n");
+}
+
+/**
+ * The repo's part of the agenda. Issues are written as `@i` mentions, so they
+ * render as chips that open the issue; pull requests as plain links.
+ */
+function githubSection(g: RepoWork | { error: string }): string[] {
+  if ("error" in g) return ["## On GitHub", "", "- _Couldn't reach GitHub, so the repo's activity is missing - draft again when online._", ""];
+  const lines = ["## On GitHub", ""];
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const issue = (i: { number: number; title: string }) => serializeMention("issue", issueRef(g.repo, i.number), i.title);
+  const pull = (p: { number: number; title: string; url: string }) => `[#${p.number} ${p.title.replace(/[[\]]/g, "")}](${p.url})`;
+
+  if (g.commits.length === 0) {
+    lines.push("- No commits");
+  } else {
+    lines.push(`- **${plural(g.commits.length, "commit")}**:`);
+    for (const c of g.commits.slice(0, AGENDA_COMMIT_LIMIT)) lines.push(`  - ${c.title}`);
+    if (g.commits.length > AGENDA_COMMIT_LIMIT) lines.push(`  - _and ${g.commits.length - AGENDA_COMMIT_LIMIT} more_`);
+  }
+  const merged = new Set(g.pullsMerged.map((p) => p.number));
+  const stillOpen = g.pullsOpened.filter((p) => !merged.has(p.number));
+  const block = (title: string, items: string[]) => {
+    if (!items.length) return;
+    lines.push(`- ${title}:`);
+    for (const it of items) lines.push(`  - ${it}`);
+  };
+  block("Merged", g.pullsMerged.map(pull));
+  block("Opened PRs", stillOpen.map(pull));
+  block("Closed issues", g.issuesClosed.map(issue));
+  block("New issues", g.issuesOpened.filter((i) => i.state === "open").map(issue));
+  lines.push("");
+  return lines;
 }
 
 export function weekKey(d: Date): number {

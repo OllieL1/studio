@@ -29,7 +29,7 @@ npm run dev      # → http://localhost:3111  (shows a "Dev copy" badge)
 | **Task** | Full view of one task: details (all editable), subtasks, prerequisites, time tracked and work history. |
 | **Lectures** | Every lecture, filterable by course and by what's missing. Typed notes, handwritten notebook references, PDF export. |
 | **Course** | Weighted breakdown, exam readiness, revision mode, assessed work and classes by teaching week. |
-| **Settings** | Google Calendar and Spotify connections, semester-2 status. |
+| **Settings** | Google Calendar, Spotify and GitHub connections, the Repos menu, semester-2 status. |
 | **Timer** | Always-visible global on/off control, pinned bottom-centre on every page. |
 | **⌘K** | Global search across courses, lectures, tasks and the full text of your notes. |
 
@@ -181,6 +181,39 @@ the day the clocks change don't lose a day.
 
 ---
 
+## GitHub
+
+The project's repo gets its own tab (`/project` → **GitHub**): open and closed
+issues with instant filtering, pull requests, a commits-per-week bar since the
+project began, recent commits and an activity feed. **Read-only** - Studio never
+changes anything on GitHub.
+
+| | |
+|---|---|
+| **Issues → tasks** | **Make task** on an issue, or **Link…** it to an existing task; a task page links issues too. When the last open issue on a task closes, the task ticks itself. |
+| **`@i` mentions** | In any live editor, `@i` searches the project repo's issues by title or number. Stored as `@i[owner/repo#12\|Title]`; renders as a chip that opens the issue, and prints in PDFs. |
+| **Agenda drafts** | "Draft from recent work" adds an **On GitHub** section: commits, merged and opened PRs, closed and new issues since the last meeting. |
+| **Repos menu** | Beside Courses in the nav (the GitHub mark next to search on narrower screens). The project repo first, then whatever's added in Settings, each with live PR/issue counts. |
+
+**Auth is a personal access token**, pasted into Settings and stored in the
+database so it travels with the stick. The repos live in the `uog-cose` org,
+which can block OAuth apps; a classic token with the `repo` scope always works.
+Settings links straight to a pre-filled token page and checks each repo is
+readable. `GITHUB_TOKEN` in `.env` works too, for development.
+
+**It stays fast and works offline.** Every response is cached in `GitHubCache`
+with its ETag: inside a minute it's served without a request, after that the
+request is conditional (a 304 is free against the rate limit), and with no
+network the last answer is shown, labelled with its age. The tab streams in
+behind a skeleton, so the rest of the project page never waits. The `@i` menu
+searches a parsed copy held in memory - no request per keystroke.
+
+**When does a task tick?** On the *transition*: an issue that was open the
+last time Studio looked is now closed, and it was the task's last open one.
+Linking an already-closed issue ticks nothing, and a task you untick stays
+unticked. A reopened issue never unticks a task. The check runs after the home
+and project pages have been sent, and when a task page opens.
+
 ## Spotify
 
 What's playing sits beside the timer. Read-only — it can't control playback.
@@ -314,7 +347,7 @@ up in the wrong place.
 |---|---|
 | `npm run dev` | Dev server |
 | `npm run build` / `start` | Production build & serve |
-| `npm test` | All unit and integration tests, plus a server/client boundary check (183) |
+| `npm test` | All unit and integration tests, plus a server/client boundary check (367) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run seed` | Populate/refresh courses and timetable |
 | `npm run backup` | Snapshot the local development database |
@@ -348,6 +381,9 @@ lib/
   taskEdit.ts         task edits → database patches
   taskStats.ts        per-task time attribution and metrics
   spotify.ts          now-playing, listening history, session sampling
+  github.ts           GitHub token, cached + conditional requests, offline fallback
+  githubModel.ts      response shaping, activity feed, issue → task sync (pure)
+  githubData.ts       project repo overview, @i search, Repos menu, agenda work
   music.ts            rebuild what played from samples + history
   musicStats.ts       music-vs-focus statistics
   focus.ts            focus colour bands (shared by server and client)

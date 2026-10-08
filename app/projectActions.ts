@@ -8,6 +8,7 @@ import { lookupPaper, makeCiteKey, PAPER_STATUSES, type PaperMeta } from "@/lib/
 import { draftAgenda } from "@/lib/project";
 import { isTaskDone } from "@/lib/progress";
 import { shortAuthors } from "@/lib/papers";
+import { projectRepoWork } from "@/lib/githubData";
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -170,7 +171,7 @@ export async function draftAgendaFor(meetingId: string): Promise<string> {
   const since = prev?.startAt ?? null;
   const from = since ?? new Date(0);
 
-  const [sessions, done, readPapers, addedPapers, actions, upcoming] = await Promise.all([
+  const [sessions, done, readPapers, addedPapers, actions, upcoming, github] = await Promise.all([
     m.courseId
       ? db.sessionCourse.findMany({
           where: { courseId: m.courseId, session: { startedAt: { gte: from, lt: m.startAt } } },
@@ -193,6 +194,7 @@ export async function draftAgendaFor(meetingId: string): Promise<string> {
       include: { items: true },
       orderBy: { dueAt: "asc" },
     }),
+    projectRepoWork(from, m.startAt),
   ]);
 
   const day = (d: Date) => `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
@@ -208,6 +210,7 @@ export async function draftAgendaFor(meetingId: string): Promise<string> {
     openActions: actions.filter((t) => !isTaskDone(t)).map((t) => ({ title: t.title, fromMeeting: t.fromMeeting ? day(t.fromMeeting.startAt) : null })),
     upcoming: upcoming.filter((t) => !isTaskDone(t)).map((t) => ({ title: t.title, due: t.dueAt! })),
     prepOutstanding: m.prep.filter((p) => !isTaskDone(p.task)).map((p) => ({ title: p.task.title })),
+    github,
   });
 }
 

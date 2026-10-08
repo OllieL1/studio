@@ -1,5 +1,65 @@
 # Enhancement List - Check Off as we go
 
+07/10
+Please note we may not have the latest changes on the stick in main on the repo. They may still be locally on the mac. Because of this, please create a branch for these changes instead of pushing direct to main.
+[x] GitHub Integration - for the project, I would like to integrate my repo into its own tab in the project page. Here we should see open issues, PRs, recent changes and activity. We should be able to cite issues in the nexus notes, with an @ mention (filter with @i)
+[x] We should also be able to link issues to tasks on Studio 
+[x] We should be able to enhance draft from recent work from the github 
+[x] Project repo: https://github.com/uog-cose/MCR-5082P
+[x] Please also add a repos drop down next to Courses in the nav bar - on smaller screens just display the Github icon next to search for the dropdown. This should contain links to repos i use
+- Project (shown above)
+- Coaching - https://github.com/uog-cose/socs-coaching-software-teams-2026-2756026l-livingston
+- SH28 Project - https://github.com/uog-cose/socs-team-project-3-h-2026-sh28-project
+- SH28 Diss - https://github.com/uog-cose/socs-team-project-3-h-2026-sh28-dissertation
+We should be able to add to this in Settings.
+[x] Of course, authentication with GitHub can be configured in settings too.
+As mentioned above lets put these in a branch, and not flash to the drive until I've tested them. These changes are exceddingly unlikely to interfere with other not committed changes.
+
+
+---
+
+## Status - 08/10/26
+
+`[x]` done · on the `github-integration` branch, not deployed to the stick
+
+**Not yet tried against the real repos** - built without a token, so every
+screen was checked in Chrome against recorded-shape fixture data, and the
+cache, offline fallback and issue → task sync are covered by tests with GitHub
+stubbed. First thing to do: add a token in Settings and open the GitHub tab.
+
+Agreed before building: token auth in Settings; a linked issue closing ticks
+its task (Studio never writes to GitHub); `@i` searches the project repo.
+
+**GitHub tab** - `/project` → **GitHub**: repo header with open issues, open
+PRs and commits per week since 21 Sep; issues (open/closed, instant filter by
+title, #number or label); pull requests with recently merged; recent commits;
+an activity feed. Refresh asks GitHub now; offline it shows the last copy and
+says how old it is.
+
+**Issues and tasks** - **Make task** on any open issue creates a project task
+linked to it; **Link…** attaches it to an existing task. Task pages have a
+GitHub issues panel to link and unlink by title or number. When the last open
+issue on a task closes, the task (and its subtasks) tick themselves. Linking an
+already-closed issue doesn't tick, and unticking by hand sticks.
+
+**@i mentions** - `@i` in any live editor searches the project repo's issues;
+plain `@` includes them too. The chip shows `#12 Title` and opens the issue on
+GitHub; PDFs print it as a link.
+
+**Draft from recent work** - gains an **On GitHub** section: commits (first 8,
+then "and N more"), merged and opened PRs, closed and new issues, with issues as
+`@i` chips. If GitHub can't be reached it says so instead of leaving it out.
+
+**Repos menu** - beside Courses: Project, Coaching, SH28 Project, SH28 Diss,
+each with open PRs/issues fetched when the menu opens. Below 1100px wide it's
+the GitHub mark next to search. Add, rename, reorder and remove in Settings,
+which also shows whether the token can read each one.
+
+**Authentication** - Settings → GitHub: paste a token (the link opens GitHub's
+token page pre-filled with the `repo` scope). If uog-cose repos show "no
+access", the token needs **Configure SSO → Authorize** for the org.
+
+
 28/09
 
 - A few more enhancements based on my use of the site. 

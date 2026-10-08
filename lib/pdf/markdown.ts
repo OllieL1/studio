@@ -1,5 +1,6 @@
 import { newDoc, FAINT, INK, MARGIN, MUTED, RULE, RUST, CALLOUT_BG } from "./doc";
 import { ascent, drawMath, measureMath } from "./math";
+import { mentionHref, parseIssueRef } from "../mentions";
 
 /**
  * Markdown as drawn PDF content.
@@ -196,7 +197,7 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
 /* ── Inline ──────────────────────────────────────────────────────────────── */
 
 const SPLIT =
-  /(@[r#tnmu]\[[^\]|]+(?:\|[^\]]*)?\]|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|\$[^$\n]+\$|!?\[[^\]]*\]\([^)]+\))/g;
+  /(@[r#tnmiu]\[[^\]|]+(?:\|[^\]]*)?\]|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|\$[^$\n]+\$|!?\[[^\]]*\]\([^)]+\))/g;
 
 export function parseInline(text: string, base: Inline["font"] = "body"): Inline[] {
   return text
@@ -205,12 +206,19 @@ export function parseInline(text: string, base: Inline["font"] = "body"): Inline
     .map((part): Inline => {
       // A mention prints as its label, in the accent colour; a link chip also
       // keeps its target, since a printed page can still be clicked.
-      const mention = /^@([r#tnmu])\[([^\]|]+)(?:\|([^\]]*))?\]$/.exec(part);
+      const mention = /^@([r#tnmiu])\[([^\]|]+)(?:\|([^\]]*))?\]$/.exec(part);
       if (mention) {
         const id = mention[2].trim();
         const label = (mention[3] ?? mention[2]).trim();
         if (mention[1] === "#") return { text: `#${id}`, font: "bold", colour: RUST };
         if (mention[1] === "u") return { text: label, font: base, colour: RUST, link: id };
+        if (mention[1] === "i") {
+          const ref = parseIssueRef(id);
+          return {
+            text: ref ? `#${ref.number} ${label === id ? "" : label}`.trim() : label,
+            font: "bold", colour: RUST, link: mentionHref("issue", id),
+          };
+        }
         return { text: label, font: "bold", colour: RUST };
       }
 

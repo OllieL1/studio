@@ -62,6 +62,19 @@ export async function setTaskDone(db: DB, taskId: string): Promise<void> {
 }
 
 /**
+ * Tick a task and every item on it - never untick. For things that complete a
+ * task on your behalf (a linked GitHub issue closing), where a toggle could
+ * undo work you'd already ticked.
+ */
+export async function completeTask(db: DB, taskId: string): Promise<void> {
+  const now = new Date();
+  await db.$transaction([
+    db.taskItem.updateMany({ where: { taskId, doneAt: null }, data: { doneAt: now } }),
+    db.task.updateMany({ where: { id: taskId, doneAt: null }, data: { doneAt: now } }),
+  ]);
+}
+
+/**
  * Append a subtask.
  *
  * Subtasks are equally weighted within their task — progress is simply
