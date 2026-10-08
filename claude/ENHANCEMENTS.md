@@ -66,6 +66,12 @@ only) and the whole tab verified against live data. Studio now shows GitHub's
 own reason for a 403 instead of "GitHub returned 403", and fills in PR/issue
 titles that GitHub has started trimming out of the activity feed.
 
+**Fine-grained token in, verified on MCR-5082P.** With a fine-grained token
+(resource owner uog-cose) the project repo reads on every endpoint Studio uses,
+and the project repo is back to `uog-cose/MCR-5082P`. Settings' token steps now
+lead with the fine-grained token. Coaching, SH28 Project and SH28 Diss still
+show "no access" - they need adding to the token's repository access.
+
 
 28/09
 

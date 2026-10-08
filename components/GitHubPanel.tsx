@@ -12,8 +12,11 @@ import { clsx } from "@/lib/clsx";
 
 type RepoRow = { id: string; label: string; fullName: string };
 
-/** A pre-filled "new classic token" page: `repo` scope, named Studio. */
-const NEW_TOKEN_URL = "https://github.com/settings/tokens/new?scopes=repo&description=Studio";
+/**
+ * GitHub's "new fine-grained token" page. Fine-grained because uog-cose
+ * forbids classic tokens (verified 8 Oct 2026 - the 403 says so).
+ */
+const NEW_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new";
 
 /**
  * GitHub: the token Studio reads with, and the repos in the nav's Repos menu.
@@ -112,7 +115,7 @@ export function GitHubPanel({
             value={token}
             onChange={(e) => setToken(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape" && connected) setReplacing(false); }}
-            placeholder="ghp_… or github_pat_…"
+            placeholder="github_pat_…"
             aria-label="GitHub token"
             className="font-num h-9 min-w-0 flex-1 rounded-sm border border-n-200 bg-n-0 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
           />
@@ -145,10 +148,11 @@ export function GitHubPanel({
         {showSteps && (
           <ol className="animate-fade-in mt-3 space-y-2.5 text-[12.5px] leading-5 text-n-600">
             {[
-              <>Open <ExtLink href={NEW_TOKEN_URL}>a new classic token</ExtLink> - it&apos;s already named <b>Studio</b> with the <b>repo</b> scope ticked. Nothing else is needed.</>,
-              <>Pick an expiry. <b>Custom → 1 Apr 2027</b> outlasts the project submission; you&apos;ll be told here if it lapses.</>,
-              <><b>Generate token</b>, copy it, and paste it above.</>,
-              <>The <b>uog-cose</b> org refuses classic tokens. For its repos, make a <ExtLink href="https://github.com/settings/personal-access-tokens/new">fine-grained token</ExtLink> instead: resource owner <b>uog-cose</b>, read-only access to Contents, Issues, Pull requests and Metadata. The org may need to approve it. A fine-grained token only reaches the one owner it was made for.</>,
+              <>Open <ExtLink href={NEW_TOKEN_URL}>a new fine-grained token</ExtLink> and name it <b>Studio</b>. Fine-grained, not classic - the <b>uog-cose</b> org refuses classic tokens.</>,
+              <>Set <b>Resource owner</b> to <b>uog-cose</b>. A fine-grained token reaches only that one owner&apos;s repos.</>,
+              <>Under <b>Repository access</b>, pick <b>All repositories</b>, or select every repo in the Repos menu below - any left out show as &ldquo;no access&rdquo;.</>,
+              <>Under <b>Permissions</b>, give read-only access to <b>Contents</b>, <b>Issues</b> and <b>Pull requests</b> (Metadata comes with them).</>,
+              <>Set an expiry after <b>26 March 2027</b> if the org allows it, then <b>Generate token</b> and paste it above. If GitHub marks it <b>pending</b>, an org owner has to approve it first - until then this page shows GitHub&apos;s refusal.</>,
             ].map((step, i) => (
               <li key={i} className="flex gap-2.5">
                 <span className="font-num mt-px flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-n-100 text-[10.5px] font-semibold text-n-600">{i + 1}</span>

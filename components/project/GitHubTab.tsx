@@ -97,8 +97,8 @@ export async function GitHubTab({ repo }: { repo: string | null }) {
     <div className="space-y-5">
       {/* ── Repo header ─────────────────────────────────────────────────── */}
       <Card className="p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-3 md:flex-nowrap">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <a href={o.url} target="_blank" rel="noreferrer" className="font-display text-[22px] font-semibold text-n-900 hover:text-rust-700">
                 <span className="text-n-400">{o.fullName.split("/")[0]}/</span>{o.fullName.split("/")[1]}
@@ -111,8 +111,8 @@ export async function GitHubTab({ repo }: { repo: string | null }) {
               {o.pushedAt && <> · last push {fmtAgo(new Date(o.pushedAt), now)}</>}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={clsx("text-[11.5px]", o.stale ? "font-medium text-warn" : "text-n-400")}>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={clsx("whitespace-nowrap text-[11.5px]", o.stale ? "font-medium text-warn" : "text-n-400")}>
               {o.stale ? `Offline - showing ${fmtAgo(o.fetchedAt, now)}` : `Updated ${fmtAgo(o.fetchedAt, now)}`}
             </span>
             <RefreshRepoButton />

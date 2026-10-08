@@ -200,8 +200,7 @@ database so it travels with the stick. A classic token with the `repo` scope
 reads your own repos. **The `uog-cose` org refuses classic tokens** (GitHub
 says so in the 403, and Studio now shows that message) - its repos need a
 fine-grained token with uog-cose as resource owner, which only reaches that one
-owner. Settings links straight to both token pages and checks each repo is
-readable. `GITHUB_TOKEN` in `.env` works too, for development.
+owner. Settings walks through making one and checks each repo is readable. `GITHUB_TOKEN` in `.env` works too, for development.
 
 **It stays fast and works offline.** Every response is cached in `GitHubCache`
 with its ETag: inside a minute it's served without a request, after that the
