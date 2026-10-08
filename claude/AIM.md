@@ -308,9 +308,12 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
 - **`@i` searches the project repo only.** Ids carry the repo
   (`@i[owner/repo#12|Title]`), so widening the scope later breaks nothing.
 - **Repos menu**: the project repo (from `Course.repoUrl`) first, then `Repo`
-  rows. The three starting repos and the project's repo link are inserted by
+  rows. The project repo is set in Settings → GitHub (its row in the Repos
+  menu list); the old repo button in the project header is gone. The three starting repos and the project's repo link are inserted by
   the migration, because the stick is migrated, never re-seeded.
 - **Caching**: `GitHubCache` (key = API path) with ETag; fresh for 60s,
   conditional after, stale-but-shown offline. The GitHub tab streams behind
   Suspense; issue sync runs in `after()`.
+- **Progress weights** (project and course headers) are a compact button -
+  `40 cr · 0 / 0 / 100` - opening the editor as a dropdown portalled to <body>.
 

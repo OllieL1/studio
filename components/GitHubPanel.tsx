@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  addRepo, checkRepoAccess, disconnectGitHub, moveRepo, removeRepo, renameRepo, saveGitHubToken,
+  addRepo, checkRepoAccess, setProjectRepo, disconnectGitHub, moveRepo, removeRepo, renameRepo, saveGitHubToken,
 } from "@/app/githubActions";
 import { repoUrl } from "@/lib/repos";
 import { Card, Eyebrow } from "./ui";
@@ -214,15 +214,24 @@ function RepoList({ projectRepo, repos, connected }: { projectRepo: string | nul
         <span className="text-[11px] text-n-400">In the nav, beside Courses</span>
       </div>
       <div className="divide-y divide-n-100 rounded-md border border-n-100">
-        {projectRepo && (
-          <div className="flex items-center gap-2.5 px-3 py-2">
-            <span className="text-rust-500"><GitHubMark size={13} /></span>
-            <span className="w-28 shrink-0 text-[13px] font-medium text-n-800">Project</span>
-            <a href={repoUrl(projectRepo)} target="_blank" rel="noreferrer" className="font-num min-w-0 flex-1 truncate text-[11.5px] text-n-500 hover:text-n-800">{projectRepo}</a>
-            {status(projectRepo)}
-            <span className="text-[10.5px] text-n-400">set on the project page</span>
-          </div>
-        )}
+        <div className="group flex items-center gap-2.5 px-3 py-1.5">
+          <span className="text-rust-500"><GitHubMark size={13} /></span>
+          <span className="w-28 shrink-0 px-1 text-[13px] font-medium text-n-800">Project</span>
+          <input
+            key={projectRepo ?? ""}
+            defaultValue={projectRepo ?? ""}
+            placeholder="owner/repo - the project's own repo"
+            aria-label="Project repo"
+            spellCheck={false}
+            onBlur={(e) => { if (e.target.value.trim() !== (projectRepo ?? "")) run(() => setProjectRepo(e.target.value)); }}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { e.currentTarget.value = projectRepo ?? ""; e.currentTarget.blur(); } }}
+            className="font-num min-w-0 flex-1 truncate rounded-sm border border-transparent bg-transparent px-1 py-0.5 text-[11.5px] text-n-500 outline-none placeholder:text-n-300 hover:border-n-200 focus:border-rust-400 focus:text-n-800"
+          />
+          {projectRepo && status(projectRepo)}
+          {projectRepo && (
+            <a href={repoUrl(projectRepo)} target="_blank" rel="noreferrer" aria-label="Open the project repo on GitHub" className="rounded p-1 text-[11px] text-n-400 hover:bg-n-100 hover:text-n-700">↗</a>
+          )}
+        </div>
         {repos.map((r, i) => (
           <div key={r.id} className="group flex items-center gap-2.5 px-3 py-1.5">
             <span className="text-n-400"><GitHubMark size={13} /></span>

@@ -26,7 +26,12 @@ export async function GitHubTab({ repo }: { repo: string | null }) {
       <Card>
         <EmptyState
           title="No repo linked yet."
-          body="Link the project's GitHub repo from the header above, and its issues, pull requests and commits will show up here."
+          body="Set the project's repo in Settings, and its issues, pull requests and commits will show up here."
+          action={
+            <Link href={"/settings#github" as Route} className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-400">
+              Set the repo
+            </Link>
+          }
         />
       </Card>
     );

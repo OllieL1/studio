@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { clearGitHubCache, describeGitHubError, gh, GitHubError, verifyToken } from "@/lib/github";
 import { findIssue, projectRepo, repoOverview, syncLinkedIssues } from "@/lib/githubData";
-import { parseRepo } from "@/lib/repos";
+import { parseRepo, repoUrl } from "@/lib/repos";
 
 /**
  * GitHub mutations. Studio never writes to GitHub - everything here changes
@@ -59,6 +59,17 @@ export async function checkRepoAccess(fullName: string): Promise<Result> {
 
 /* ── The Repos menu ──────────────────────────────────────────────────────── */
 
+/** The project's own repo - first in the menu, and the one the GitHub tab shows. Blank clears it. */
+export async function setProjectRepo(input: string): Promise<Result> {
+  const course = await db.course.findFirst({ where: { isProject: true }, select: { id: true } });
+  if (!course) return { ok: false, error: "No project course found." };
+  const fullName = input.trim() ? parseRepo(input) : null;
+  if (input.trim() && !fullName) return { ok: false, error: "Paste a GitHub link or owner/name for the project repo." };
+  await db.course.update({ where: { id: course.id }, data: { repoUrl: fullName ? repoUrl(fullName) : null } });
+  refresh();
+  return { ok: true };
+}
+
 export async function addRepo(input: string, label: string): Promise<Result> {
   const fullName = parseRepo(input);
   if (!fullName) return { ok: false, error: "Paste a GitHub link or owner/name." };
@@ -108,7 +119,7 @@ export async function moveRepo(id: string, direction: -1 | 1): Promise<Result> {
 /** Link a project-repo issue to a task. Linking never ticks the task, even if the issue is already closed. */
 export async function linkIssue(taskId: string, number: number): Promise<Result> {
   const repo = await projectRepo();
-  if (!repo) return { ok: false, error: "Link the project's GitHub repo first." };
+  if (!repo) return { ok: false, error: "Set the project's repo in Settings first." };
   let issue;
   try {
     issue = await findIssue(repo, number);
@@ -135,7 +146,7 @@ export async function unlinkIssue(taskId: string, repo: string, number: number):
 export async function createTaskFromIssue(number: number): Promise<Result<{ taskId: string }>> {
   const repo = await projectRepo();
   const course = await db.course.findFirst({ where: { isProject: true }, select: { id: true } });
-  if (!repo || !course) return { ok: false, error: "Link the project's GitHub repo first." };
+  if (!repo || !course) return { ok: false, error: "Set the project's repo in Settings first." };
   let issue;
   try {
     issue = await findIssue(repo, number);

@@ -73,6 +73,12 @@ lead with the fine-grained token. Repos the token can't read (Coaching, SH28
 Project, SH28 Diss for now) are plain links - no "no access" label in Settings
 or the menu; only readable repos get a status and counts.
 
+**Header tidy** - the GitHub button beside New meeting is gone; the project
+repo is now edited on its row in Settings → GitHub. Progress weights, on the
+project and every course page, are just the numbers - `40 cr · 0 / 0 / 100` -
+opening the editor as a dropdown. Also fixed a hydration error from the
+schedule's "today" line, which was placed to the millisecond.
+
 
 28/09
 
