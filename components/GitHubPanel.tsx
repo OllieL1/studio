@@ -150,7 +150,7 @@ export function GitHubPanel({
             {[
               <>Open <ExtLink href={NEW_TOKEN_URL}>a new fine-grained token</ExtLink> and name it <b>Studio</b>. Fine-grained, not classic - the <b>uog-cose</b> org refuses classic tokens.</>,
               <>Set <b>Resource owner</b> to <b>uog-cose</b>. A fine-grained token reaches only that one owner&apos;s repos.</>,
-              <>Under <b>Repository access</b>, pick <b>All repositories</b>, or select every repo in the Repos menu below - any left out show as &ldquo;no access&rdquo;.</>,
+              <>Under <b>Repository access</b>, pick <b>All repositories</b>, or select every repo in the Repos menu below.</>,
               <>Under <b>Permissions</b>, give read-only access to <b>Contents</b>, <b>Issues</b> and <b>Pull requests</b> (Metadata comes with them).</>,
               <>Set an expiry after <b>26 March 2027</b> if the org allows it, then <b>Generate token</b> and paste it above. If GitHub marks it <b>pending</b>, an org owner has to approve it first - until then this page shows GitHub&apos;s refusal.</>,
             ].map((step, i) => (
@@ -201,9 +201,10 @@ function RepoList({ projectRepo, repos, connected }: { projectRepo: string | nul
   const status = (name: string) => {
     if (!connected) return null;
     const a = access[name];
-    if (a === undefined) return <span className="text-[10.5px] text-n-300">checking…</span>;
+    if (a === undefined) return null;
     if (a === true) return <span className="text-[10.5px] font-medium text-ok">readable</span>;
-    return <span title={a} className="text-[10.5px] font-medium text-danger">no access</span>;
+    // A repo the token can't read is just a link - nothing to flag.
+    return null;
   };
 
   return (

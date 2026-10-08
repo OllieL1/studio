@@ -69,8 +69,9 @@ titles that GitHub has started trimming out of the activity feed.
 **Fine-grained token in, verified on MCR-5082P.** With a fine-grained token
 (resource owner uog-cose) the project repo reads on every endpoint Studio uses,
 and the project repo is back to `uog-cose/MCR-5082P`. Settings' token steps now
-lead with the fine-grained token. Coaching, SH28 Project and SH28 Diss still
-show "no access" - they need adding to the token's repository access.
+lead with the fine-grained token. Repos the token can't read (Coaching, SH28
+Project, SH28 Diss for now) are plain links - no "no access" label in Settings
+or the menu; only readable repos get a status and counts.
 
 
 28/09
