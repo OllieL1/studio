@@ -90,32 +90,38 @@ export function ReposMenu({ repos, variant, active }: { repos: RepoMenuEntry[]; 
               repos.map((r) => {
                 const p = pulse?.byRepo.get(r.fullName.toLowerCase());
                 return (
-                  <div key={r.fullName} className="group flex items-center rounded-md transition-colors duration-[120ms] hover:bg-n-50">
+                  // Two lines on each side, matched in height so they line up:
+                  // name with activity, owner/repo with the Studio link.
+                  <div key={r.fullName} className="flex items-start rounded-md transition-colors duration-[120ms] hover:bg-n-50">
                     <a
                       href={repoUrl(r.fullName)}
                       target="_blank"
                       rel="noreferrer"
                       onClick={() => setOpen(false)}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
+                      className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-2.5 pr-2"
                     >
                       <span className={clsx("shrink-0", r.isProject ? "text-rust-500" : "text-n-400")}><GitHubMark size={14} /></span>
                       <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline justify-between gap-2">
-                          <span className="truncate text-[13px] font-medium text-n-800">{r.label}</span>
-                          {p && <PulseText p={p} />}
-                        </span>
-                        <span className="font-num block truncate text-[10.5px] text-n-400">{r.fullName}</span>
+                        <span className="block truncate text-[13px] font-medium leading-5 text-n-800">{r.label}</span>
+                        <span className="font-num block truncate text-[10.5px] leading-4 text-n-400">{r.fullName}</span>
                       </span>
                     </a>
-                    {r.isProject && (
-                      <Link
-                        href={"/project?tab=github" as Route}
-                        onClick={() => setOpen(false)}
-                        title="The project's GitHub tab in Studio"
-                        className="mr-1.5 shrink-0 rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-n-500 hover:bg-n-100 hover:text-rust-700"
-                      >
-                        In Studio
-                      </Link>
+                    {(p || r.isProject) && (
+                      <span className="flex shrink-0 flex-col items-end py-2 pr-2.5">
+                        <a href={repoUrl(r.fullName)} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className="flex h-5 items-center">
+                          {p && <PulseText p={p} />}
+                        </a>
+                        {r.isProject && (
+                          <Link
+                            href={"/project?tab=github" as Route}
+                            onClick={() => setOpen(false)}
+                            title="The project's GitHub tab in Studio"
+                            className="text-[10.5px] font-semibold leading-4 text-n-500 hover:text-rust-700"
+                          >
+                            In Studio →
+                          </Link>
+                        )}
+                      </span>
                     )}
                   </div>
                 );
