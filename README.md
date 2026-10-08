@@ -196,9 +196,11 @@ changes anything on GitHub.
 | **Repos menu** | Beside Courses in the nav (the GitHub mark next to search on narrower screens). The project repo first, then whatever's added in Settings, each with live PR/issue counts. |
 
 **Auth is a personal access token**, pasted into Settings and stored in the
-database so it travels with the stick. The repos live in the `uog-cose` org,
-which can block OAuth apps; a classic token with the `repo` scope always works.
-Settings links straight to a pre-filled token page and checks each repo is
+database so it travels with the stick. A classic token with the `repo` scope
+reads your own repos. **The `uog-cose` org refuses classic tokens** (GitHub
+says so in the 403, and Studio now shows that message) - its repos need a
+fine-grained token with uog-cose as resource owner, which only reaches that one
+owner. Settings links straight to both token pages and checks each repo is
 readable. `GITHUB_TOKEN` in `.env` works too, for development.
 
 **It stays fast and works offline.** Every response is cached in `GitHubCache`

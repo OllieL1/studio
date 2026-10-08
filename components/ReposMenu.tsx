@@ -135,7 +135,7 @@ export function ReposMenu({ repos, variant, active }: { repos: RepoMenuEntry[]; 
 }
 
 function PulseText({ p }: { p: RepoPulse }) {
-  if ("error" in p) return <span className="shrink-0 text-[10.5px] text-n-400">{p.error === "not-found" ? "no access" : "offline"}</span>;
+  if ("error" in p) return <span className="shrink-0 text-[10.5px] text-n-400">{p.error === "offline" ? "offline" : p.error === "rate-limited" ? "rate limited" : "no access"}</span>;
   const bits = [p.openPulls ? `${p.openPulls} PR${p.openPulls === 1 ? "" : "s"}` : null, p.openIssues ? `${p.openIssues} issue${p.openIssues === 1 ? "" : "s"}` : null].filter(Boolean);
   return (
     <span className="font-num shrink-0 text-[10.5px] text-n-400">

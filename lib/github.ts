@@ -24,7 +24,7 @@ import { db } from "./db";
 const API = "https://api.github.com";
 const TIMEOUT_MS = 6000;
 
-export type GitHubErrorKind = "unauthorized" | "not-found" | "rate-limited" | "offline" | "unconfigured" | "other";
+export type GitHubErrorKind = "unauthorized" | "forbidden" | "not-found" | "rate-limited" | "offline" | "unconfigured" | "other";
 
 export class GitHubError extends Error {
   constructor(public kind: GitHubErrorKind, message: string, public status?: number) {
@@ -40,6 +40,10 @@ export function describeGitHubError(e: unknown): string {
       return "Not connected to GitHub - add a token in Settings.";
     case "unauthorized":
       return "GitHub rejected the token. It may have expired or been revoked - replace it in Settings.";
+    case "forbidden":
+      // GitHub's own words are the useful part - e.g. an org that forbids
+      // classic tokens says so, and names what it will accept.
+      return `GitHub refused: ${e.message.replace(/\.$/, "")}.`;
     case "not-found":
       return "GitHub can't find that repo with this token. Check the name, and that the token can see private repos in its org.";
     case "rate-limited":
@@ -92,14 +96,16 @@ async function request(path: string, token: string, etag?: string | null): Promi
   }
 }
 
-function failure(res: Response): GitHubError {
+async function failure(res: Response): Promise<GitHubError> {
   if (res.status === 401) return new GitHubError("unauthorized", "Bad credentials", 401);
   if (res.status === 404) return new GitHubError("not-found", "Not found", 404);
   if ((res.status === 403 || res.status === 429) && res.headers.get("x-ratelimit-remaining") === "0") {
     return new GitHubError("rate-limited", "Rate limited", res.status);
   }
   if (res.status >= 500) return new GitHubError("offline", `GitHub returned ${res.status}`, res.status);
-  return new GitHubError("other", `GitHub returned ${res.status}`, res.status);
+  const message = await res.json().then((b: { message?: unknown }) => (typeof b.message === "string" ? b.message : null)).catch(() => null);
+  if (res.status === 403) return new GitHubError("forbidden", message ?? "Access forbidden", 403);
+  return new GitHubError("other", message ?? `GitHub returned ${res.status}`, res.status);
 }
 
 /** Requests in flight, so two components asking for the same thing share one. */
@@ -142,7 +148,7 @@ export async function gh<T>(path: string, { maxAge = 60 }: { maxAge?: number } =
       return { data: JSON.parse(cached.body) as T, fetchedAt, stale: false };
     }
     if (!res.ok) {
-      const err = failure(res);
+      const err = await failure(res);
       // A dead token or a missing repo is news; a blip is not.
       if (cached && (err.kind === "offline" || err.kind === "rate-limited")) return fromCache(true);
       throw err;
@@ -190,7 +196,7 @@ export async function ghAll<T>(path: string, { maxAge = 60, maxPages = 5 }: { ma
 /** Check a token before saving it: who it belongs to and what it can do. */
 export async function verifyToken(token: string): Promise<{ login: string; name: string | null; scopes: string | null }> {
   const res = await request("/user", token);
-  if (!res.ok) throw failure(res);
+  if (!res.ok) throw await failure(res);
   const user = (await res.json()) as { login: string; name: string | null };
   return { login: user.login, name: user.name, scopes: res.headers.get("x-oauth-scopes") };
 }

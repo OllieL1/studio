@@ -83,6 +83,14 @@ test("a revoked token is reported, not papered over with the cache", async () =>
   await assert.rejects(gh(`/repos/${REPO}`, { maxAge: 0 }), (e) => e instanceof GitHubError && e.kind === "unauthorized");
 });
 
+test("an org's refusal comes through in GitHub's own words", async () => {
+  const { describeGitHubError } = await import("../lib/github");
+  replies = [{ status: 403, body: { message: "`uog-cose` forbids access via a personal access token (classic)." } }];
+  const err = await gh(`/repos/${REPO}/forbidden`, { maxAge: 0 }).catch((e) => e);
+  assert.ok(err instanceof GitHubError && err.kind === "forbidden");
+  assert.match(describeGitHubError(err), /forbids access via a personal access token \(classic\)/);
+});
+
 /* ── Issues → tasks ── */
 
 test("when the last linked issue closes, the task and its checklist tick", async () => {

@@ -148,7 +148,7 @@ export function GitHubPanel({
               <>Open <ExtLink href={NEW_TOKEN_URL}>a new classic token</ExtLink> - it&apos;s already named <b>Studio</b> with the <b>repo</b> scope ticked. Nothing else is needed.</>,
               <>Pick an expiry. <b>Custom → 1 Apr 2027</b> outlasts the project submission; you&apos;ll be told here if it lapses.</>,
               <><b>Generate token</b>, copy it, and paste it above.</>,
-              <>If the <b>uog-cose</b> repos still don&apos;t show, the org wants the token authorised: on <ExtLink href="https://github.com/settings/tokens">your tokens page</ExtLink>, <b>Configure SSO → Authorize</b> next to uog-cose.</>,
+              <>The <b>uog-cose</b> org refuses classic tokens. For its repos, make a <ExtLink href="https://github.com/settings/personal-access-tokens/new">fine-grained token</ExtLink> instead: resource owner <b>uog-cose</b>, read-only access to Contents, Issues, Pull requests and Metadata. The org may need to approve it. A fine-grained token only reaches the one owner it was made for.</>,
             ].map((step, i) => (
               <li key={i} className="flex gap-2.5">
                 <span className="font-num mt-px flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-n-100 text-[10.5px] font-semibold text-n-600">{i + 1}</span>

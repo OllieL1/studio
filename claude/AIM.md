@@ -296,7 +296,10 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
 
 - **Token, not OAuth.** `GitHubAuth` singleton, pasted in Settings and checked
   against `/user` before saving; `GITHUB_TOKEN` in `.env` is a dev fallback.
-  The org (`uog-cose`) can block OAuth apps; a classic `repo` token always works.
+  Verified 8 Oct: `uog-cose` **forbids classic tokens** ("use a GitHub App,
+  OAuth App, or a fine-grained token"), while a classic `repo` token reads
+  personal/other-org repos. A fine-grained token is scoped to one resource
+  owner, so covering uog-cose *and* other owners would need a token per owner.
 - **Read-only.** Studio never writes to GitHub.
 - **Issue → task is one-way, on the transition.** `TaskIssue` keeps a snapshot
   (title, state) per link. When an issue Studio last saw open is now closed and

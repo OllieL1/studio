@@ -56,8 +56,15 @@ the GitHub mark next to search. Add, rename, reorder and remove in Settings,
 which also shows whether the token can read each one.
 
 **Authentication** - Settings → GitHub: paste a token (the link opens GitHub's
-token page pre-filled with the `repo` scope). If uog-cose repos show "no
-access", the token needs **Configure SSO → Authorize** for the org.
+token page pre-filled with the `repo` scope).
+
+**08/10 follow-up - the 403 was the org.** GitHub's reply: "`uog-cose` forbids
+access via a personal access token (classic). Please use a GitHub App, OAuth
+App, or a personal access token with fine-grained permissions." The same token
+reads Project-Snippet/Snippet, so the project repo was pointed there (dev copy
+only) and the whole tab verified against live data. Studio now shows GitHub's
+own reason for a 403 instead of "GitHub returned 403", and fills in PR/issue
+titles that GitHub has started trimming out of the activity feed.
 
 
 28/09

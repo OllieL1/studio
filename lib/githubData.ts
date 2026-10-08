@@ -93,10 +93,29 @@ export async function repoOverview(fullName: string, { maxAge = 60 }: { maxAge?:
     issues: issues.data,
     pulls: pulls.data,
     commits: commits.data,
-    activity: (events?.data ?? []).map((e) => describeEvent(e, fullName)).filter((a): a is Activity => !!a),
+    activity: withTitles(
+      (events?.data ?? []).map((e) => describeEvent(e, fullName)).filter((a): a is Activity => !!a),
+      issues.data,
+      pulls.data,
+    ),
     fetchedAt: new Date(Math.min(...pieces.map((p) => p.fetchedAt.getTime()))),
     stale: pieces.some((p) => p.stale),
   };
+}
+
+/**
+ * GitHub now trims titles out of event payloads, leaving "approved #3". The
+ * issue and PR lists are already in hand, so put the titles back from them.
+ */
+function withTitles(activity: Activity[], issues: Issue[], pulls: Pull[]): Activity[] {
+  const titles = new Map<number, string>();
+  for (const i of issues) titles.set(i.number, i.title);
+  for (const p of pulls) titles.set(p.number, p.title);
+  return activity.map((a) => {
+    const n = /^#(\d+)$/.exec(a.subject ?? "");
+    const title = n && titles.get(Number(n[1]));
+    return title ? { ...a, subject: `${a.subject} ${title}` } : a;
+  });
 }
 
 /* ── Issues for @i and the task linker ───────────────────────────────────── */
