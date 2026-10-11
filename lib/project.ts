@@ -124,6 +124,28 @@ export function stackRows(items: { start: number; end: number }[]): number[] {
   return rows;
 }
 
+/* ── Carry-over ──────────────────────────────────────────────────────────── */
+
+type CarryTask = { id: string; cancelled: boolean; doneAt: Date | null; items: { doneAt: Date | null }[] };
+
+/**
+ * Which of the last meeting's tasks to pull into the next one's prep: its
+ * action items and its own prep, still open, not already on the new list.
+ * Prep that was itself carried forward keeps travelling until it's done.
+ */
+export function carryOverTasks(last: { actions: CarryTask[]; prep: CarryTask[] }, alreadyPrepped: string[]): string[] {
+  const skip = new Set(alreadyPrepped);
+  const out: string[] = [];
+  for (const t of [...last.actions, ...last.prep]) {
+    if (skip.has(t.id) || t.cancelled) continue;
+    const done = t.items.length === 0 ? t.doneAt !== null : t.items.every((i) => i.doneAt !== null);
+    if (done) continue;
+    skip.add(t.id);
+    out.push(t.id);
+  }
+  return out;
+}
+
 /* ── Agenda draft ────────────────────────────────────────────────────────── */
 
 export type AgendaInput = {

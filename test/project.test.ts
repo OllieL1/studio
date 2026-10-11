@@ -1,7 +1,7 @@
 /** Papers (link parsing, cite keys, BibTeX) and project maths (pace, timeline, agenda). */
 import assert from "node:assert/strict";
 import { parsePaperInput, makeCiteKey, toBibtex, shortAuthors, toSurnameFirst } from "../lib/papers";
-import { projectPace, timelineWeeks, timelinePosition, stackRows, draftAgenda, projectSessions, PROJECT_DEADLINE } from "../lib/project";
+import { projectPace, timelineWeeks, timelinePosition, stackRows, draftAgenda, carryOverTasks, projectSessions, PROJECT_DEADLINE } from "../lib/project";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -182,6 +182,20 @@ test("agenda for the first meeting with nothing logged", () => {
   const md = draftAgenda({ meetingTitle: "x", since: null, minutesLogged: 0, sessions: 0, tasksDone: [], papersRead: [], papersAdded: 0, openActions: [], upcoming: [], prepOutstanding: [] });
   assert.ok(md.includes("Since the start") && md.includes("No project time logged"));
   assert.ok(!md.includes("## Open actions"), "empty sections are left out");
+});
+
+/* ── Carry-over ── */
+
+test("carry-over takes the last meeting's open actions and prep, once each", () => {
+  const t = (id: string, o: { done?: boolean; cancelled?: boolean; items?: boolean[] } = {}) => ({
+    id, cancelled: !!o.cancelled, doneAt: o.done ? new Date() : null,
+    items: (o.items ?? []).map((d) => ({ doneAt: d ? new Date() : null })),
+  });
+  const ids = carryOverTasks({
+    actions: [t("open"), t("done", { done: true }), t("dropped", { cancelled: true }), t("half", { items: [true, false] }), t("ticked", { items: [true, true] }), t("both")],
+    prep: [t("prep"), t("both"), t("already")],
+  }, ["already"]);
+  assert.deepEqual(ids, ["open", "half", "both", "prep"]);
 });
 
 let passed = 0, failed = 0;

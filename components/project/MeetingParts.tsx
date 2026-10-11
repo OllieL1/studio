@@ -4,17 +4,30 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addMeetingAction, draftAgendaFor, saveMeetingText, setMeetingPrep } from "@/app/projectActions";
+import { addMeetingAction, carryOverFromLastMeeting, draftAgendaFor, saveMeetingText, setMeetingPrep } from "@/app/projectActions";
 import { toggleTask } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
+import { fmtDayDate } from "@/lib/dates";
 import { MarkdownField } from "../MarkdownField";
 
 type PrepTask = { id: string; title: string; done: boolean };
 
 /** Tasks to finish before the meeting. Advisory, like task prerequisites. */
-export function PrepList({ meetingId, courseId, prep }: { meetingId: string; courseId: string | null; prep: PrepTask[] }) {
+export function PrepList({
+  meetingId,
+  courseId,
+  prep,
+  carry,
+}: {
+  meetingId: string;
+  courseId: string | null;
+  prep: PrepTask[];
+  /** Open tasks the previous meeting left behind, not yet on this list. */
+  carry: { from: Date; count: number } | null;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [q, setQ] = useState("");
   const [options, setOptions] = useState<{ id: string; title: string }[]>([]);
@@ -34,8 +47,27 @@ export function PrepList({ meetingId, courseId, prep }: { meetingId: string; cou
 
   const run = (fn: () => Promise<unknown>) => startTransition(async () => { await fn(); router.refresh(); });
 
+  const carryOver = () =>
+    startTransition(async () => {
+      const res = await carryOverFromLastMeeting(meetingId);
+      setNotice(!res.ok ? res.error : res.calendarWarning ?? null);
+      router.refresh();
+    });
+
   return (
     <div>
+      {carry && carry.count > 0 && (
+        <button
+          onClick={carryOver}
+          disabled={pending}
+          title="Adds them here and moves their due dates to this meeting"
+          className="mb-2 flex w-full items-center justify-between gap-2 rounded-md border border-rust-200 bg-rust-50 px-2.5 py-1.5 text-left text-[12px] font-semibold text-rust-700 hover:bg-rust-100 disabled:opacity-50"
+        >
+          <span>Pull in {carry.count} open from {fmtDayDate(carry.from)}</span>
+          <span aria-hidden className="text-[11px] font-medium text-rust-500">due this meeting</span>
+        </button>
+      )}
+      {notice && <p className="mb-2 text-[11.5px] text-danger">{notice}</p>}
       {prep.length === 0 && !adding && <p className="mb-2 text-[12.5px] text-n-400">Nothing to prepare yet.</p>}
       <div className="space-y-0.5">
         {prep.map((t) => (

@@ -1,5 +1,10 @@
 # Enhancement List - Check Off as we go
 
+11/10
+Lets add these changes in the same branch as we are in (github-integration). Later on this evening, I will get the mac to pull these changes and integrate the local changes from the mac oto. Do not deploy these changes to the stick yet.
+[x] For the project, can we add a button in meetings to pull all remaining open tasks from the last meeting into the prep for the new meeting? Then please update the task due dates to the new meeting (or the meeting we have pulled in). Only pull the open tasks from previous meetings i.e. not all open tasks. 
+[x] The modal for creating a new supervisor meeting - please make the time choice slicke.r Add buttons for 30m and 1h or custom and make the time selection cleaner. 
+
 07/10
 Please note we may not have the latest changes on the stick in main on the repo. They may still be locally on the mac. Because of this, please create a branch for these changes instead of pushing direct to main.
 [x] GitHub Integration - for the project, I would like to integrate my repo into its own tab in the project page. Here we should see open issues, PRs, recent changes and activity. We should be able to cite issues in the nexus notes, with an @ mention (filter with @i)

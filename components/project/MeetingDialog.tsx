@@ -66,13 +66,20 @@ function MeetingDialog({
   const editing = initial.id !== null;
   const set = <K extends keyof MeetingDraft>(k: K, v: MeetingDraft[K]) => setD((x) => ({ ...x, [k]: v }));
 
-  const setStart = (v: string) =>
+  // Length drives the end time; "custom" hands it back to the end picker.
+  const [length, setLength] = useState<Length>(() => {
+    const mins = toMin(initial.endTime) - toMin(initial.startTime);
+    return mins === 30 || mins === 60 ? mins : "custom";
+  });
+  const pickStart = (v: string) =>
     setD((x) => {
-      if (!v || x.endTime > v) return { ...x, startTime: v };
-      const [h, m] = v.split(":").map(Number);
-      const e = Math.min(h * 60 + m + 30, 23 * 60 + 59);
-      return { ...x, startTime: v, endTime: `${String(Math.floor(e / 60)).padStart(2, "0")}:${String(e % 60).padStart(2, "0")}` };
+      const keep = length === "custom" && toMin(x.endTime) > toMin(v);
+      return { ...x, startTime: v, endTime: keep ? x.endTime : addMins(v, length === "custom" ? 30 : length) };
     });
+  const pickLength = (l: Length) => {
+    setLength(l);
+    if (l !== "custom") setD((x) => ({ ...x, endTime: addMins(x.startTime, l) }));
+  };
 
   const submit = () => {
     setError(null);
@@ -106,11 +113,39 @@ function MeetingDialog({
               aria-label="Title"
               className="font-display w-full bg-transparent text-[21px] font-semibold text-n-900 outline-none placeholder:text-n-300"
             />
-            <div className="flex flex-wrap items-center gap-2">
-              <input type="date" value={d.date} onChange={(e) => set("date", e.target.value)} aria-label="Date" className={clsx(input, "font-num w-[150px]")} />
-              <input type="time" value={d.startTime} onChange={(e) => setStart(e.target.value)} aria-label="Start" className={clsx(input, "font-num w-[100px]")} />
-              <span className="text-[12px] text-n-400">-</span>
-              <input type="time" value={d.endTime} onChange={(e) => set("endTime", e.target.value)} aria-label="End" className={clsx(input, "font-num w-[100px]")} />
+            <div className="space-y-2.5 rounded-sm border border-n-100 bg-n-25 p-3">
+              <div className="flex items-center gap-2">
+                <input type="date" value={d.date} onChange={(e) => set("date", e.target.value)} aria-label="Date" className={clsx(input, "font-num min-w-0 flex-1")} />
+                <TimeSelect value={d.startTime} onChange={pickStart} label="Start" />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-0.5 rounded-md border border-n-200 bg-n-0 p-0.5" role="group" aria-label="Length">
+                  {LENGTHS.map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => pickLength(l)}
+                      aria-pressed={length === l}
+                      className={clsx(
+                        "rounded-[6px] px-3 py-1 text-[12px] font-semibold transition-colors duration-[120ms]",
+                        length === l ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50 hover:text-n-700",
+                      )}
+                    >
+                      {l === 30 ? "30m" : l === 60 ? "1h" : "Custom"}
+                    </button>
+                  ))}
+                </div>
+                {length === "custom" ? (
+                  <span className="flex items-center gap-1.5 text-[12px] text-n-500">
+                    until
+                    <TimeSelect value={d.endTime} onChange={(v) => set("endTime", v)} label="End" after={d.startTime} />
+                  </span>
+                ) : (
+                  <span className="font-num text-[12.5px] text-n-500">
+                    {d.startTime} – <span className="font-medium text-n-700">{d.endTime}</span>
+                  </span>
+                )}
+              </div>
             </div>
             <input value={d.location} onChange={(e) => set("location", e.target.value)} placeholder="Where - office, room or Teams link" aria-label="Location" className={input} />
 
@@ -151,3 +186,28 @@ function MeetingDialog({
 
 const input =
   "h-9 w-full rounded-sm border border-n-200 bg-n-0 px-2.5 text-[13px] text-n-800 outline-none transition-colors duration-[120ms] placeholder:text-n-400 focus:border-rust-400";
+
+type Length = 30 | 60 | "custom";
+const LENGTHS: Length[] = [30, 60, "custom"];
+
+const toMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+};
+const fromMin = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+const addMins = (hhmm: string, mins: number) => fromMin(Math.min(toMin(hhmm) + mins, 23 * 60 + 59));
+
+/** Quarter-hour slots across a working day - plus whatever time is already set. */
+const SLOTS = Array.from({ length: (21 - 7) * 4 + 1 }, (_, i) => fromMin(7 * 60 + i * 15));
+
+/** A tidy dropdown of quarter-hour times, in place of the browser's time spinner. */
+function TimeSelect({ value, onChange, label, after }: { value: string; onChange: (v: string) => void; label: string; after?: string }) {
+  const slots = [...new Set([...SLOTS, value])]
+    .filter((t) => !after || toMin(t) > toMin(after))
+    .sort((a, b) => toMin(a) - toMin(b));
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={clsx(input, "font-num w-[92px] shrink-0 cursor-pointer")}>
+      {slots.map((t) => <option key={t} value={t}>{t}</option>)}
+    </select>
+  );
+}

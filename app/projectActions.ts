@@ -5,10 +5,12 @@ import { db } from "@/lib/db";
 import { resolveEventTimes } from "@/lib/events";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { lookupPaper, makeCiteKey, PAPER_STATUSES, type PaperMeta } from "@/lib/papers";
-import { draftAgenda } from "@/lib/project";
+import { carryOverTasks, draftAgenda } from "@/lib/project";
+import { pushToCalendar } from "@/app/actions";
 import { isTaskDone } from "@/lib/progress";
 import { shortAuthors } from "@/lib/papers";
 import { projectRepoWork } from "@/lib/githubData";
+import { lastMeetingBefore } from "@/lib/projectData";
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -133,6 +135,39 @@ export async function setMeetingPrep(meetingId: string, taskId: string, on: bool
     await db.meetingPrep.deleteMany({ where: { meetingId, taskId } });
   }
   refresh();
+}
+
+/**
+ * Pull the last meeting's still-open actions and prep into this meeting's
+ * prep, and move their due dates to this meeting's start - they're now
+ * due for it. Open tasks from anywhere else are left alone.
+ */
+export async function carryOverFromLastMeeting(meetingId: string) {
+  const m = await db.meeting.findUnique({ where: { id: meetingId }, include: { prep: true } });
+  if (!m) return { ok: false as const, error: "Meeting not found." };
+  const last = await lastMeetingBefore(m);
+  if (!last) return { ok: false as const, error: "There's no earlier meeting to carry over from." };
+
+  const ids = carryOverTasks({ actions: last.actions, prep: last.prep.map((p) => p.task) }, m.prep.map((p) => p.taskId));
+  if (ids.length === 0) return { ok: true as const, moved: 0 };
+
+  await db.$transaction([
+    ...ids.map((taskId) => db.meetingPrep.create({ data: { meetingId, taskId } })),
+    db.task.updateMany({ where: { id: { in: ids } }, data: { dueAt: m.startAt } }),
+  ]);
+
+  // Keep any tasks already on Google Calendar in step with the new date.
+  let calendarWarning: string | null = null;
+  if (isGoogleConfigured()) {
+    const onCalendar = await db.task.findMany({ where: { id: { in: ids }, calendarEventId: { not: null } }, select: { id: true } });
+    for (const t of onCalendar) {
+      const res = await pushToCalendar(t.id);
+      if (!res.ok) calendarWarning = `Carried over, but Google Calendar wasn't updated: ${res.error}`;
+    }
+  }
+
+  refresh();
+  return { ok: true as const, moved: ids.length, calendarWarning };
 }
 
 /**

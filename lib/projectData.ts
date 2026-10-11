@@ -133,4 +133,13 @@ export async function getProject() {
   };
 }
 
+/** The meeting before this one, with what it left open. */
+export async function lastMeetingBefore(m: { id: string; startAt: Date }) {
+  return db.meeting.findFirst({
+    where: { startAt: { lt: m.startAt }, id: { not: m.id } },
+    orderBy: { startAt: "desc" },
+    include: { actions: { include: { items: true } }, prep: { include: { task: { include: { items: true } } } } },
+  });
+}
+
 export type ProjectData = NonNullable<Awaited<ReturnType<typeof getProject>>>;
