@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { createNote } from "@/app/nexusActions";
-import { fmtRelative } from "@/lib/dates";
+import { fmtAgo } from "@/lib/dates";
 import { Card, EmptyState } from "../ui";
 import { clsx } from "@/lib/clsx";
 
@@ -137,7 +137,7 @@ export function NexusGallery({ notes, tags }: { notes: NexusCard[]; tags: string
                     #{t}
                   </span>
                 ))}
-                <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtRelative(n.updatedAt)}</span>
+                <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtAgo(n.updatedAt)}</span>
               </div>
             </Link>
           ))}

@@ -5,7 +5,7 @@ import { getBacklinks, getNote } from "@/lib/nexusData";
 import { allTags } from "@/lib/tags";
 import { splitBlocks } from "@/lib/editor/blocks";
 import { renderMarkdown } from "@/lib/markdown";
-import { fmtRelative } from "@/lib/dates";
+import { fmtAgo } from "@/lib/dates";
 import { Card, Eyebrow } from "@/components/ui";
 import { NoteEditor } from "@/components/project/NoteEditor";
 
@@ -49,7 +49,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                 className="flex items-center gap-1.5 rounded-md border border-n-200 bg-n-0 px-2.5 py-1.5 text-[12.5px] text-n-700 transition-colors duration-[120ms] hover:bg-n-50"
               >
                 {b.title}
-                <span className="font-num text-[10.5px] text-n-400">{fmtRelative(b.updatedAt)}</span>
+                <span className="font-num text-[10.5px] text-n-400">{fmtAgo(b.updatedAt)}</span>
               </Link>
             ))}
           </div>

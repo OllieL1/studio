@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTagPage } from "@/lib/nexusData";
 import { shortAuthors } from "@/lib/papers";
-import { fmtRelative } from "@/lib/dates";
+import { fmtAgo } from "@/lib/dates";
 import { Card, Eyebrow, EmptyState } from "@/components/ui";
 import { TagHeader } from "@/components/project/TagHeader";
 
@@ -74,7 +74,7 @@ export default async function TagPage({ params }: { params: Promise<{ key: strin
                 >
                   <p className="flex items-baseline gap-2 text-[13.5px] font-medium text-n-800">
                     {n.title}
-                    <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtRelative(n.updatedAt)}</span>
+                    <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtAgo(n.updatedAt)}</span>
                   </p>
                   {n.excerpt && <p className="mt-0.5 truncate text-[11.5px] text-n-500">{n.excerpt}</p>}
                 </Link>
