@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { courseHref } from "@/lib/types";
 import { OPEN_PALETTE_EVENT } from "./CommandPalette";
@@ -45,8 +45,29 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
   // ⌘K), should always leave the mobile menu closed behind it.
   useEffect(() => setMobileOpen(false), [pathname]);
 
+  // Pressing anywhere outside the header, or Escape, closes the menu. This
+  // can't be a full-screen backdrop inside the header: its backdrop-blur makes
+  // the header the containing block for `fixed` children, so the "full-screen"
+  // overlay was only ever as big as the header itself.
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!headerRef.current?.contains(e.target as Node)) setMobileOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [mobileOpen]);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-n-100 bg-n-25/85 backdrop-blur-md">
+    <header ref={headerRef} className="sticky top-0 z-40 border-b border-n-100 bg-n-25/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-1 px-4 sm:px-8">
         <Link href="/" className="mr-2 flex min-w-0 items-center gap-2.5 sm:mr-4">
           <Mark />
@@ -62,13 +83,15 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
           <span className="font-num hidden text-[11px] font-medium text-n-400 sm:inline">26/27</span>
         </Link>
 
-        {/* A hamburger takes over below `md`, in this same slot. */}
+        {/* A hamburger takes over below `lg`, in this same slot. Below that the
+            links, Courses, the repo icon and the live badge can't all fit: at
+            `md` the badge was squeezed to a sliver. */}
         <button
           onClick={() => setMobileOpen((v) => !v)}
           aria-expanded={mobileOpen}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           className={clsx(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[120ms] md:hidden",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[120ms] lg:hidden",
             mobileOpen ? "bg-n-100 text-n-800" : "text-n-500 hover:bg-n-100 hover:text-n-700",
           )}
         >
@@ -81,7 +104,7 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
           </svg>
         </button>
 
-        <nav className="hidden items-center gap-0.5 md:flex">
+        <nav className="hidden items-center gap-0.5 lg:flex">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -181,28 +204,20 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
       </div>
 
       {mobileOpen && (
-        <>
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 z-0 cursor-default"
-          />
-          <nav className="animate-fade-in relative z-10 max-h-[calc(100vh-56px)] overflow-y-auto border-t border-n-100 bg-n-0 px-4 py-2 md:hidden">
-            {LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={clsx(
-                  "block rounded-md px-3 py-2.5 text-[14px] font-medium transition-colors duration-[120ms]",
-                  isActive(l.href) ? "bg-rust-100 text-rust-700" : "text-n-700 hover:bg-n-50",
-                )}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        </>
+        <nav className="animate-fade-in max-h-[calc(100vh-56px)] overflow-y-auto border-t border-n-100 bg-n-0 px-4 py-2 lg:hidden">
+          {LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={clsx(
+                "block rounded-md px-3 py-2.5 text-[14px] font-medium transition-colors duration-[120ms]",
+                isActive(l.href) ? "bg-rust-100 text-rust-700" : "text-n-700 hover:bg-n-50",
+              )}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
       )}
     </header>
   );

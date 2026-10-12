@@ -82,7 +82,11 @@ export function ReposMenu({ repos, variant, active }: { repos: RepoMenuEntry[]; 
       )}
 
       {open && (
-        <div className={clsx("animate-scale-in absolute top-full w-80 pt-1.5", variant === "label" ? "left-0 origin-top-left" : "right-0 origin-top-right")}>
+        // On a phone the icon sits well in from the edge (the live badge and
+        // three more icons are to its right), so a 320px panel hung from it ran
+        // off the left of the screen. There it's a sheet under the header
+        // instead, spanning the width.
+        <div className={clsx("animate-scale-in absolute top-full w-80 pt-1.5", variant === "label" ? "left-0 origin-top-left" : "right-0 origin-top-right max-md:fixed max-md:inset-x-3 max-md:top-14 max-md:w-auto")}>
           <div className="rounded-lg border border-n-100 bg-n-0 p-1 shadow-[var(--shadow-pop)]">
             {repos.length === 0 ? (
               <p className="px-2.5 py-3 text-[12.5px] text-n-500">No repos yet.</p>
