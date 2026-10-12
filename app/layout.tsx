@@ -1,13 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Inter, JetBrains_Mono, Lato } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
+import { GlobalQuickAdd } from "@/components/GlobalQuickAdd";
 import { getActiveTimer } from "@/lib/queries";
 import { db } from "@/lib/db";
 import { isStudyLocation, visibleCourseWhere } from "@/lib/types";
 import { getPreferences } from "@/lib/preferences";
+import { isGoogleConfigured } from "@/lib/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({
@@ -26,6 +28,15 @@ const fraunces = Fraunces({
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
+});
+
+/** Body text for live notes - rendered (`.prose-notes`) and while actually
+ *  typing (`.editor-raw`), both in globals.css. */
+const lato = Lato({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-lato",
   display: "swap",
 });
 
@@ -51,7 +62,7 @@ export default async function RootLayout({
 }) {
   // The timer and course list live in the shell, so they're fetched once here
   // rather than by every page.
-  const [prefs, timer, courses, lastSession] = await Promise.all([
+  const [prefs, timer, courses, lastSession, googleAuth] = await Promise.all([
     getPreferences(),
     getActiveTimer(),
     db.course.findMany({
@@ -65,7 +76,12 @@ export default async function RootLayout({
       orderBy: { startedAt: "desc" },
       select: { location: true, locationNote: true },
     }),
+    // For the Ctrl-/ quick-add's Google Calendar toggle.
+    isGoogleConfigured()
+      ? db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } })
+      : Promise.resolve(null),
   ]);
+  const calendarConnected = !!googleAuth;
 
   return (
     // The theme is decided here, on the server, so the first paint is already
@@ -73,7 +89,7 @@ export default async function RootLayout({
     <html
       lang="en-GB"
       data-theme={prefs.theme}
-      className={`${inter.variable} ${fraunces.variable} ${mono.variable}`}
+      className={`${inter.variable} ${fraunces.variable} ${mono.variable} ${lato.variable}`}
       // Belt and braces: the page is painted before the stylesheet applies.
       style={{ background: prefs.theme === "dark" ? "#141210" : "#fbfaf8" }}
     >
@@ -90,6 +106,7 @@ export default async function RootLayout({
             {children}
           </main>
           <CommandPalette />
+          <GlobalQuickAdd courses={courses} calendarConnected={calendarConnected} />
           <TimerBar
             startedAt={timer?.startedAt.toISOString() ?? null}
             draftName={timer?.draftName ?? null}

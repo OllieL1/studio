@@ -14,6 +14,23 @@ const SPLIT = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~|\[[^
 export function InlineMarkdown({ text }: { text: string }) {
   if (!text) return null;
 
+  // A table cell can hold more than one line (Shift-Enter while editing it);
+  // each is run through the same inline marks, with a real line break
+  // between them.
+  if (text.includes("\n")) {
+    const lines = text.split("\n");
+    return (
+      <>
+        {lines.map((line, i) => (
+          <Fragment key={i}>
+            {i > 0 && <br />}
+            <InlineMarkdown text={line} />
+          </Fragment>
+        ))}
+      </>
+    );
+  }
+
   const parts = text.split(SPLIT).filter((p) => p !== "" && p !== undefined);
 
   return (

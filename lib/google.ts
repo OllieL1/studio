@@ -246,59 +246,67 @@ export async function listEventsInRange(
   timeMin: Date,
   timeMax: Date,
 ): Promise<{ events: GoogleEvent[]; error: string | null }> {
-  const token = await getAccessToken();
-  if (!token) return { events: [], error: null };
+  // Every fetch below throws rather than rejecting-with-a-response when
+  // there's no network at all (offline, DNS down, etc.) - the calendar page
+  // should still open with everything else on it, just without Google's
+  // events and a note saying why, rather than failing to render.
+  try {
+    const token = await getAccessToken();
+    if (!token) return { events: [], error: null };
 
-  const listRes = await fetch(`${CALENDAR_API}/users/me/calendarList?minAccessRole=reader`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!listRes.ok) {
-    return { events: [], error: `Couldn't read your calendars (${listRes.status}).` };
-  }
-  const list = (await listRes.json()) as {
-    items?: { id: string; summary: string; selected?: boolean; primary?: boolean }[];
-  };
-  const calendars = (list.items ?? []).filter((c) => c.selected || c.primary);
+    const listRes = await fetch(`${CALENDAR_API}/users/me/calendarList?minAccessRole=reader`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!listRes.ok) {
+      return { events: [], error: `Couldn't read your calendars (${listRes.status}).` };
+    }
+    const list = (await listRes.json()) as {
+      items?: { id: string; summary: string; selected?: boolean; primary?: boolean }[];
+    };
+    const calendars = (list.items ?? []).filter((c) => c.selected || c.primary);
 
-  const results = await Promise.all(
-    calendars.map(async (cal) => {
-      const params = new URLSearchParams({
-        timeMin: timeMin.toISOString(),
-        timeMax: timeMax.toISOString(),
-        singleEvents: "true",
-        orderBy: "startTime",
-        maxResults: "500",
-      });
-      const res = await fetch(
-        `${CALENDAR_API}/calendars/${encodeURIComponent(cal.id)}/events?${params}`,
-        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
-      );
-      if (!res.ok) return [] as GoogleEvent[];
-      const data = (await res.json()) as { items?: RawEvent[] };
-
-      return (data.items ?? [])
-        .filter((e) => e.status !== "cancelled" && (e.start?.date || e.start?.dateTime))
-        .map((e): GoogleEvent => {
-          const allDay = !!e.start?.date;
-          const start = allDay ? localDate(e.start!.date!) : new Date(e.start!.dateTime!);
-          const end = allDay
-            ? localDate(e.end?.date ?? e.start!.date!)
-            : new Date(e.end?.dateTime ?? e.start!.dateTime!);
-          return {
-            id: e.id,
-            calendarId: cal.id,
-            calendarName: cal.summary,
-            summary: e.summary?.trim() || "(No title)",
-            start,
-            end,
-            allDay,
-            location: e.location ?? null,
-            htmlLink: e.htmlLink ?? null,
-          };
+    const results = await Promise.all(
+      calendars.map(async (cal) => {
+        const params = new URLSearchParams({
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          singleEvents: "true",
+          orderBy: "startTime",
+          maxResults: "500",
         });
-    }),
-  );
+        const res = await fetch(
+          `${CALENDAR_API}/calendars/${encodeURIComponent(cal.id)}/events?${params}`,
+          { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+        );
+        if (!res.ok) return [] as GoogleEvent[];
+        const data = (await res.json()) as { items?: RawEvent[] };
 
-  return { events: results.flat(), error: null };
+        return (data.items ?? [])
+          .filter((e) => e.status !== "cancelled" && (e.start?.date || e.start?.dateTime))
+          .map((e): GoogleEvent => {
+            const allDay = !!e.start?.date;
+            const start = allDay ? localDate(e.start!.date!) : new Date(e.start!.dateTime!);
+            const end = allDay
+              ? localDate(e.end?.date ?? e.start!.date!)
+              : new Date(e.end?.dateTime ?? e.start!.dateTime!);
+            return {
+              id: e.id,
+              calendarId: cal.id,
+              calendarName: cal.summary,
+              summary: e.summary?.trim() || "(No title)",
+              start,
+              end,
+              allDay,
+              location: e.location ?? null,
+              htmlLink: e.htmlLink ?? null,
+            };
+          });
+      }),
+    );
+
+    return { events: results.flat(), error: null };
+  } catch {
+    return { events: [], error: "Google Calendar is unreachable - showing everything else." };
+  }
 }

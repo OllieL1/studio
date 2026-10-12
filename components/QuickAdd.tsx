@@ -27,6 +27,7 @@ export function QuickAdd({
   calendarConnected = false,
   defaultCourseId,
   placeholder,
+  autoFocus = false,
 }: {
   courses: ComposerCourse[];
   /** Whether Google Calendar is connected, so the sync toggle can be offered. */
@@ -34,6 +35,9 @@ export function QuickAdd({
   /** Pre-selects a course (e.g. the project), unless the text names another. */
   defaultCourseId?: string;
   placeholder?: string;
+  /** For the composer opened as a dialog (Ctrl-/) - the inline one on the
+   *  home and project pages shouldn't steal focus just for loading. */
+  autoFocus?: boolean;
 }) {
   const router = useRouter();
   const [raw, setRaw] = useState("");
@@ -131,6 +135,7 @@ export function QuickAdd({
 
         <input
           ref={inputRef}
+          autoFocus={autoFocus}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           onKeyDown={(e) => {

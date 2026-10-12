@@ -3,42 +3,56 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { courseHref } from "@/lib/types";
 import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
+import { ActiveNow } from "./ActiveNow";
 import { cssColour } from "@/lib/palette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
+/** The named links - desktop row and the mobile menu both read from this.
+ *  Stats and Settings live as icons instead (see `ICON_LINKS`), so they're
+ *  not repeated here. */
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/calendar", label: "Calendar" },
   { href: "/project", label: "Project" },
   { href: "/lectures", label: "Lectures" },
-  { href: "/stats", label: "Stats" },
   { href: "/sessions", label: "Sessions" },
-  { href: "/settings", label: "Settings" },
+] as const;
+
+/** Pages compact enough to live as an icon in the always-visible cluster,
+ *  next to search - trading a label for the room it saves. */
+const ICON_LINKS = [
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
+  { href: "/stats", label: "Stats", icon: StatsIcon },
 ] as const;
 
 export function Nav({ courses }: { courses: CourseLink[] }) {
   const pathname = usePathname();
   const [coursesOpen, setCoursesOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  // A tap on a link, or a route change from anywhere else (back/forward,
+  // ⌘K), should always leave the mobile menu closed behind it.
+  useEffect(() => setMobileOpen(false), [pathname]);
+
   return (
     <header className="sticky top-0 z-40 border-b border-n-100 bg-n-25/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-1 px-5 sm:px-8">
-        <Link href="/" className="mr-4 flex items-center gap-2.5 shrink-0">
+      <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-1 px-4 sm:px-8">
+        <Link href="/" className="mr-2 flex min-w-0 items-center gap-2.5 sm:mr-4">
           <Mark />
           <Wordmark className="text-[17px]" />
           {process.env.NODE_ENV === "development" && (
             <span
               title="Development server - this is a copy of your data, not the live copy on the USB stick"
-              className="rounded-full bg-warn-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#7a5f16]"
+              className="hidden shrink-0 rounded-full bg-warn-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#7a5f16] min-[420px]:inline"
             >
               Dev copy
             </span>
@@ -46,7 +60,26 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
           <span className="font-num hidden text-[11px] font-medium text-n-400 sm:inline">26/27</span>
         </Link>
 
-        <nav className="flex items-center gap-0.5">
+        {/* A hamburger takes over below `md`, in this same slot. */}
+        <button
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          className={clsx(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[120ms] md:hidden",
+            mobileOpen ? "bg-n-100 text-n-800" : "text-n-500 hover:bg-n-100 hover:text-n-700",
+          )}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+            {mobileOpen ? (
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            ) : (
+              <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            )}
+          </svg>
+        </button>
+
+        <nav className="hidden items-center gap-0.5 md:flex">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -110,8 +143,55 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
           </div>
         </nav>
 
-        <SearchHint />
+        {/* Settings, Stats and search as icons to save the room their words
+            took, then whatever's on right now - the one time-sensitive
+            thing here - anchored at the very end, visible at every width. */}
+        <div className="ml-auto flex min-w-0 items-center gap-1">
+          <SearchHint />
+          {ICON_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              title={l.label}
+              aria-label={l.label}
+              className={clsx(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[120ms]",
+                isActive(l.href)
+                  ? "bg-rust-100 text-rust-700"
+                  : "text-n-500 hover:bg-n-100 hover:text-n-700",
+              )}
+            >
+              <l.icon />
+            </Link>
+          ))}
+          <ActiveNow />
+        </div>
       </div>
+
+      {mobileOpen && (
+        <>
+          <button
+            aria-hidden
+            tabIndex={-1}
+            onClick={() => setMobileOpen(false)}
+            className="fixed inset-0 z-0 cursor-default"
+          />
+          <nav className="animate-fade-in relative z-10 max-h-[calc(100vh-56px)] overflow-y-auto border-t border-n-100 bg-n-0 px-4 py-2 md:hidden">
+            {LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={clsx(
+                  "block rounded-md px-3 py-2.5 text-[14px] font-medium transition-colors duration-[120ms]",
+                  isActive(l.href) ? "bg-rust-100 text-rust-700" : "text-n-700 hover:bg-n-50",
+                )}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        </>
+      )}
     </header>
   );
 }
@@ -119,7 +199,7 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
 /** Wordmark: a small progress-ring, echoing what the app is about. */
 function Mark() {
   return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden className="shrink-0">
       <circle cx="11" cy="11" r="8.5" stroke="var(--color-n-200)" strokeWidth="3" />
       <circle
         cx="11" cy="11" r="8.5"
@@ -131,21 +211,43 @@ function Mark() {
   );
 }
 
-
-/** Opens the ⌘K palette. Deliberately no shortcut hint — just a quiet field
- *  that reads as search at a glance. */
+/** Opens the ⌘K palette. Icon-only - the label cost more room than it was
+ *  worth once search sat alongside two other icons and a badge. */
 function SearchHint() {
   return (
     <button
       onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-      className="group ml-auto hidden h-8 w-44 items-center gap-2 rounded-full bg-n-100/60 px-3 text-[12.5px] text-n-400 transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-600 sm:flex"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-n-500 transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-700"
       aria-label="Search"
+      title="Search"
     >
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden className="shrink-0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
         <circle cx="7" cy="7" r="4.6" stroke="currentColor" strokeWidth="1.6" />
         <path d="M10.6 10.6L14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
-      Search
     </button>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="10" cy="4" r="1.7" fill="currentColor" />
+      <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="6" cy="8" r="1.7" fill="currentColor" />
+      <line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="11" cy="12" r="1.7" fill="currentColor" />
+    </svg>
+  );
+}
+
+function StatsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <rect x="2.3" y="9" width="2.7" height="4.5" rx="0.8" fill="currentColor" />
+      <rect x="6.65" y="5.5" width="2.7" height="8" rx="0.8" fill="currentColor" />
+      <rect x="11" y="2.5" width="2.7" height="11" rx="0.8" fill="currentColor" />
+    </svg>
   );
 }

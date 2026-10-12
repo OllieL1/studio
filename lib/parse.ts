@@ -34,6 +34,7 @@ const KIND_WORDS: Record<string, string> = {
   assignment: "COURSEWORK", report: "COURSEWORK", poster: "COURSEWORK",
   quiz: "QUIZ",
   exam: "EXAM",
+  task: "OTHER", todo: "OTHER",
 };
 
 const DOW: Record<string, number> = {
@@ -157,6 +158,13 @@ export function parseTask(
     eat(/\sin\s+(\d{1,2})\s*(d|days?|w|weeks?)(?=\s)/i, "date", (m) => {
       const n = Number(m[1]);
       setDate(addDays(today, /^w/i.test(m[2]) ? n * 7 : n));
+    }) ||
+    // "in 9h" / "in 2 hours" — a due moment, not just a due day, so both
+    // date and time come from it, counted from right now rather than midnight.
+    eat(/\sin\s+(\d{1,2})\s*(h|hrs?|hours?)(?=\s)/i, "date", (m) => {
+      const target = new Date(now.getTime() + Number(m[1]) * 3_600_000);
+      out.dueDate = toISODate(target);
+      out.dueTime = `${pad(target.getHours())}:${pad(target.getMinutes())}`;
     }) ||
     // "next mon" / "mon"
     eat(/\s(next\s+)?(mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday)(?=\s)/i, "date", (m) => {

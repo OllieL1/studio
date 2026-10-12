@@ -17,8 +17,12 @@ export type Table = {
 
 const splitRow = (line: string): string[] => {
   const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
-  // A backslash-escaped pipe is content, not a separator.
-  return trimmed.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
+  // A backslash-escaped pipe is content, not a separator. `<br>` is a real
+  // newline that had to survive being written as one physical line - see
+  // `serializeTable` - so it's decoded back before the cell is edited.
+  return trimmed
+    .split(/(?<!\\)\|/)
+    .map((c) => c.trim().replace(/\\\|/g, "|").replace(/<br\s*\/?>/gi, "\n"));
 };
 
 const isSeparator = (line: string) => /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(line) && line.includes("-");
@@ -55,7 +59,9 @@ function fit<T>(row: T[], width: number, filler: T = "" as T): T[] {
 
 export function serializeTable(t: Table): string {
   const width = t.header.length;
-  const escape = (c: string) => c.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  // A newline can't survive as-is - it would read as a new table row - so it
+  // travels as `<br>`, the usual GFM way to break a line inside a cell.
+  const escape = (c: string) => c.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
   const cells = [t.header, ...t.rows].map((r) => fit(r, width).map(escape));
 
   // Pad every column to its widest cell, so the raw markdown lines up.

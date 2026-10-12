@@ -1,7 +1,7 @@
 /** The live editor's block model: splitting, joining, typing helpers, inserts. */
 import assert from "node:assert/strict";
 import {
-  applyInsert, caretLine, classify, filterInserts, indentLines, INSERTS,
+  applyInsert, autoArrow, caretLine, classify, filterInserts, indentLines, INSERTS,
   joinBlocks, listContinuation, parseCallout, parseColumns, serializeCallout,
   serializeColumns, sourceOffset, splitBlocks,
 } from "../lib/editor/blocks";
@@ -183,6 +183,30 @@ test("a multi-line insert puts the caret inside it", () => {
   const r = applyInsert("[", 0, 1, code);
   assert.equal(r.text, "```\n\n```");
   assert.equal(r.caret, 4);
+});
+
+test("typing -> turns it into a real arrow", () => {
+  const r = autoArrow("go to library->", 15, "paragraph");
+  assert.equal(r?.text, "go to library→");
+  assert.equal(r?.caret, 14);
+});
+
+test("-> is left alone mid-word or without a completed pair", () => {
+  assert.equal(autoArrow("-", 1, "paragraph"), null);
+  assert.equal(autoArrow("a-b", 2, "paragraph"), null);
+});
+
+test("-> inside a fenced code block is left as source", () => {
+  assert.equal(autoArrow("f :: Int->Int", 9, "code"), null);
+});
+
+test("-> inside a maths block is left as source", () => {
+  assert.equal(autoArrow("f: A->B", 5, "math"), null);
+});
+
+test("-> inside an inline code span is left alone, but prose around it isn't", () => {
+  assert.equal(autoArrow("see `a->b`", 8, "paragraph"), null);
+  assert.notEqual(autoArrow("a-> then `x->y` after", 3, "paragraph"), null);
 });
 
 test("clicking in rendered text maps back into the markdown", () => {

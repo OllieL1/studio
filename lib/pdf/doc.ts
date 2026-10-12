@@ -56,6 +56,12 @@ export function newDoc({
   // crash fontkit when it parses those glyphs, and notes are full of them.
   doc.registerFont("mono", path.join(FONT_DIR, "RobotoMono-Regular.ttf"));
   doc.registerFont("display", path.join(FONT_DIR, "Fraunces-SemiBold.ttf"));
+  // Prose faces: note body text specifically (lib/pdf/markdown.ts), kept
+  // distinct from "body"/"bold"/"italic" so the schedule, papers and stats
+  // exports - which share this same doc - stay on Inter.
+  doc.registerFont("prose", path.join(FONT_DIR, "Lato-Regular.ttf"));
+  doc.registerFont("prose-bold", path.join(FONT_DIR, "Lato-Bold.ttf"));
+  doc.registerFont("prose-italic", path.join(FONT_DIR, "Lato-Italic.ttf"));
 
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));

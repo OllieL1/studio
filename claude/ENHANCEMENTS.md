@@ -1,5 +1,57 @@
 # Enhancement List - Check Off as we go
 
+29/09
+Today I have been using the app all day. It is primarily fixes & usability enhancements.
+[x] For the body text of the live notes both in their rendering and in the export, can we make it the Google font: Instrument Sans
+[x] Can we ensure soft failure of Google calendar connection i.e. if I am offline, the calendar page should still be accessible - just with the google events not displaying and an indicator of this 
+[x] Can we default the view to week instead of month for the calendar view?
+[x] When clicking the table menu for columns and rows (the dropdown), it actually layers behind the cells and the borders making it unclickable with the mouse - you have to use tab. Please ensure this menu is layered above the content.
+[x] When editing a table cell, can we ensure it wraps as we edit instead of continuing on one line?
+[x] When in a table cell, if we hit shift enter this should take a new line within that cell. Just enter should go down a row/create a new row (if we are already at the bottom)
+[x] Task creation needs slightly improved - please create a global shortcut of ctrl / for task creation anywhere on the site - also for our smart creation, please add support for hours i.e. in 9h as well as creating a task by typing task (as this isnt supported currently) - currently it defaults to coursework
+[x] Table formatting in PDF is messing up - when a cell takes more than one line it totally overlaps with itself and other cells and the text is on top of itself - ensure support for cells with multiline stuff. Remember that in a cell we can render markdown so this should be supported in the rendering of the PDF as well as the live markdown editor. 
+
+Thank you, fixing this stuff would be amazing.
+
+---
+
+## Status - 29/09/26
+
+**Note body font** - live notes (rendering and PDF export) now set in Instrument
+Sans, kept separate from the rest of the UI's Inter and from the schedule/
+papers/stats exports, which stay as they were. Instrument Sans only ships from
+Google as a variable font, so the PDF's three weights are static instances cut
+from it with `fonttools` - see `assets/fonts/README.md`.
+
+**Calendar offline** - a Google Calendar fetch that fails outright (no
+network, not just a bad response) no longer takes the whole calendar page down
+with it; it's caught the same way a bad HTTP response already was, and shows
+the same warning text next to the Google filter.
+
+**Calendar default view** - `/calendar` opens to Week unless a `?view=month`
+is in the link.
+
+**Table menus** - the column and row dropdowns now portal to `<body>` at fixed
+coordinates, same fix as the `[` and `@` menus got on 28/09: a collapsed
+table's own cell borders were painting over them.
+
+**Table cells** - the cell you're editing is a textarea now, not a single-line
+field, so long text wraps as you type instead of scrolling sideways. Shift-
+Enter adds a line within the cell; Enter still moves to the next row (or adds
+one at the bottom). A multi-line cell survives the round trip through the
+markdown as `<br>`, GFM's usual way to break a line inside a table cell.
+
+**Task creation** - Ctrl-/ (⌘/ on a Mac) opens a quick-add dialog from
+anywhere on the site, not just the Home and Project pages. The one-line parser
+now takes "task" (or "todo") as the Task type, and "in 9h" the same way it
+already took "in 3d" - both date and time, counted from now.
+
+**Table PDF export** - cells wrap, `<br>` breaks a line, and the same
+**bold**/`code`/*italic* markdown the live grid renders now renders in the
+export too. Row height is measured from the tallest cell in it before
+anything is drawn, so a long cell no longer overlaps the row below or the
+cell beside it.
+
 28/09
 
 - A few more enhancements based on my use of the site. 

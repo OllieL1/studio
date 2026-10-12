@@ -1,10 +1,13 @@
-Fonts used by the PDF export (lib/pdf). Both are under the SIL Open Font
+Fonts used by the PDF export (lib/pdf). All are under the SIL Open Font
 License 1.1 and are redistributable:
 
-- Inter (Rasmus Andersson) — body text
-- Inter Italic - emphasis in notes
+- Inter (Rasmus Andersson) — non-note body text (schedule, papers, stats, footers)
+- Inter Italic - emphasis in that same non-note text
 - Roboto Mono (Christian Robertson) - code
 - Fraunces (Undercase Type) - headings
+- Lato (Łukasz Dziedzic) - note/prose body text, regular and bold, in the live
+  notes renderer, the editor itself, and the PDF export
+- Lato Italic - emphasis within note body text
 
 Roboto Mono is here rather than JetBrains Mono (which the UI uses for numbers)
 because fontkit, inside pdfkit, throws "Offset is outside the bounds of the

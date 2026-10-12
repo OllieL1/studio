@@ -1,11 +1,162 @@
 import { db } from "./db";
-import { addDays, startOfDay } from "./dates";
+import { addDays, startOfDay, toISODate, atMinutes } from "./dates";
 import { visibleCourseWhere } from "./types";
 import { dietOrder, isBlocked, type CalendarItem } from "./calendar";
 import { isTaskDone, readinessFor } from "./progress";
 import { isGoogleConfigured, listEventsInRange } from "./google";
 
 const CLASS_KINDS = ["LECTURE", "LAB", "SEMINAR"];
+
+export type ActiveNow = {
+  id: string;
+  kind: "class" | "meeting" | "event";
+  /** Whether it's on right now, or the soonest thing still to come. */
+  status: "active" | "upcoming";
+  title: string;
+  subtitle: string | null;
+  href: string;
+  /** Active: when it ends. Upcoming: when it starts. */
+  at: string;
+  colour: string | null;
+};
+
+/** How far ahead "upcoming" is willing to look - far enough to bridge a
+ *  weekend, not so far that "next" stops meaning anything. */
+const UPCOMING_HORIZON_DAYS = 14;
+
+/**
+ * What's on right now, or - if nothing is - the soonest thing that will be:
+ * a class, a project meeting, or a uni event. For the header's live badge.
+ * Google's own calendar is left out: those items have nowhere in the app to
+ * open to, and this is about what *you* scheduled, not everything on the feed.
+ *
+ * Where more than one is active, whichever ends soonest wins; where more
+ * than one is upcoming, whichever starts soonest does.
+ */
+export async function getActiveNow(now: Date = new Date()): Promise<ActiveNow | null> {
+  const day = startOfDay(now);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const courseWhere = visibleCourseWhere();
+
+  const [classes, meetings, events] = await Promise.all([
+    db.task.findMany({
+      where: {
+        cancelled: false,
+        kind: { in: CLASS_KINDS },
+        dueAt: { gte: day, lt: addDays(day, 1) },
+        startMin: { lte: nowMin },
+        endMin: { gt: nowMin },
+        OR: [{ courseId: null }, { course: { is: courseWhere } }],
+      },
+      include: { course: true },
+    }),
+    db.meeting.findMany({
+      where: { startAt: { lte: now }, endAt: { gt: now } },
+      include: { course: true },
+    }),
+    db.event.findMany({
+      where: { allDay: false, startAt: { lte: now }, endAt: { gt: now } },
+      include: { course: true },
+    }),
+  ]);
+
+  const dayIso = toISODate(day);
+  const active: ActiveNow[] = [
+    ...classes.map((t): ActiveNow => ({
+      id: t.id,
+      kind: "class",
+      status: "active",
+      title: t.title,
+      subtitle: t.course?.shortName ?? null,
+      href: t.kind === "LAB" ? `/tasks/${t.id}` : `/lectures/${t.id}`,
+      at: atMinutes(dayIso, t.endMin!).toISOString(),
+      colour: t.course?.colour ?? null,
+    })),
+    ...meetings.map((m): ActiveNow => ({
+      id: m.id,
+      kind: "meeting",
+      status: "active",
+      title: m.title,
+      subtitle: m.course?.shortName ?? null,
+      href: `/project/meetings/${m.id}`,
+      at: m.endAt.toISOString(),
+      colour: m.course?.colour ?? null,
+    })),
+    ...events.map((e): ActiveNow => ({
+      id: e.id,
+      kind: "event",
+      status: "active",
+      title: e.title,
+      subtitle: e.location ?? e.course?.shortName ?? null,
+      href: `/calendar?date=${toISODate(e.startAt)}&view=week`,
+      at: e.endAt.toISOString(),
+      colour: e.course?.colour ?? null,
+    })),
+  ];
+  if (active.length) return active.sort((a, b) => a.at.localeCompare(b.at))[0];
+
+  // Nothing on right now - the soonest thing coming up instead, so the
+  // badge is worth a glance between classes too, not just during one.
+  const horizon = addDays(day, UPCOMING_HORIZON_DAYS);
+  const [nextClass, nextMeeting, nextEvent] = await Promise.all([
+    db.task.findFirst({
+      where: {
+        cancelled: false,
+        kind: { in: CLASS_KINDS },
+        dueAt: { gt: now, lt: horizon },
+        OR: [{ courseId: null }, { course: { is: courseWhere } }],
+      },
+      include: { course: true },
+      orderBy: { dueAt: "asc" },
+    }),
+    db.meeting.findFirst({
+      where: { startAt: { gt: now, lt: horizon } },
+      include: { course: true },
+      orderBy: { startAt: "asc" },
+    }),
+    db.event.findFirst({
+      where: { allDay: false, startAt: { gt: now, lt: horizon } },
+      include: { course: true },
+      orderBy: { startAt: "asc" },
+    }),
+  ]);
+
+  const upcoming: ActiveNow[] = [
+    ...(nextClass ? [{
+      id: nextClass.id,
+      kind: "class" as const,
+      status: "upcoming" as const,
+      title: nextClass.title,
+      subtitle: nextClass.course?.shortName ?? null,
+      href: nextClass.kind === "LAB" ? `/tasks/${nextClass.id}` : `/lectures/${nextClass.id}`,
+      at: nextClass.dueAt!.toISOString(),
+      colour: nextClass.course?.colour ?? null,
+    }] : []),
+    ...(nextMeeting ? [{
+      id: nextMeeting.id,
+      kind: "meeting" as const,
+      status: "upcoming" as const,
+      title: nextMeeting.title,
+      subtitle: nextMeeting.course?.shortName ?? null,
+      href: `/project/meetings/${nextMeeting.id}`,
+      at: nextMeeting.startAt.toISOString(),
+      colour: nextMeeting.course?.colour ?? null,
+    }] : []),
+    ...(nextEvent ? [{
+      id: nextEvent.id,
+      kind: "event" as const,
+      status: "upcoming" as const,
+      title: nextEvent.title,
+      subtitle: nextEvent.location ?? nextEvent.course?.shortName ?? null,
+      href: `/calendar?date=${toISODate(nextEvent.startAt)}&view=week`,
+      at: nextEvent.startAt.toISOString(),
+      colour: nextEvent.course?.colour ?? null,
+    }] : []),
+  ];
+
+  if (!upcoming.length) return null;
+  return upcoming.sort((a, b) => a.at.localeCompare(b.at))[0];
+}
 
 /**
  * Everything on the calendar between `start` and `end`.

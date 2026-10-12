@@ -181,9 +181,18 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
 
     const quote = /^\s*>\s?(.*)$/.exec(line);
     if (quote) {
-      style.ensure?.(style.size + 8);
+      const inner = { ...style, x: style.x + 12, width: style.width - 12, colour: MUTED };
+      // Measured first: a quote that merely wraps to two lines is the same
+      // "does it fit" question as a callout or a column, and needs the same
+      // answer - the whole thing moves to the next page rather than
+      // pdfkit silently wrapping it mid-quote, which left the hand-drawn bar
+      // stretching from the bottom of one page to the top of the next.
+      const height = measure(inner.width, (probe, w) => {
+        inline(probe, parseInline(quote[1]), { ...inner, x: probe.x, width: w, ensure: undefined });
+      });
+      style.ensure?.(height + 8);
       const y = doc.y;
-      inline(doc, parseInline(quote[1]), { ...style, x: style.x + 12, width: style.width - 12, colour: MUTED });
+      inline(doc, parseInline(quote[1]), inner);
       doc.moveTo(style.x + 3, y + 1).lineTo(style.x + 3, doc.y - 2).lineWidth(1.5).strokeColor(RULE).stroke();
       continue;
     }
@@ -194,6 +203,21 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
 }
 
 /* ── Inline ──────────────────────────────────────────────────────────────── */
+
+/**
+ * "body" / "bold" / "italic" are Inter, shared with the schedule, papers and
+ * stats exports. Note prose - the only thing this file draws - reads in
+ * Lato instead, so the swap happens once here rather than at every
+ * call site. Headings opt out by passing an explicit `style.font`: they carry
+ * their own face (`display`/`bold`) regardless of what the run underneath it
+ * is tagged, so this only ever touches running body text.
+ */
+function proseFace(font: string): string {
+  if (font === "body") return "prose";
+  if (font === "bold") return "prose-bold";
+  if (font === "italic") return "prose-italic";
+  return font;
+}
 
 const SPLIT =
   /(@[r#tnmu]\[[^\]|]+(?:\|[^\]]*)?\]|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|\$[^$\n]+\$|!?\[[^\]]*\]\([^)]+\))/g;
@@ -245,7 +269,8 @@ function inline(
 
   parts.forEach((p, i) => {
     const last = i === parts.length - 1;
-    const font = style.font && p.font === "body" ? style.font : p.font;
+    const raw = style.font && p.font === "body" ? style.font : p.font;
+    const font = style.font ? raw : proseFace(raw);
     // Code sits slightly smaller: JetBrains Mono runs large next to Inter.
     const size = p.font === "mono" ? style.size * 0.92 : style.size;
     doc.font(font).fontSize(size).fillColor(p.colour === INK ? baseColour : p.colour);
@@ -290,7 +315,8 @@ function richLine(doc: PDFKit.PDFDocument, parts: Inline[], style: MdStyle & { c
   }
 
   function words(part: Inline): Piece[] {
-    const font = style.font && part.font === "body" ? style.font : part.font;
+    const raw = style.font && part.font === "body" ? style.font : part.font;
+    const font = style.font ? raw : proseFace(raw);
     doc.font(font).fontSize(style.size);
     return part.text
       .split(/(\s+)/)
@@ -341,7 +367,7 @@ function drawCallout(doc: PDFKit.PDFDocument, title: string, body: string, style
 
   const height = measure(inner.width, (probe, width) => {
     if (title) {
-      probe.font("bold").fontSize(style.size).fillColor(INK);
+      probe.font("prose-bold").fontSize(style.size).fillColor(INK);
       probe.text(title, probe.x, probe.y, { width });
     }
     if (body) renderMarkdown(probe, body, { size: style.size, x: probe.x, width });
@@ -357,7 +383,7 @@ function drawCallout(doc: PDFKit.PDFDocument, title: string, body: string, style
 
   doc.y = top + pad;
   if (title) {
-    doc.font("bold").fontSize(style.size).fillColor(RUST);
+    doc.font("prose-bold").fontSize(style.size).fillColor(RUST);
     doc.text(title, inner.x, doc.y, { width: inner.width });
   }
   if (body) renderMarkdown(doc, body, { ...inner, ensure: undefined });
@@ -432,35 +458,57 @@ function codeBlock(doc: PDFKit.PDFDocument, body: string[], style: MdStyle) {
 const splitRow = (line: string) =>
   line.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 
+/** A cell's `<br>`-separated lines - how a multi-line cell reaches this file
+ *  from the table editor (see lib/editor/tables.ts's `serializeTable`). */
+const cellParagraphs = (text: string) => text.split(/<br\s*\/?>/i);
+
 function table(doc: PDFKit.PDFDocument, header: string[], rows: string[][], style: MdStyle) {
   const cols = header.length;
   if (cols === 0) return;
   const size = style.size * 0.92;
-  const rowHeight = size * 1.9;
-  style.ensure?.(rowHeight * (rows.length + 1) + 10);
-
+  const pad = 6;
   const colWidth = style.width / cols;
-  let y = doc.y + 4;
+  const cellWidth = Math.max(10, colWidth - pad * 2);
 
-  doc.font("bold").fontSize(size).fillColor(MUTED);
-  header.forEach((h, i) => {
-    doc.text(h, style.x + i * colWidth, y, { width: colWidth - 6, lineBreak: false, ellipsis: true });
-  });
-  y += rowHeight * 0.85;
-  doc.moveTo(style.x, y).lineTo(style.x + style.width, y).lineWidth(0.5).strokeColor(RULE).stroke();
-  y += 4;
+  const evenCols = (r: string[]) => {
+    const out = r.slice(0, cols);
+    while (out.length < cols) out.push("");
+    return out;
+  };
 
-  rows.forEach((r) => {
-    doc.font("body").fontSize(size).fillColor(INK);
-    r.slice(0, cols).forEach((c, i) => {
-      // Cells are single-line: a wrapped cell would desync the row heights.
-      doc.text(c, style.x + i * colWidth, y, { width: colWidth - 6, lineBreak: false, ellipsis: true });
+  // Measured on a throwaway doc first: every cell in a row shares one height
+  // - whichever cell is tallest - so cells with markdown or a `<br>` or two
+  // don't run into the row below, or into each other.
+  const cellHeight = (text: string, base: "body" | "bold") =>
+    measure(cellWidth, (probe, w) => {
+      for (const para of cellParagraphs(text)) {
+        inline(probe, parseInline(para || " ", base), { size, x: probe.x, width: w });
+      }
     });
-    y += rowHeight * 0.8;
-    doc.moveTo(style.x, y - 3).lineTo(style.x + style.width, y - 3).lineWidth(0.3).strokeColor(RULE).stroke();
-  });
 
-  doc.y = y + 4;
+  const drawRow = (cells: string[], base: "body" | "bold", colour: string) => {
+    const rowHeight =
+      Math.max(size * 1.6, ...cells.map((c) => cellHeight(c, base))) + pad * 1.5;
+    style.ensure?.(rowHeight);
+    const top = doc.y;
+    cells.forEach((c, i) => {
+      doc.y = top;
+      const x = style.x + i * colWidth + pad;
+      for (const para of cellParagraphs(c)) {
+        inline(doc, parseInline(para || " ", base), { size, x, width: cellWidth, colour });
+      }
+    });
+    doc.y = top + rowHeight;
+    doc.moveTo(style.x, doc.y - pad * 0.6).lineTo(style.x + style.width, doc.y - pad * 0.6)
+      .lineWidth(base === "bold" ? 0.5 : 0.3).strokeColor(RULE).stroke();
+  };
+
+  doc.moveDown(0.3);
+  drawRow(evenCols(header), "bold", MUTED);
+  rows.forEach((r) => drawRow(evenCols(r), "body", INK));
+
+  doc.y += 4;
+  doc.fillColor(INK);
 }
 
 /** Plain text of a markdown string, for contents lines and summaries. */

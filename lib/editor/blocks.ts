@@ -452,3 +452,29 @@ export function applyInsert(
   const next = text.slice(0, triggerStart) + body + text.slice(caret);
   return { text: next, caret: triggerStart + (offset === -1 ? body.length : offset) };
 }
+
+/** Backticks before `pos`: an odd count means it sits inside an inline
+ *  code span, which a fenced block (its own "code" kind) never reaches. */
+function insideInlineCode(text: string, pos: number): boolean {
+  const ticks = text.slice(0, pos).match(/`/g);
+  return !!ticks && ticks.length % 2 === 1;
+}
+
+/**
+ * Inter, the font notes used to be drawn in, turns a typed "->" into a single
+ * arrow glyph via a font ligature - purely cosmetic, the text underneath
+ * always stayed "->". Lato, chosen for how notes read now, has no such
+ * ligature, so this does the same job at the text level: the moment a typed
+ * ">" completes "->", it becomes a real "→" character. Code and maths are
+ * left alone, since "->" is often meaningful syntax there rather than prose.
+ */
+export function autoArrow(
+  text: string,
+  caret: number,
+  kind: BlockKind,
+): { text: string; caret: number } | null {
+  if (kind === "code" || kind === "math") return null;
+  if (caret < 2 || text.slice(caret - 2, caret) !== "->") return null;
+  if (insideInlineCode(text, caret - 2)) return null;
+  return { text: text.slice(0, caret - 2) + "→" + text.slice(caret), caret: caret - 1 };
+}

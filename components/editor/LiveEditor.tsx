@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { saveNotes } from "@/app/actions";
 import {
-  applyInsert, caretLine, filterInserts, joinBlocks, listContinuation,
+  applyInsert, autoArrow, caretLine, filterInserts, joinBlocks, listContinuation,
   classify, indentLines, newId, retype, sourceOffset, splitBlocks, type Block, type Insert,
 } from "@/lib/editor/blocks";
 import { clsx } from "@/lib/clsx";
@@ -13,6 +13,9 @@ import { InsertMenu } from "./InsertMenu";
 import { MentionMenu } from "./MentionMenu";
 import { LinkPrompt } from "./LinkPrompt";
 import { MENTION_KINDS, serializeMention, type MentionKind } from "@/lib/mentions";
+import {
+  compactMentions, deleteShorthandBefore, expandMentions, insertMentionShorthand, mentionIndexAt,
+} from "@/lib/editor/mentionShorthand";
 import type { MentionOption } from "@/app/api/mentions/route";
 import { TableEditor } from "./TableEditor";
 import { ColumnsEditor } from "./ColumnsEditor";
@@ -92,6 +95,11 @@ export function LiveEditor({
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const rawRef = useRef<HTMLTextAreaElement>(null);
   const caretTarget = useRef<number | null>(null);
+  /** What each `@[Label]` in the active block's textarea currently stands
+   *  for, in order - see lib/editor/mentionShorthand.ts. Refreshed from the
+   *  block's real text on every render, and patched directly by the two
+   *  places that add or remove a mention. */
+  const mentionTokensRef = useRef<string[]>([]);
   /** Index of the block a selection extends from - the last one edited. */
   const anchorRef = useRef<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -249,7 +257,7 @@ export function LiveEditor({
     el.value = text;
     el.setSelectionRange(caret, caret);
     autosize(el);
-    update(id, text);
+    update(id, expandMentions(text, mentionTokensRef.current));
   };
 
   const insertAfter = (id: string, text = "") => {
@@ -381,6 +389,18 @@ export function LiveEditor({
       if (["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(e.key)) return;
     }
 
+    // Backspace right after a mention takes the whole `@[Label]`, not one
+    // character of it - a mention isn't edited in place, only replaced.
+    if (e.key === "Backspace" && el.selectionStart === el.selectionEnd) {
+      const del = deleteShorthandBefore(el.value, el.selectionStart, mentionTokensRef.current);
+      if (del) {
+        e.preventDefault();
+        mentionTokensRef.current = del.tokens;
+        write(el, b.id, del.text, del.caret);
+        return;
+      }
+    }
+
     if (mod && e.key.toLowerCase() === "s") {
       e.preventDefault();
       void persist(markdown);
@@ -402,11 +422,13 @@ export function LiveEditor({
     if (e.key === "Tab") {
       e.preventDefault();
       // Shift whole lines: nested bullets are the reason Tab exists here.
+      // Only leading whitespace moves, so the mentions on those lines and
+      // their tokens are untouched - same set, same order.
       const shifted = indentLines(el.value, el.selectionStart, el.selectionEnd, e.shiftKey);
       el.value = shifted.text;
       el.setSelectionRange(shifted.start, shifted.end);
       autosize(el);
-      update(b.id, shifted.text);
+      update(b.id, expandMentions(shifted.text, mentionTokensRef.current));
       return;
     }
 
@@ -427,17 +449,22 @@ export function LiveEditor({
       }
       if (cont && "exit" in cont) {
         e.preventDefault();
-        update(b.id, cont.text.replace(/\n$/, ""));
+        // Only the trailing empty item goes, which never held a mention of
+        // its own - every token stays with what's left.
+        update(b.id, expandMentions(cont.text.replace(/\n$/, ""), mentionTokensRef.current));
         insertAfter(b.id);
         return;
       }
 
       e.preventDefault();
-      // Split at the caret: the tail becomes the next block.
+      // Split at the caret: the tail becomes the next block. Its share of
+      // the tokens has to go with it - whichever mentions the caret has
+      // already passed stay here, the rest move across.
       const head = el.value.slice(0, caret);
       const tail = el.value.slice(caret);
-      update(b.id, head);
-      insertAfter(b.id, tail);
+      const splitAt = mentionIndexAt(el.value, caret);
+      update(b.id, expandMentions(head, mentionTokensRef.current.slice(0, splitAt)));
+      insertAfter(b.id, expandMentions(tail, mentionTokensRef.current.slice(splitAt)));
       return;
     }
 
@@ -484,9 +511,18 @@ export function LiveEditor({
   /** `[` opens the insert menu, when it starts a word rather than a link. */
   const onInput = (e: React.FormEvent<HTMLTextAreaElement>, b: Block) => {
     const el = e.currentTarget;
+    // A collapsed caret right after "->" becomes "→" - see autoArrow's own
+    // comment for why. `setRangeText` rather than reassigning `el.value`
+    // keeps the browser's native undo working through the substitution.
+    if (el.selectionStart != null && el.selectionStart === el.selectionEnd) {
+      const arrowed = autoArrow(el.value, el.selectionStart, b.kind);
+      if (arrowed) {
+        el.setRangeText("→", el.selectionStart - 2, el.selectionStart, "end");
+      }
+    }
     const caret = el.selectionStart;
     const text = el.value;
-    update(b.id, text);
+    update(b.id, expandMentions(text, mentionTokensRef.current));
     autosize(el);
 
     if (menu) {
@@ -531,11 +567,14 @@ export function LiveEditor({
   const chooseMention = (option: MentionOption) => {
     const el = areaRef.current;
     if (!el || !mention) return;
-    const token = `${serializeMention(option.kind, option.id, option.label)} `;
-    const next = el.value.slice(0, mention.start) + token + el.value.slice(el.selectionStart);
+    const full = serializeMention(option.kind, option.id, option.label);
+    const result = insertMentionShorthand(
+      el.value, mention.start, el.selectionStart, mentionTokensRef.current, full, option.label,
+    );
+    mentionTokensRef.current = result.tokens;
     const id = mention.blockId;
     setMention(null);
-    write(el, id, next, mention.start + token.length);
+    write(el, id, result.text, result.caret);
     el.focus();
   };
 
@@ -615,7 +654,13 @@ export function LiveEditor({
 
   return (
     <div className={clsx("relative", nested ? "pb-0" : minimal ? "pb-24" : "pb-10")}>
-      {blocks.map((b, i) => (
+      {blocks.map((b, i) => {
+        // The textarea shows and types against this shorthand, never the
+        // real markdown - recomputed from the block's actual (always-full)
+        // text on every render, so it can never drift from what's real.
+        if (b.id === activeId) mentionTokensRef.current = compactMentions(b.text).tokens;
+
+        return (
         <div
           key={b.id}
           data-block={b.kind}
@@ -656,7 +701,7 @@ export function LiveEditor({
                 // Uncontrolled while it has focus: a controlled value fights
                 // fast typing. `key` remounts it when a different block opens.
                 key={b.id}
-                defaultValue={b.text}
+                defaultValue={compactMentions(b.text).text}
                 onInput={(e) => onInput(e, b)}
                 onKeyDown={(e) => onKeyDown(e, b)}
                 onBlur={() => {
@@ -731,7 +776,8 @@ export function LiveEditor({
             />
           )}
         </div>
-      ))}
+        );
+      })}
 
       {/* Clicking the space under the note starts a new block, like a page. */}
       <div

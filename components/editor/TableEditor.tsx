@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   addColumn, addRow, nextCell, parseTable, removeColumn, removeRow,
   serializeTable, setAlign, setCell, type Align, type Table,
 } from "@/lib/editor/tables";
 import { clsx } from "@/lib/clsx";
 import { InlineMarkdown } from "@/lib/editor/inline";
+import { Portal } from "@/lib/hooks/useModal";
 
 /**
  * A table edited as a grid rather than as pipes.
@@ -64,12 +65,24 @@ export function TableEditor({
   // Move the caret into whichever cell should have it.
   useEffect(() => {
     if (!focus) return;
-    const el = gridRef.current?.querySelector<HTMLInputElement>(
+    const el = gridRef.current?.querySelector<HTMLTextAreaElement>(
       `[data-cell="${focus.row}:${focus.col}"]`,
     );
     el?.focus();
     el?.setSelectionRange(el.value.length, el.value.length);
   }, [focus, table.rows.length, table.header.length]);
+
+  // Grow the box to fit multi-line content instead of scrolling it -
+  // re-measured on every keystroke, since typing is what changes the height.
+  useEffect(() => {
+    if (!focus) return;
+    const el = gridRef.current?.querySelector<HTMLTextAreaElement>(
+      `[data-cell="${focus.row}:${focus.col}"]`,
+    );
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [focus, table]);
 
   /** Anything typed in it is worth one question before it goes. */
   const remove = () => {
@@ -78,7 +91,7 @@ export function TableEditor({
     onDelete();
   };
 
-  const onCellKey = (e: React.KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
+  const onCellKey = (e: React.KeyboardEvent<HTMLTextAreaElement>, row: number, col: number) => {
     const el = e.currentTarget;
 
     // ⌘⌫ removes the table itself, not the cell's text.
@@ -101,11 +114,16 @@ export function TableEditor({
     }
 
     if (e.key === "Enter") {
-      e.preventDefault();
       if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
         onExit("after");
         return;
       }
+      // Shift-Enter is a line break within the cell - the textarea handles
+      // that on its own, so it's left alone here.
+      if (e.shiftKey) return;
+
+      e.preventDefault();
       // Enter on the last row leaves the table; elsewhere it drops a row down.
       if (row === table.rows.length - 1) {
         apply(addRow(table, row));
@@ -132,13 +150,23 @@ export function TableEditor({
       return;
     }
 
+    // Up/down move between rows only from the cell's first/last line - a
+    // multi-line cell still gets ordinary caret movement inside it.
     if (e.key === "ArrowUp" && row > -1) {
-      e.preventDefault();
-      setFocus({ row: row - 1, col });
+      const before = el.value.slice(0, el.selectionStart ?? 0);
+      if (!before.includes("\n")) {
+        e.preventDefault();
+        setFocus({ row: row - 1, col });
+      }
+      return;
     }
     if (e.key === "ArrowDown" && row < table.rows.length - 1) {
-      e.preventDefault();
-      setFocus({ row: row + 1, col });
+      const after = el.value.slice(el.selectionEnd ?? el.value.length);
+      if (!after.includes("\n")) {
+        e.preventDefault();
+        setFocus({ row: row + 1, col });
+      }
+      return;
     }
   };
 
@@ -165,9 +193,10 @@ export function TableEditor({
     }
 
     return (
-      <input
+      <textarea
         data-cell={`${row}:${col}`}
         autoFocus
+        rows={1}
         value={value}
         onChange={(e) => apply(setCell(table, row, col, e.target.value))}
         onFocus={() => setFocus({ row, col })}
@@ -176,7 +205,7 @@ export function TableEditor({
           if (!e.relatedTarget?.closest("[data-cell]")) setFocus(null);
         }}
         onKeyDown={(e) => onCellKey(e, row, col)}
-        className={clsx(shared, "bg-transparent outline-none")}
+        className={clsx(shared, "block resize-none overflow-hidden bg-transparent outline-none")}
         placeholder={row === -1 ? "Column" : undefined}
       />
     );
@@ -255,12 +284,70 @@ export function TableEditor({
   );
 }
 
+/**
+ * A dropdown anchored to a trigger button, portalled to `<body>` at fixed
+ * coordinates - `border-collapse` makes a table cell's own borders paint
+ * above an absolutely-positioned child sitting inside it in some browsers,
+ * and the table's `overflow-hidden` (for its rounded corners) would clip it
+ * outright. Same fix as `CaretMenu`.
+ */
+function TableMenuPopover({
+  anchorRef,
+  align = "right",
+  width,
+  onClose,
+  children,
+}: {
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  align?: "left" | "right";
+  width: number;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const rect = anchorRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const left =
+        align === "right"
+          ? Math.min(rect.right - width, window.innerWidth - width - 8)
+          : Math.max(8, rect.left);
+      setPos({ left, top: rect.bottom + 4 });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [anchorRef, align, width]);
+
+  return (
+    <Portal>
+      <div className="fixed inset-0 z-[85]" onClick={onClose} />
+      {pos && (
+        <div
+          className="animate-scale-in fixed z-[90] rounded-lg border border-n-200 bg-n-0 p-1 shadow-[var(--shadow-pop)]"
+          style={{ left: pos.left, top: pos.top, width }}
+        >
+          {children}
+        </div>
+      )}
+    </Portal>
+  );
+}
+
 /** Add or delete this row. Sits at the end of the row, on hover. */
 function RowMenu({ onAdd, onRemove }: { onAdd: () => void; onRemove: () => void }) {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   return (
     <div className="absolute right-1 top-1/2 -translate-y-1/2">
       <button
+        ref={btnRef}
         onClick={() => setOpen((o) => !o)}
         aria-label="Row options"
         className="rounded p-1 text-n-300 opacity-0 transition-all duration-[120ms] hover:bg-n-100 hover:text-n-700 focus-visible:opacity-100 group-hover/row:opacity-100"
@@ -270,13 +357,10 @@ function RowMenu({ onAdd, onRemove }: { onAdd: () => void; onRemove: () => void 
         </svg>
       </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="animate-scale-in absolute right-0 top-full z-20 mt-1 w-[140px] rounded-lg border border-n-200 bg-n-0 p-1 shadow-[var(--shadow-pop)]">
-            <MenuItem label="Add row below" onClick={() => { onAdd(); setOpen(false); }} />
-            <MenuItem label="Delete row" danger onClick={() => { onRemove(); setOpen(false); }} />
-          </div>
-        </>
+        <TableMenuPopover anchorRef={btnRef} width={140} onClose={() => setOpen(false)}>
+          <MenuItem label="Add row below" onClick={() => { onAdd(); setOpen(false); }} />
+          <MenuItem label="Delete row" danger onClick={() => { onRemove(); setOpen(false); }} />
+        </TableMenuPopover>
       )}
     </div>
   );
@@ -294,10 +378,12 @@ function ColumnMenu({
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   return (
     <div className="relative shrink-0">
       <button
+        ref={btnRef}
         onClick={() => setOpen((o) => !o)}
         aria-label="Column options"
         className="rounded p-1 text-n-300 opacity-0 transition-all duration-[120ms] hover:bg-n-100 hover:text-n-700 focus-visible:opacity-100 group-hover/table:opacity-100"
@@ -307,30 +393,27 @@ function ColumnMenu({
         </svg>
       </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="animate-scale-in absolute right-0 top-full z-20 mt-1 w-[150px] rounded-lg border border-n-200 bg-n-0 p-1 shadow-[var(--shadow-pop)]">
-            <div className="flex gap-0.5 px-1 pb-1">
-              {(["left", "center", "right"] as Align[]).map((a) => (
-                <button
-                  key={a}
-                  onClick={() => {
-                    onAlign(a);
-                    setOpen(false);
-                  }}
-                  className={clsx(
-                    "flex-1 rounded px-1 py-1 text-[10.5px] font-semibold capitalize transition-colors duration-[120ms]",
-                    align === a ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50",
-                  )}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-            <MenuItem label="Add column right" onClick={() => { onAdd(); setOpen(false); }} />
-            <MenuItem label="Delete column" danger onClick={() => { onRemove(); setOpen(false); }} />
+        <TableMenuPopover anchorRef={btnRef} width={150} onClose={() => setOpen(false)}>
+          <div className="flex gap-0.5 px-1 pb-1">
+            {(["left", "center", "right"] as Align[]).map((a) => (
+              <button
+                key={a}
+                onClick={() => {
+                  onAlign(a);
+                  setOpen(false);
+                }}
+                className={clsx(
+                  "flex-1 rounded px-1 py-1 text-[10.5px] font-semibold capitalize transition-colors duration-[120ms]",
+                  align === a ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50",
+                )}
+              >
+                {a}
+              </button>
+            ))}
           </div>
-        </>
+          <MenuItem label="Add column right" onClick={() => { onAdd(); setOpen(false); }} />
+          <MenuItem label="Delete column" danger onClick={() => { onRemove(); setOpen(false); }} />
+        </TableMenuPopover>
       )}
     </div>
   );

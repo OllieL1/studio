@@ -381,9 +381,18 @@ input[type="range"]::-webkit-slider-thumb:active {
 
 .prose-notes {
   color: var(--color-n-700);
+  font-family: var(--font-lato), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   font-size: 15px;
   line-height: 26px;
   overflow-wrap: break-word;
+}
+
+/* The block you're actively typing into, in the shared Live/Markdown editor
+   (components/editor/LiveEditor.tsx). Not nested inside `.prose-notes` - it
+   replaces that rendered view while active - so it repeats the same font
+   rather than inheriting it. */
+.editor-raw {
+  font-family: var(--font-lato), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 .prose-notes > *:first-child { margin-top: 0; }

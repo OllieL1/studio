@@ -13,7 +13,7 @@ export default async function CalendarPage({
   searchParams: Promise<{ view?: string; date?: string }>;
 }) {
   const params = await searchParams;
-  const view: CalendarView = params.view === "week" ? "week" : "month";
+  const view: CalendarView = params.view === "month" ? "month" : "week";
   const anchor =
     params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? parseLocalDate(params.date) : new Date();
 
