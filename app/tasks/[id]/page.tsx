@@ -13,6 +13,9 @@ import { SubtaskPanel } from "@/components/SubtaskPanel";
 import { DependencyEditor } from "@/components/DependencyEditor";
 import { CalendarButton } from "@/components/CalendarButton";
 import { cssColour } from "@/lib/palette";
+import { IssueLinks } from "@/components/IssueLinks";
+import { isGitHubConnected } from "@/lib/github";
+import { projectRepo } from "@/lib/githubData";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       course: true,
       dependsOn: { include: { prerequisite: { include: { items: true, course: true } } } },
       dependents: { include: { dependent: { include: { items: true, course: true } } } },
+      issues: { orderBy: { number: "asc" } },
     },
   });
   if (!task) notFound();
@@ -48,6 +52,10 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const ratio = taskRatio(task);
   const urgency = urgencyOf(task.dueAt, done);
   const isClass = ["LECTURE", "LAB", "SEMINAR"].includes(task.kind);
+
+  // Issues can be linked once GitHub is connected and the project has a repo.
+  // Classes don't get the panel unless they somehow already have links.
+  const canLinkIssues = !isClass && (await isGitHubConnected()) && !!(await projectRepo());
 
   const prereqs = task.dependsOn.map((d) => d.prerequisite);
   const prereqsDone = prereqs.filter((p) => isTaskDone(p)).length;
@@ -168,6 +176,13 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
 
         {/* ── Side column ──────────────────────────────────────────────── */}
         <aside className="space-y-5">
+          {(canLinkIssues || task.issues.length > 0) && (
+            <IssueLinks
+              taskId={task.id}
+              canLink={canLinkIssues}
+              issues={task.issues.map((i) => ({ repo: i.repo, number: i.number, title: i.title, state: i.state === "closed" ? "closed" : "open" }))}
+            />
+          )}
 
           <DependencyEditor
             taskId={task.id}

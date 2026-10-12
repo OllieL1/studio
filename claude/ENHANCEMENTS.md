@@ -1,5 +1,89 @@
 # Enhancement List - Check Off as we go
 
+11/10
+Lets add these changes in the same branch as we are in (github-integration). Later on this evening, I will get the mac to pull these changes and integrate the local changes from the mac oto. Do not deploy these changes to the stick yet.
+[x] For the project, can we add a button in meetings to pull all remaining open tasks from the last meeting into the prep for the new meeting? Then please update the task due dates to the new meeting (or the meeting we have pulled in). Only pull the open tasks from previous meetings i.e. not all open tasks. 
+[x] The modal for creating a new supervisor meeting - please make the time choice slicke.r Add buttons for 30m and 1h or custom and make the time selection cleaner. 
+
+07/10
+Please note we may not have the latest changes on the stick in main on the repo. They may still be locally on the mac. Because of this, please create a branch for these changes instead of pushing direct to main.
+[x] GitHub Integration - for the project, I would like to integrate my repo into its own tab in the project page. Here we should see open issues, PRs, recent changes and activity. We should be able to cite issues in the nexus notes, with an @ mention (filter with @i)
+[x] We should also be able to link issues to tasks on Studio 
+[x] We should be able to enhance draft from recent work from the github 
+[x] Project repo: https://github.com/uog-cose/MCR-5082P
+[x] Please also add a repos drop down next to Courses in the nav bar - on smaller screens just display the Github icon next to search for the dropdown. This should contain links to repos i use
+- Project (shown above)
+- Coaching - https://github.com/uog-cose/socs-coaching-software-teams-2026-2756026l-livingston
+- SH28 Project - https://github.com/uog-cose/socs-team-project-3-h-2026-sh28-project
+- SH28 Diss - https://github.com/uog-cose/socs-team-project-3-h-2026-sh28-dissertation
+We should be able to add to this in Settings.
+[x] Of course, authentication with GitHub can be configured in settings too.
+As mentioned above lets put these in a branch, and not flash to the drive until I've tested them. These changes are exceddingly unlikely to interfere with other not committed changes.
+
+
+---
+
+## Status - 08/10/26
+
+`[x]` done · on the `github-integration` branch, not deployed to the stick
+
+**Not yet tried against the real repos** - built without a token, so every
+screen was checked in Chrome against recorded-shape fixture data, and the
+cache, offline fallback and issue → task sync are covered by tests with GitHub
+stubbed. First thing to do: add a token in Settings and open the GitHub tab.
+
+Agreed before building: token auth in Settings; a linked issue closing ticks
+its task (Studio never writes to GitHub); `@i` searches the project repo.
+
+**GitHub tab** - `/project` → **GitHub**: repo header with open issues, open
+PRs and commits per week since 21 Sep; issues (open/closed, instant filter by
+title, #number or label); pull requests with recently merged; recent commits;
+an activity feed. Refresh asks GitHub now; offline it shows the last copy and
+says how old it is.
+
+**Issues and tasks** - **Make task** on any open issue creates a project task
+linked to it; **Link…** attaches it to an existing task. Task pages have a
+GitHub issues panel to link and unlink by title or number. When the last open
+issue on a task closes, the task (and its subtasks) tick themselves. Linking an
+already-closed issue doesn't tick, and unticking by hand sticks.
+
+**@i mentions** - `@i` in any live editor searches the project repo's issues;
+plain `@` includes them too. The chip shows `#12 Title` and opens the issue on
+GitHub; PDFs print it as a link.
+
+**Draft from recent work** - gains an **On GitHub** section: commits (first 8,
+then "and N more"), merged and opened PRs, closed and new issues, with issues as
+`@i` chips. If GitHub can't be reached it says so instead of leaving it out.
+
+**Repos menu** - beside Courses: Project, Coaching, SH28 Project, SH28 Diss,
+each with open PRs/issues fetched when the menu opens. Below 1100px wide it's
+the GitHub mark next to search. Add, rename, reorder and remove in Settings,
+which also shows whether the token can read each one.
+
+**Authentication** - Settings → GitHub: paste a token (the link opens GitHub's
+token page pre-filled with the `repo` scope).
+
+**08/10 follow-up - the 403 was the org.** GitHub's reply: "`uog-cose` forbids
+access via a personal access token (classic). Please use a GitHub App, OAuth
+App, or a personal access token with fine-grained permissions." The same token
+reads Project-Snippet/Snippet, so the project repo was pointed there (dev copy
+only) and the whole tab verified against live data. Studio now shows GitHub's
+own reason for a 403 instead of "GitHub returned 403", and fills in PR/issue
+titles that GitHub has started trimming out of the activity feed.
+
+**Fine-grained token in, verified on MCR-5082P.** With a fine-grained token
+(resource owner uog-cose) the project repo reads on every endpoint Studio uses,
+and the project repo is back to `uog-cose/MCR-5082P`. Settings' token steps now
+lead with the fine-grained token. Repos the token can't read (Coaching, SH28
+Project, SH28 Diss for now) are plain links - no "no access" label in Settings
+or the menu; only readable repos get a status and counts.
+
+**Header tidy** - the GitHub button beside New meeting is gone; the project
+repo is now edited on its row in Settings → GitHub. Progress weights, on the
+project and every course page, are just the numbers - `40 cr · 0 / 0 / 100` -
+opening the editor as a dropdown. Also fixed a hydration error from the
+schedule's "today" line, which was placed to the millisecond.
+
 29/09
 Today I have been using the app all day. It is primarily fixes & usability enhancements.
 [x] For the body text of the live notes both in their rendering and in the export, can we make it the Google font: Instrument Sans

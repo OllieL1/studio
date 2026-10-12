@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { fmtDayDate } from "@/lib/dates";
-import type { MentionKind } from "@/lib/mentions";
+import { issueRef, type MentionKind } from "@/lib/mentions";
+import { projectRepo, searchIssues } from "@/lib/githubData";
+import { isGitHubConnected } from "@/lib/github";
 
 export const dynamic = "force-dynamic";
 
 /**
  * What the `@` menu offers. `kind` narrows to one sort of thing (the `@r`,
- * `@#`, `@t`, `@n`, `@m` prefixes); without it every kind is searched and
+ * `@#`, `@t`, `@n`, `@m`, `@i` prefixes); without it every kind is searched and
  * the best few of each come back.
  *
  * Every kind is queried at once rather than one after another: this runs on
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
   const want = (k: MentionKind) => !kind || kind === k;
   const like = { contains: q };
 
-  const [papers, tags, tasks, notes, meetings] = await Promise.all([
+  const [papers, tags, tasks, notes, meetings, issues] = await Promise.all([
     want("paper")
       ? db.paper.findMany({
           where: q ? { OR: [{ title: like }, { citeKey: like }, { authors: like }] } : undefined,
@@ -72,6 +74,15 @@ export async function GET(req: NextRequest) {
           select: { id: true, title: true, startAt: true },
         })
       : [],
+    // Asked for by name (`@i`), issues are worth waiting for. Mixed in with
+    // everything else they get a moment, so a cold cache or a slow network
+    // never holds up the rest of the menu - the lookup carries on and warms
+    // the cache for the next keystroke.
+    want("issue")
+      ? kind === "issue"
+        ? issueOptions(q, 10)
+        : Promise.race([issueOptions(q, LIMIT_PER_KIND), new Promise<MentionOption[]>((r) => setTimeout(() => r([]), 250))])
+      : [],
   ]);
 
   const options: MentionOption[] = [
@@ -100,7 +111,21 @@ export async function GET(req: NextRequest) {
       label: m.title,
       hint: fmtDayDate(m.startAt),
     })),
+    ...issues,
   ];
 
   return NextResponse.json({ options });
+}
+
+async function issueOptions(q: string, limit: number): Promise<MentionOption[]> {
+  if (!(await isGitHubConnected())) return [];
+  const repo = await projectRepo();
+  if (!repo) return [];
+  const found = await searchIssues(repo, q, limit);
+  return found.map((i) => ({
+    kind: "issue" as const,
+    id: issueRef(repo, i.number),
+    label: i.title,
+    hint: `#${i.number}${i.state === "closed" ? " · closed" : ""}`,
+  }));
 }

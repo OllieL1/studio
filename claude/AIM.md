@@ -288,3 +288,32 @@ The app is called **Studio** — *study* + *IO*. Wordmark: all in the display se
 - **One ramp, two themes**: the neutral scale inverts, so components didn't need
   theme-aware markup. Course colours go through CSS variables (`cssColour`),
   with a dark palette validated by `scripts/palette/`.
+
+
+---
+
+## GitHub (8 Oct 2026)
+
+- **Token, not OAuth.** `GitHubAuth` singleton, pasted in Settings and checked
+  against `/user` before saving; `GITHUB_TOKEN` in `.env` is a dev fallback.
+  Verified 8 Oct: `uog-cose` **forbids classic tokens** ("use a GitHub App,
+  OAuth App, or a fine-grained token"), while a classic `repo` token reads
+  personal/other-org repos. A fine-grained token is scoped to one resource
+  owner, so covering uog-cose *and* other owners would need a token per owner.
+- **Read-only.** Studio never writes to GitHub.
+- **Issue → task is one-way, on the transition.** `TaskIssue` keeps a snapshot
+  (title, state) per link. When an issue Studio last saw open is now closed and
+  it was the task's last open issue, `completeTask` ticks the task and every
+  item. Never unticks, never ticks on link (`syncIssueLinks`, pure + tested).
+- **`@i` searches the project repo only.** Ids carry the repo
+  (`@i[owner/repo#12|Title]`), so widening the scope later breaks nothing.
+- **Repos menu**: the project repo (from `Course.repoUrl`) first, then `Repo`
+  rows. The project repo is set in Settings → GitHub (its row in the Repos
+  menu list); the old repo button in the project header is gone. The three starting repos and the project's repo link are inserted by
+  the migration, because the stick is migrated, never re-seeded.
+- **Caching**: `GitHubCache` (key = API path) with ETag; fresh for 60s,
+  conditional after, stale-but-shown offline. The GitHub tab streams behind
+  Suspense; issue sync runs in `after()`.
+- **Progress weights** (project and course headers) are a compact button -
+  `40 cr · 0 / 0 / 100` - opening the editor as a dropdown portalled to <body>.
+

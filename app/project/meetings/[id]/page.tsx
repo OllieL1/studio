@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { fmtDateLong, fmtHM, fmtRelative, toISODate } from "@/lib/dates";
 import { isTaskDone } from "@/lib/progress";
 import { isGoogleConfigured } from "@/lib/google";
+import { carryOverTasks } from "@/lib/project";
+import { lastMeetingBefore } from "@/lib/projectData";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
 import { MeetingButton } from "@/components/project/MeetingDialog";
@@ -27,6 +29,10 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
   const googleConnected =
     isGoogleConfigured() && !!(await db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }));
   const past = m.endAt < new Date();
+  const last = await lastMeetingBefore(m);
+  const carry = last
+    ? { from: last.startAt, count: carryOverTasks({ actions: last.actions, prep: last.prep.map((p) => p.task) }, m.prep.map((p) => p.taskId)).length }
+    : null;
   const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
   return (
@@ -93,6 +99,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
             <PrepList
               meetingId={m.id}
               courseId={m.courseId}
+              carry={carry}
               prep={m.prep.map((p) => ({ id: p.task.id, title: p.task.title, done: isTaskDone(p.task) }))}
             />
           </Card>

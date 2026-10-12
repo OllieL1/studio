@@ -9,6 +9,9 @@ import { ThemePanel } from "@/components/ThemePanel";
 import { getPreferences } from "@/lib/preferences";
 import { backupDir, readBackupMeta } from "@/lib/backup";
 import { hasHistoryScope, isSpotifyConfigured } from "@/lib/spotify";
+import { GitHubPanel } from "@/components/GitHubPanel";
+import { githubToken } from "@/lib/github";
+import { projectRepo } from "@/lib/githubData";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +46,12 @@ export default async function SettingsPage({
   const calendars = auth ? await listCalendars() : [];
   const linked = await db.task.count({ where: { calendarEventId: { not: null } } });
   const prefs = await getPreferences();
+  const [ghAuth, ghToken, ghProject, repos] = await Promise.all([
+    db.gitHubAuth.findUnique({ where: { id: "singleton" }, select: { login: true, name: true, scopes: true } }),
+    githubToken(),
+    projectRepo(),
+    db.repo.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { id: true, label: true, fullName: true } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -90,6 +99,15 @@ export default async function SettingsPage({
           {SPOTIFY_MESSAGES[spotify].text}
         </div>
       )}
+
+      <GitHubPanel
+        source={ghToken?.source ?? null}
+        login={ghAuth?.login ?? null}
+        name={ghAuth?.name ?? null}
+        scopes={ghAuth?.scopes ?? null}
+        projectRepo={ghProject}
+        repos={repos}
+      />
 
       <BackupPanel
         live={!!process.env.STUDIO_LIVE}

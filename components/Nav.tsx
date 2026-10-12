@@ -10,6 +10,8 @@ import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
 import { ActiveNow } from "./ActiveNow";
 import { cssColour } from "@/lib/palette";
+import { ReposMenu } from "./ReposMenu";
+import type { RepoMenuEntry } from "@/lib/githubData";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
@@ -31,7 +33,7 @@ const ICON_LINKS = [
   { href: "/stats", label: "Stats", icon: StatsIcon },
 ] as const;
 
-export function Nav({ courses }: { courses: CourseLink[] }) {
+export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenuEntry[] }) {
   const pathname = usePathname();
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -141,12 +143,22 @@ export function Nav({ courses }: { courses: CourseLink[] }) {
               </div>
             )}
           </div>
+
+          {/* Beside Courses when there's room; next to search when there isn't. */}
+          <div className="hidden min-[1100px]:block">
+            <ReposMenu repos={repos} variant="label" />
+          </div>
         </nav>
 
         {/* Settings, Stats and search as icons to save the room their words
             took, then whatever's on right now - the one time-sensitive
             thing here - anchored at the very end, visible at every width. */}
         <div className="ml-auto flex min-w-0 items-center gap-1">
+          {/* Repos is a word beside Courses when there's room (above); this
+              is the same menu as an icon when there isn't. */}
+          <div className="min-[1100px]:hidden">
+            <ReposMenu repos={repos} variant="icon" />
+          </div>
           <SearchHint />
           {ICON_LINKS.map((l) => (
             <Link

@@ -12,6 +12,7 @@ const KIND_LABEL: Record<MentionKind, string> = {
   task: "Task",
   note: "Note",
   meeting: "Meeting",
+  issue: "Issue",
   link: "Link",
 };
 
@@ -21,14 +22,15 @@ const KIND_TINT: Record<MentionKind, string> = {
   task: "bg-ok-soft text-ok",
   note: "bg-n-100 text-n-600",
   meeting: "bg-warn-soft text-warn",
+  issue: "bg-n-800 text-n-0",
   link: "bg-n-100 text-n-600",
 };
 
 /**
- * The `@` menu: mention a paper, tag, task, note or meeting.
+ * The `@` menu: mention a paper, tag, task, note, meeting or GitHub issue.
  *
  * Typing `@` alone searches everything; the prefixes narrow it - `@r` for
- * research, `@#` for a tag, `@t` task, `@n` note, `@m` meeting - and the rest
+ * research, `@#` for a tag, `@t` task, `@n` note, `@m` meeting, `@i` issue - and the rest
  * of what's typed searches within that. The prefix is never required.
  */
 export function MentionMenu({

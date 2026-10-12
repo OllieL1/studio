@@ -109,6 +109,14 @@ export default async function CoursePage({
             </div>
           </div>
           <div className="flex items-center gap-3">
+          <WeightEditor
+            courseId={course.id}
+            lecture={course.lectureWeight}
+            lab={course.labWeight}
+            assessment={course.assessmentWeight}
+            credits={course.credits}
+            colour={course.colour}
+          />
           <MoodleLink courseId={course.id} url={course.moodleUrl} />
           {lectureCount > 0 && (
             <Link
@@ -190,15 +198,6 @@ export default async function CoursePage({
               colour={course.colour}
             />
             )}
-
-            <WeightEditor
-              courseId={course.id}
-              lecture={course.lectureWeight}
-              lab={course.labWeight}
-              assessment={course.assessmentWeight}
-              credits={course.credits}
-              colour={course.colour}
-            />
           </div>
         </div>
       </Card>

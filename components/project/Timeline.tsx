@@ -4,7 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { stackRows, timelinePosition, timelineWeeks } from "@/lib/project";
-import { fmtDayDate } from "@/lib/dates";
+import { fmtDayDate, startOfDay } from "@/lib/dates";
 import type { TimelineItem } from "@/lib/projectData";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
@@ -32,7 +32,10 @@ export function Timeline({
 }) {
   const weeks = useMemo(() => timelineWeeks(new Date(from), new Date(to)), [from, to]);
   const [hover, setHover] = useState<TimelineItem | null>(null);
-  const now = new Date();
+  // The day, not the millisecond: the server and the browser render a moment
+  // apart, and an exact "now" put the line in two slightly different places
+  // (a hydration error). A week-scale timeline can't show finer than a day.
+  const now = startOfDay(new Date());
   const pos = (iso: string | Date) => timelinePosition(typeof iso === "string" ? new Date(iso) : iso, weeks) * 100;
 
   const meetings = items.filter((i) => i.row === "meeting");

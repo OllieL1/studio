@@ -8,11 +8,19 @@ import { fmtDuration, fmtDate, fmtDayDate } from "@/lib/dates";
 export function Sparkbar({
   data,
   height = 44,
+  unit = "duration",
+  week = false,
 }: {
   data: { label: string; value: number }[];
   height?: number;
+  /** What a value is: minutes (the default) or a count of commits. */
+  unit?: "duration" | "commits";
+  /** Each bar is a week starting on its label's date. */
+  week?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const fmt = (v: number) => (unit === "commits" ? `${v} commit${v === 1 ? "" : "s"}` : fmtDuration(v));
+  const when = (label: string) => `${week ? "w/b " : ""}${fmtDayDate(new Date(label))}`;
   const max = Math.max(1, ...data.map((d) => d.value));
 
   return (
@@ -30,7 +38,7 @@ export function Sparkbar({
               onBlur={() => setHover(null)}
               className="group relative flex-1 outline-none"
               style={{ height }}
-              aria-label={`${fmtDayDate(new Date(d.label))}: ${fmtDuration(d.value)}`}
+              aria-label={`${when(d.label)}: ${fmt(d.value)}`}
             >
               {/* Hit target spans the full height; the mark is only the bar. */}
               <span
@@ -54,14 +62,14 @@ export function Sparkbar({
         <span>{fmtDate(new Date(data[0]?.label))}</span>
         {hover != null ? (
           <span className="font-num font-medium text-n-700">
-            {fmtDayDate(new Date(data[hover].label))}
+            {when(data[hover].label)}
             {" · "}
-            {fmtDuration(data[hover].value)}
+            {fmt(data[hover].value)}
           </span>
         ) : (
-          <span className="font-num">peak {fmtDuration(max)}</span>
+          <span className="font-num">peak {fmt(max)}</span>
         )}
-        <span>Today</span>
+        <span>{week ? "This week" : "Today"}</span>
       </div>
     </div>
   );
