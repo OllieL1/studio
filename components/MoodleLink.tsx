@@ -79,13 +79,13 @@ export function MoodleLink({ courseId, url }: { courseId: string; url: string | 
     // neighbours stay even. The label shifts left to make room for it.
     <span
       style={{ background: MOODLE_ORANGE }}
-      className="group/moodle relative flex overflow-hidden rounded-md text-[12px] font-semibold text-white shadow-sm"
+      className="group/moodle relative flex h-8 overflow-hidden rounded-md text-[12px] font-semibold text-white shadow-sm"
     >
       <a
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center py-1 pl-[13px] pr-[13px] transition-[filter] duration-[120ms] hover:brightness-95"
+        className="flex items-center pl-[13px] pr-[13px] transition-[filter] duration-[120ms] hover:brightness-95"
       >
         <span className="flex items-center gap-2 transition-transform duration-[180ms] group-hover/moodle:-translate-x-[11px] group-focus-within/moodle:-translate-x-[11px]">
           <span className="flex rounded-[5px] bg-white/20 p-px">
