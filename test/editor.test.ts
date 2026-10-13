@@ -167,14 +167,16 @@ test("headings are findable by level, and by name", () => {
 });
 
 test("columns answer to \"2\" as well as \"two\", spaced or not", () => {
-  for (const q of ["2", "two", "2col", "2 col", "two col", "2 columns", "two columns", "2 c"]) {
+  for (const q of ["2col", "2 col", "two col", "2 columns", "two columns", "2 c"]) {
     assert.equal(filterInserts(q)[0]?.key, "columns", `"${q}" should offer two columns`);
   }
 });
 
-test("a digit still finds a heading when nothing else matches", () => {
-  // "3" isn't a columns keyword, so Heading 3 is the only sensible answer.
-  assert.equal(filterInserts("3")[0].key, "h3");
+test("a bare digit offers the heading first, then columns for 2", () => {
+  for (const q of ["1", "2", "3", "two"]) {
+    assert.equal(filterInserts(q)[0].key, { "1": "h1", "2": "h2", "3": "h3", two: "h2" }[q], q);
+  }
+  assert.equal(filterInserts("2")[1].key, "columns");
   assert.equal(filterInserts("h2")[0].key, "h2");
 });
 

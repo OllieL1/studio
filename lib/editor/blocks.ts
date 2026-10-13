@@ -347,9 +347,9 @@ export type Insert = {
 export const INSERTS: Insert[] = [
   // The levels skip a step each time so the three sizes are obviously apart:
   // "##" and "###" render too alike to be worth separate menu entries.
-  { block: true as const, key: "h1", label: "Heading 1", hint: "Biggest · #", terms: ["h1", "title", "section"], snippet: "# |" },
-  { block: true as const, key: "h2", label: "Heading 2", hint: "Middle · ###", terms: ["h2", "sub", "section"], snippet: "### |" },
-  { block: true as const, key: "h3", label: "Heading 3", hint: "Smallest · ######", terms: ["h3", "sub", "minor"], snippet: "###### |" },
+  { block: true as const, key: "h1", label: "Heading 1", hint: "Biggest · #", terms: ["h1", "1", "title", "section"], snippet: "# |" },
+  { block: true as const, key: "h2", label: "Heading 2", hint: "Middle · ###", terms: ["h2", "2", "sub", "section"], snippet: "### |" },
+  { block: true as const, key: "h3", label: "Heading 3", hint: "Smallest · ######", terms: ["h3", "3", "sub", "minor"], snippet: "###### |" },
   { block: true as const, key: "bullet", label: "Bullet list", hint: "- item", terms: ["ul", "list", "point"], snippet: "- |" },
   { block: true as const, key: "number", label: "Numbered list", hint: "1. item", terms: ["ol", "ordered", "step"], snippet: "1. |" },
   { block: true as const, key: "todo", label: "Checklist", hint: "- [ ] task", terms: ["task", "check", "todo"], snippet: "- [ ] |" },
@@ -378,7 +378,8 @@ export const INSERTS: Insert[] = [
     key: "columns",
     label: "Two columns",
     hint: "Side by side",
-    // "2" as well as "two" - it's what you reach for in a hurry.
+    // "2" as well as "two" - it's what you reach for in a hurry. Heading 2
+    // also claims a bare "2" and, being listed first, wins the tie.
     terms: ["column", "2", "2col", "split", "side"],
     snippet: `::: columns\n|\n${COLUMN_SPLIT}\n\n:::`,
   },
@@ -405,8 +406,8 @@ function numberVariants(q: string): string[] {
  * Three rules earn their keep. A word in an entry's own label beats a keyword
  * borrowed by another entry, so "columns" offers Two columns rather than
  * Table (which lists "columns" among its keywords). A bare number is treated
- * as a keyword only, so "2" means two columns rather than the "2" sitting in
- * the label "Heading 2". And digits stand in for their words throughout, so
+ * as a keyword only, never matched inside a label, so "2" finds Heading 2 first
+ * (then Two columns) by their keywords. And digits stand in for their words throughout, so
  * "2 col", "2col" and "two col" all find the same thing.
  */
 export function filterInserts(query: string): Insert[] {
