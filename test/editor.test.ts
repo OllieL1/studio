@@ -166,15 +166,15 @@ test("headings are findable by level, and by name", () => {
   assert.equal(filterInserts("heading").map((i) => i.key).slice(0, 3).join(","), "h1,h2,h3");
 });
 
-test("columns answer to \"2\" as well as \"two\", spaced or not", () => {
-  for (const q of ["2col", "2 col", "two col", "2 columns", "two columns", "2 c"]) {
+test("columns answer to \"two\" and \"2 col\", spaced or not", () => {
+  for (const q of ["two", "2col", "2 col", "two col", "2 columns", "two columns", "2 c"]) {
     assert.equal(filterInserts(q)[0]?.key, "columns", `"${q}" should offer two columns`);
   }
 });
 
 test("a bare digit offers the heading first, then columns for 2", () => {
-  for (const q of ["1", "2", "3", "two"]) {
-    assert.equal(filterInserts(q)[0].key, { "1": "h1", "2": "h2", "3": "h3", two: "h2" }[q], q);
+  for (const q of ["1", "2", "3"]) {
+    assert.equal(filterInserts(q)[0].key, { "1": "h1", "2": "h2", "3": "h3" }[q], q);
   }
   assert.equal(filterInserts("2")[1].key, "columns");
   assert.equal(filterInserts("h2")[0].key, "h2");

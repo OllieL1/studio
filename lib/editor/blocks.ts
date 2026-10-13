@@ -429,7 +429,9 @@ export function filterInserts(query: string): Insert[] {
     return 0;
   };
 
-  const variants = numberVariants(q);
+  // A bare digit stays a digit: spelling it out would match the "Two" in
+  // "Two columns" by label and outrank Heading 2.
+  const variants = /^\d+$/.test(q) ? [q] : numberVariants(q);
   const score = (i: Insert) => Math.max(...variants.map((v) => scoreOne(i, v)));
 
   return INSERTS.map((i) => ({ i, s: score(i) }))
