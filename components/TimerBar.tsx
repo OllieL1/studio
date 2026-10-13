@@ -91,7 +91,7 @@ export function TimerBar({
                 <span className="h-3 w-3 rounded-[3px] bg-white transition-transform duration-[180ms] group-hover:scale-90" />
               </button>
 
-              <div className="flex items-center gap-2 pr-1">
+              <div className="flex items-center gap-2">
                 <span
                   aria-hidden
                   className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-rust-500"
@@ -101,6 +101,7 @@ export function TimerBar({
                 </span>
               </div>
 
+              <div className="flex items-center">
               <button
                 onClick={() => setFocus(true)}
                 aria-label="Open studying mode"
@@ -123,12 +124,13 @@ export function TimerBar({
                 disabled={pending}
                 aria-label="Discard session"
                 title="Discard this session without recording it"
-                className="mr-0.5 flex h-8 w-8 items-center justify-center rounded-full text-n-400 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-n-400 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger disabled:opacity-50"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
                   <path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.6 9.2a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4M6.6 6.8v4M9.4 6.8v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
+              </div>
             </>
           ) : (
             <button
