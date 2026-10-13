@@ -15,15 +15,12 @@ export type AttachedFile = { id: string; filename: string; size: number };
  * Drag-and-drop as well as a picker, because slides usually arrive as a
  * download that's already sitting in a folder.
  */
-export function Attachments({ taskId, files }: { taskId: string; files: AttachedFile[] }) {
+export function useUploader(taskId: string) {
   const router = useRouter();
-  const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
 
-  const upload = async (list: FileList | null) => {
+  const upload = async (list: FileList | File[] | null) => {
     if (!list || list.length === 0) return;
     setError(null);
     setBusy(true);
@@ -41,6 +38,16 @@ export function Attachments({ taskId, files }: { taskId: string; files: Attached
     setBusy(false);
     router.refresh();
   };
+
+  return { upload, busy, error };
+}
+
+export function Attachments({ taskId, files }: { taskId: string; files: AttachedFile[] }) {
+  const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
+  const { upload, busy, error } = useUploader(taskId);
+  const [over, setOver] = useState(false);
+  const [, startTransition] = useTransition();
 
   return (
     <div

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LiveEditor } from "./LiveEditor";
-import { Attachments, type AttachedFile } from "./Attachments";
+import { Attachments, useUploader, type AttachedFile } from "./Attachments";
 import { LectureChecklist } from "../LectureChecklist";
 import { NotebookLocation } from "../NotebookLocation";
 import { clsx } from "@/lib/clsx";
@@ -50,6 +50,41 @@ export function LectureWorkspace({
   const [split, setSplit] = useState(52);
   const [barHovered, setBarHovered] = useState(false);
   const surface = useRef<HTMLDivElement>(null);
+
+  // A PDF dropped anywhere on the note attaches as the slides: the whole card,
+  // or the whole screen in focus mode. `depth` counts enter/leave pairs, since
+  // moving over a child fires leave on the parent.
+  const { upload, busy, error } = useUploader(taskId);
+  const [dragging, setDragging] = useState(false);
+  const depth = useRef(0);
+  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+  const dropProps = {
+    onDragEnter: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth.current++;
+      setDragging(true);
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth.current = Math.max(0, depth.current - 1);
+      if (depth.current === 0) setDragging(false);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth.current = 0;
+      setDragging(false);
+      const pdfs = Array.from(e.dataTransfer.files).filter(
+        (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+      );
+      void upload(pdfs);
+    },
+  };
 
   const done = items.filter((i) => i.done).length;
 
@@ -281,12 +316,36 @@ export function LectureWorkspace({
           branch: rendering it in two places would remount it and throw away
           everything typed since the page loaded. */}
       <div
+        {...dropProps}
         className={clsx(
           minimal
             ? "animate-fade-in fixed inset-0 z-[60] overflow-y-auto bg-n-0"
-            : "card px-3 py-3 sm:px-5",
+            : "card relative px-3 py-3 sm:px-5",
         )}
       >
+        {dragging && (
+          // Fixed in focus mode (the container scrolls); filling the card otherwise.
+          <div
+            className={clsx(
+              "pointer-events-none z-30 flex items-center justify-center border-2 border-dashed border-rust-300 bg-rust-50/85 text-[13px] font-semibold text-rust-700",
+              minimal ? "fixed inset-0" : "absolute inset-0 rounded-[inherit]",
+            )}
+          >
+            Drop the PDF to attach it as the slides
+          </div>
+        )}
+        {(busy || error) && !dragging && (
+          <div className="pointer-events-none fixed inset-x-0 top-3 z-[65] flex justify-center">
+            <span
+              className={clsx(
+                "rounded-full border border-n-200 bg-n-0 px-3 py-1 text-[11.5px] font-medium shadow-sm",
+                error ? "text-danger" : "text-n-600",
+              )}
+            >
+              {error ?? "Uploading…"}
+            </span>
+          </div>
+        )}
         {minimal && (
           // Ultra-minimal: the bar is a 12px strip until the pointer nears it.
           <div
