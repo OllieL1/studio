@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { logManualSession } from "@/app/actions";
-import { addDays, fmtDayDate, fmtDuration, parseLocalDate, toISODate } from "@/lib/dates";
+import { fmtDayDate, fmtDuration, parseLocalDate, toISODate } from "@/lib/dates";
 import { resolveSplit, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
 import { Card, Eyebrow } from "./ui";
@@ -71,6 +71,9 @@ export function ManualLog({ courses }: { courses: C[] }) {
   const [name, setName] = useState("");
   const [date, setDate] = useState(toISODate(new Date()));
   const [startTime, setStartTime] = useState("09:00");
+  // "From now": the session ended just now, so it started `minutes` ago.
+  // Holds the moment the button was pressed; null when off.
+  const [nowAt, setNowAt] = useState<number | null>(null);
   // Held as text so the field can be emptied and retyped freely.
   const [durText, setDurText] = useState("60");
   const [focus, setFocus] = useState(75);
@@ -83,21 +86,32 @@ export function ManualLog({ courses }: { courses: C[] }) {
   const [pending, startTransition] = useTransition();
 
   const minutes = Math.min(MAX_MINUTES, parseDuration(durText));
-  const todayISO = toISODate(new Date());
-  const yesterdayISO = toISODate(addDays(new Date(), -1));
-  const dateLabel = useMemo(() => (date ? fmtDayDate(parseLocalDate(date)) : ""), [date]);
+  const when = useMemo(() => {
+    if (nowAt === null) return { date, time: startTime };
+    const d = new Date(nowAt - minutes * 60000);
+    return { date: toISODate(d), time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+  }, [nowAt, minutes, date, startTime]);
+  const dateLabel = when.date ? fmtDayDate(parseLocalDate(when.date)) : "";
+
+  const toggleFromNow = () => {
+    if (nowAt === null) return setNowAt(Date.now());
+    // Keep whatever it had worked out to, so switching off doesn't jump.
+    setDate(when.date);
+    setStartTime(when.time);
+    setNowAt(null);
+  };
 
   const bump = (delta: number) => setDurText(String(Math.max(5, (minutes || 0) + delta)));
 
   const submit = () => {
     if (courseIds.length === 0) return setError("Pick at least one subject.");
     if (minutes < 1) return setError("Enter how long you studied.");
-    if (!date || !startTime) return setError("Set a date and start time.");
+    if (!when.date || !when.time) return setError("Set a date and start time.");
     setError(null);
     startTransition(async () => {
       const split = resolveSplit(splitMode, minutes, courseIds.map((id) => weights[id] ?? 0));
       await logManualSession({
-        name, date, startTime, minutes, focus,
+        name, date: when.date, startTime: when.time, minutes, focus,
         courses: courseIds.map((courseId, i) => ({ courseId, minutes: split[i] })),
         taskIds: [], notes: null, location, locationNote: locationNote || null,
       });
@@ -105,6 +119,7 @@ export function ManualLog({ courses }: { courses: C[] }) {
       setCourseIds([]);
       setWeights({});
       setDurText("60");
+      setNowAt(null);
       setOpen(false);
       router.refresh();
     });
@@ -199,33 +214,41 @@ export function ManualLog({ courses }: { courses: C[] }) {
         {/* When + how long */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <Eyebrow>When</Eyebrow>
-              <div className="flex gap-1.5">
-                <Chip on={date === todayISO} onClick={() => setDate(todayISO)}>Today</Chip>
-                <Chip on={date === yesterdayISO} onClick={() => setDate(yesterdayISO)}>Yesterday</Chip>
-              </div>
-            </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+            <Eyebrow className="mb-2">When</Eyebrow>
+            <div className="flex gap-2">
               <input
-                type="date" value={date} aria-label="Date"
-                onChange={(e) => setDate(e.target.value)}
-                className={field}
+                type="date" value={when.date} aria-label="Date"
+                onChange={(e) => { setDate(e.target.value); setNowAt(null); }}
+                className={clsx(field, "min-w-0 flex-1")}
               />
               <input
-                type="time" value={startTime} aria-label="Start time"
-                onChange={(e) => setStartTime(e.target.value)}
-                className={field}
+                type="time" value={when.time} aria-label="Start time"
+                onChange={(e) => { setStartTime(e.target.value); setNowAt(null); }}
+                className={clsx(field, "w-[6.5rem] shrink-0")}
               />
+              <button
+                type="button"
+                onClick={toggleFromNow}
+                aria-pressed={nowAt !== null}
+                title="Start the session this long before now"
+                className={clsx(
+                  "h-10 shrink-0 rounded-md border px-3 text-[12.5px] font-semibold transition-colors duration-[120ms]",
+                  nowAt !== null
+                    ? "border-rust-200 bg-rust-100 text-rust-700"
+                    : "border-n-200 text-n-600 hover:border-n-300 hover:bg-n-50",
+                )}
+              >
+                From now
+              </button>
             </div>
           </div>
 
           <div>
             <Eyebrow className="mb-2">How long</Eyebrow>
-            <div className="flex items-stretch gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button" aria-label="5 minutes less" onClick={() => bump(-5)}
-                className="grid w-10 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
                   <path d="M2.5 6h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -241,7 +264,7 @@ export function ManualLog({ courses }: { courses: C[] }) {
               />
               <button
                 type="button" aria-label="5 minutes more" onClick={() => bump(5)}
-                className="grid w-10 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
                   <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -290,7 +313,7 @@ export function ManualLog({ courses }: { courses: C[] }) {
           {minutes >= 1 ? (
             <>
               <span className="font-semibold text-n-800">{fmtDuration(minutes)}</span>
-              {" · "}{startTime}–{endClock(startTime, minutes)}
+              {" · "}{when.time}–{endClock(when.time, minutes)}
               {dateLabel && <> · {dateLabel}</>}
               {parseDuration(durText) > MAX_MINUTES && <span className="text-warn"> (capped at 16h)</span>}
             </>
