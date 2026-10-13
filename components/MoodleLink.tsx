@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateMoodleUrl } from "@/app/actions";
+import { MoodleIcon, MOODLE_ORANGE } from "./MoodleIcon";
 
 /**
  * A course's Moodle page: one click to open it, and an inline field to set it
@@ -78,11 +79,12 @@ export function MoodleLink({ courseId, url }: { courseId: string; url: string | 
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center gap-1.5 rounded-md border border-n-200 bg-n-0 px-2.5 py-1.5 text-[12px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50 hover:text-n-800"
+        style={{ background: MOODLE_ORANGE }}
+        className="flex items-center gap-2 rounded-md py-1 pl-1 pr-3 text-[12px] font-semibold text-white shadow-sm transition-[filter] duration-[120ms] hover:brightness-95"
       >
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
-          <path d="M2.5 6.5v3h7v-3M6 1.5v6M3.8 3.7 6 1.5l2.2 2.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <span className="flex rounded-[5px] bg-white/20 p-px">
+          <MoodleIcon size={20} />
+        </span>
         Moodle
       </a>
       <button

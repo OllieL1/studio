@@ -70,7 +70,7 @@ export default async function RootLayout({
     db.course.findMany({
       where: visibleCourseWhere(),
       orderBy: { position: "asc" },
-      select: { id: true, name: true, shortName: true, colour: true, code: true, isProject: true },
+      select: { id: true, name: true, shortName: true, colour: true, code: true, isProject: true, moodleUrl: true },
     }),
     // The stop dialog pre-selects wherever the last session was.
     db.session.findFirst({

@@ -10,10 +10,11 @@ import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
 import { ActiveNow } from "./ActiveNow";
 import { cssColour } from "@/lib/palette";
+import { MoodleIcon } from "./MoodleIcon";
 import { ReposMenu } from "./ReposMenu";
 import type { RepoMenuEntry } from "@/lib/githubData";
 
-type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
+type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean; moodleUrl: string | null };
 
 /** The named links - desktop row and the mobile menu both read from this.
  *  Stats and Settings live as icons instead (see `ICON_LINKS`), so they're
@@ -148,19 +149,36 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
               <div className="animate-scale-in absolute left-0 top-full w-64 origin-top-left pt-1.5">
                 <div className="rounded-lg border border-n-100 bg-n-0 p-1 shadow-[var(--shadow-pop)]">
                   {courses.map((c) => (
-                    <Link
+                    <div
                       key={c.id}
-                      href={courseHref(c) as Route}
-                      onClick={() => setCoursesOpen(false)}
-                      className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-n-700 transition-colors duration-[120ms] hover:bg-n-50"
+                      className="flex items-center rounded-md transition-colors duration-[120ms] hover:bg-n-50"
                     >
-                      <span
-                        aria-hidden
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ background: cssColour(c.colour) }}
-                      />
-                      <span className="truncate font-medium">{c.name}</span>
-                    </Link>
+                      <Link
+                        href={courseHref(c) as Route}
+                        onClick={() => setCoursesOpen(false)}
+                        className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-[13px] text-n-700"
+                      >
+                        <span
+                          aria-hidden
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ background: cssColour(c.colour) }}
+                        />
+                        <span className="truncate font-medium">{c.name}</span>
+                      </Link>
+                      {c.moodleUrl && (
+                        <a
+                          href={c.moodleUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => setCoursesOpen(false)}
+                          title={`${c.shortName || c.name} on Moodle`}
+                          aria-label={`Open ${c.name} on Moodle`}
+                          className="mr-1.5 shrink-0 rounded-[5px] transition-[filter] duration-[120ms] hover:brightness-90"
+                        >
+                          <MoodleIcon size={20} />
+                        </a>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
