@@ -6,6 +6,7 @@ import { repoMenu } from "@/lib/githubData";
 import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { GlobalQuickAdd } from "@/components/GlobalQuickAdd";
+import { BusyBar } from "@/components/BusyBar";
 import { getActiveTimer } from "@/lib/queries";
 import { db } from "@/lib/db";
 import { isStudyLocation, visibleCourseWhere } from "@/lib/types";
@@ -117,6 +118,8 @@ export default async function RootLayout({
             lastLocationNote={lastSession?.locationNote ?? null}
           />
         </div>
+        {/* Outside the wrapper above, so it sits over modals as well. */}
+        <BusyBar />
         </ThemeProvider>
       </body>
     </html>
