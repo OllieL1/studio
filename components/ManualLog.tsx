@@ -43,7 +43,7 @@ function endClock(start: string, minutes: number): string {
 }
 
 const field =
-  "font-num h-10 w-full rounded-md border border-n-200 bg-white px-3 text-[13.5px] text-n-800 outline-none transition-colors placeholder:text-n-400 hover:border-n-300 focus:border-rust-400 focus:ring-2 focus:ring-rust-100";
+  "font-num h-10 w-full rounded-md border border-n-200 bg-n-0 px-3 text-[13.5px] text-n-800 outline-none transition-colors placeholder:text-n-400 hover:border-n-300 focus:border-rust-400 focus:ring-2 focus:ring-rust-100";
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -212,19 +212,19 @@ export function ManualLog({ courses }: { courses: C[] }) {
         </div>
 
         {/* When + how long */}
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
+        <div className="grid items-start gap-5 sm:grid-cols-2">
+          <div className="min-w-0">
             <Eyebrow className="mb-2">When</Eyebrow>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_6.5rem_auto] gap-2">
               <input
                 type="date" value={when.date} aria-label="Date"
                 onChange={(e) => { setDate(e.target.value); setNowAt(null); }}
-                className={clsx(field, "min-w-0 flex-1")}
+                className={clsx(field, "min-w-0")}
               />
               <input
                 type="time" value={when.time} aria-label="Start time"
                 onChange={(e) => { setStartTime(e.target.value); setNowAt(null); }}
-                className={clsx(field, "w-[6.5rem] shrink-0")}
+                className={clsx(field, "min-w-0")}
               />
               <button
                 type="button"
@@ -243,12 +243,12 @@ export function ManualLog({ courses }: { courses: C[] }) {
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <Eyebrow className="mb-2">How long</Eyebrow>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] gap-2">
               <button
                 type="button" aria-label="5 minutes less" onClick={() => bump(-5)}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
+                className="grid h-10 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
                   <path d="M2.5 6h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -264,7 +264,7 @@ export function ManualLog({ courses }: { courses: C[] }) {
               />
               <button
                 type="button" aria-label="5 minutes more" onClick={() => bump(5)}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
+                className="grid h-10 place-items-center rounded-md border border-n-200 text-n-600 hover:bg-n-50"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
                   <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
