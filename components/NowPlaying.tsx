@@ -7,14 +7,27 @@ import { clsx } from "@/lib/clsx";
 /** How often to ask Spotify what's playing while the tab is visible. */
 const POLL_MS = 15_000;
 
+export type Playing = Extract<NowPlayingData, { state: "playing" | "paused" }>;
+
+/** What's on, ready to draw: null when nothing is playing or Spotify isn't connected. */
+export type NowPlayingView = {
+  track: Playing;
+  playing: boolean;
+  /** 0-1, interpolated between polls so a bar moves smoothly. */
+  progress: number;
+} | null;
+
 /**
- * Currently playing on Spotify, sat beside the timer.
+ * Currently playing on Spotify.
  *
- * Polls every 15s while the tab is visible and interpolates the progress bar
- * in between, so it moves smoothly without hammering the API. Hides itself
- * entirely when Spotify isn't connected or nothing is playing.
+ * Polls every 15s while the tab is visible and interpolates the progress in
+ * between, so it moves smoothly without hammering the API. One poller serves
+ * everything that shows the track (the pill beside the timer, and the
+ * full-screen studying mode), which is why this is a hook and not a part of
+ * either: two components each polling would double every request, and every
+ * poll while studying is also recorded against the session.
  */
-export function NowPlaying({ studying = false }: { studying?: boolean }) {
+export function useNowPlaying(studying = false): NowPlayingView {
   const [data, setData] = useState<NowPlayingData | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const inFlight = useRef(false);
@@ -63,7 +76,13 @@ export function NowPlaying({ studying = false }: { studying?: boolean }) {
 
   const elapsed = data.state === "playing" ? now - data.fetchedAt : 0;
   const progress = data.durationMs > 0 ? Math.min(1, (data.progressMs + elapsed) / data.durationMs) : 0;
-  const playing = data.state === "playing";
+  return { track: data, playing: data.state === "playing", progress };
+}
+
+/** The pill that sits beside the timer. */
+export function NowPlaying({ np }: { np: NowPlayingView }) {
+  if (!np) return null;
+  const { track: data, playing, progress } = np;
 
   return (
     <a
@@ -108,7 +127,7 @@ export function NowPlaying({ studying = false }: { studying?: boolean }) {
 }
 
 /** Three little equaliser bars: bouncing while playing, flat when paused. */
-function Bars({ playing }: { playing: boolean }) {
+export function Bars({ playing }: { playing: boolean }) {
   return (
     <span aria-label={playing ? "Playing" : "Paused"} className="flex h-2.5 shrink-0 items-end gap-[2px]">
       {[0, 1, 2].map((i) => (

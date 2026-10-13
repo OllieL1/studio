@@ -7,7 +7,8 @@ import { fmtClock } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
 import { StopDialog } from "./StopDialog";
 import type { StudyLocation } from "@/lib/types";
-import { NowPlaying } from "./NowPlaying";
+import { NowPlaying, useNowPlaying } from "./NowPlaying";
+import { FocusMode } from "./FocusMode";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -33,6 +34,7 @@ export function TimerBar({
   const [pending, startTransition] = useTransition();
   const [elapsed, setElapsed] = useState(0);
   const [stopping, setStopping] = useState(false);
+  const [focus, setFocus] = useState(false);
   const startMs = startedAt ? new Date(startedAt).getTime() : null;
 
   // Tick from the server-provided start time rather than accumulating a
@@ -58,11 +60,19 @@ export function TimerBar({
   }, [elapsed, startMs]);
 
   const running = startMs != null;
+  // One poller for the pill below and the full-screen mode.
+  const np = useNowPlaying(running);
+
+  // A session that ends (stopped or discarded, here or in another tab) takes
+  // the full-screen view with it - it has nothing left to show.
+  useEffect(() => {
+    if (!running) setFocus(false);
+  }, [running]);
 
   return (
     <>
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-2.5 px-4 pb-5">
-        <NowPlaying studying={running} />
+        <NowPlaying np={np} />
         <div
           className={clsx(
             "pointer-events-auto flex items-center gap-3 rounded-full border bg-n-0/95 py-2 pl-2 pr-2 backdrop-blur-md transition-[border-color] duration-200",
@@ -92,6 +102,17 @@ export function TimerBar({
               </div>
 
               <button
+                onClick={() => setFocus(true)}
+                aria-label="Open studying mode"
+                title="Studying mode - full screen"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-n-400 transition-colors duration-[120ms] hover:bg-n-50 hover:text-n-700"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              <button
                 onClick={() => {
                   if (!confirm("Discard this session without recording it?")) return;
                   startTransition(async () => {
@@ -99,9 +120,14 @@ export function TimerBar({
                     router.refresh();
                   });
                 }}
-                className="mr-1 rounded-full px-2 py-1 text-[12px] font-medium text-n-400 transition-colors duration-[120ms] hover:bg-n-50 hover:text-danger"
+                disabled={pending}
+                aria-label="Discard session"
+                title="Discard this session without recording it"
+                className="mr-0.5 flex h-8 w-8 items-center justify-center rounded-full text-n-400 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger disabled:opacity-50"
               >
-                Discard
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.6 9.2a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4M6.6 6.8v4M9.4 6.8v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
             </>
           ) : (
@@ -125,6 +151,10 @@ export function TimerBar({
           )}
         </div>
       </div>
+
+      {focus && startMs != null && (
+        <FocusMode startMs={startMs} elapsed={elapsed} np={np} onClose={() => setFocus(false)} />
+      )}
 
       {stopping && startMs != null && (
         <StopDialog

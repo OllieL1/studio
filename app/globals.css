@@ -315,6 +315,61 @@ body::before {
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
+/* The colon in the full-screen clock: a slow breath, not a hard blink. */
+@keyframes colon-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.animate-colon {
+  animation: colon-blink 2s ease-in-out infinite;
+}
+
+/* ── Studying mode (components/FocusMode.tsx) ───────────────────────────────
+   Sized from the window, so one layout serves a phone and a wall-mounted
+   monitor. A short landscape screen - a phone on its side - has no height to
+   stack in, so the stats and the song sit side by side under a smaller clock. */
+.focus-body {
+  gap: clamp(1rem, 5vmin, 3.5rem);
+  padding-block: clamp(3.5rem, 10vh, 5rem);
+}
+.focus-clock {
+  font-size: clamp(4.5rem, min(27vw, 40vh), 30rem);
+}
+.focus-lower {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1rem, 5vmin, 3.5rem);
+}
+.focus-song {
+  width: 100%;
+  max-width: min(92vw, 36rem);
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .focus-body {
+    gap: 0.75rem;
+    padding-block: 1rem;
+  }
+  .focus-clock {
+    font-size: clamp(3.5rem, 31vh, 12rem);
+  }
+  .focus-lower {
+    flex-direction: row;
+    justify-content: center;
+    gap: clamp(1.5rem, 5vw, 3rem);
+  }
+  .focus-song {
+    width: auto;
+    flex: 0 1 24rem;
+  }
+}
+
 /* Progress fills and count-ups get the long expo curve (DESIGN.md §5). */
 .bar-fill {
   transition: width 420ms var(--ease-out-expo);
