@@ -88,7 +88,15 @@
 
    The theme is set on <html> by the server (app/layout.tsx), which is what
    keeps the first paint from flashing white.                                */
+:root {
+  /* The Moodle glyph on a plain background (components/MoodleIcon.tsx). */
+  --moodle-mono-filter: none;
+  --moodle-mono-blend: multiply;
+}
+
 :root[data-theme="dark"] {
+  --moodle-mono-filter: invert(1);
+  --moodle-mono-blend: screen;
   color-scheme: dark;
 
   --color-n-0: #1b1815;   /* cards and panels, a step above the page */

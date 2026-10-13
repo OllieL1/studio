@@ -173,9 +173,9 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
                           onClick={() => setCoursesOpen(false)}
                           title={`${c.shortName || c.name} on Moodle`}
                           aria-label={`Open ${c.name} on Moodle`}
-                          className="mr-1.5 shrink-0 rounded-[5px] transition-[filter] duration-[120ms] hover:brightness-90"
+                          className="mr-1.5 shrink-0 rounded-[5px] p-0.5 text-n-900 transition-colors duration-[120ms] hover:bg-n-100"
                         >
-                          <MoodleIcon size={20} />
+                          <MoodleIcon size={20} plain />
                         </a>
                       )}
                     </div>

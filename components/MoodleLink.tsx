@@ -74,26 +74,34 @@ export function MoodleLink({ courseId, url }: { courseId: string; url: string | 
   }
 
   return (
-    <span className="group/moodle flex items-center gap-1">
+    // The pencil lives inside the button, hidden off its right edge until hover
+    // or keyboard focus, so the button never changes size and the gaps to its
+    // neighbours stay even. The label shifts left to make room for it.
+    <span
+      style={{ background: MOODLE_ORANGE }}
+      className="group/moodle relative flex overflow-hidden rounded-md text-[12px] font-semibold text-white shadow-sm"
+    >
       <a
         href={url}
         target="_blank"
         rel="noreferrer"
-        style={{ background: MOODLE_ORANGE }}
-        className="flex items-center gap-2 rounded-md py-1 pl-1 pr-3 text-[12px] font-semibold text-white shadow-sm transition-[filter] duration-[120ms] hover:brightness-95"
+        className="flex items-center py-1 pl-[13px] pr-[13px] transition-[filter] duration-[120ms] hover:brightness-95"
       >
-        <span className="flex rounded-[5px] bg-white/20 p-px">
-          <MoodleIcon size={20} />
+        <span className="flex items-center gap-2 transition-transform duration-[180ms] group-hover/moodle:-translate-x-[11px] group-focus-within/moodle:-translate-x-[11px]">
+          <span className="flex rounded-[5px] bg-white/20 p-px">
+            <MoodleIcon size={20} />
+          </span>
+          Moodle
         </span>
-        Moodle
       </a>
       <button
         onClick={() => setEditing(true)}
         aria-label="Change the Moodle link"
-        className="rounded p-1 text-n-300 opacity-0 transition-all duration-[120ms] hover:bg-n-100 hover:text-n-700 focus-visible:opacity-100 group-hover/moodle:opacity-100"
+        title="Change the Moodle link"
+        className="absolute inset-y-0 right-0 flex w-[24px] translate-x-full items-center justify-center bg-black/15 transition-[transform,background-color] duration-[180ms] hover:bg-black/25 focus-visible:translate-x-0 group-hover/moodle:translate-x-0 group-focus-within/moodle:translate-x-0"
       >
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden>
-          <path d="M8.2 1.9 10.1 3.8M2 10l.5-2.1 5.3-5.3 1.9 1.9-5.3 5.3L2 10Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+          <path d="M8.2 1.9 10.1 3.8M2 10l.5-2.1 5.3-5.3 1.9 1.9-5.3 5.3L2 10Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
     </span>
