@@ -125,7 +125,7 @@ export function EventDialog({
                 type="date"
                 value={d.date}
                 onChange={(e) => setD((x) => ({ ...x, date: e.target.value, endDate: x.endDate < e.target.value ? e.target.value : x.endDate }))}
-                className={clsx(input, "font-num w-[150px]")}
+                className={clsx(field, "font-num w-[150px]")}
                 aria-label="Date"
               />
               {d.allDay ? (
@@ -136,15 +136,15 @@ export function EventDialog({
                     min={d.date}
                     value={d.endDate}
                     onChange={(e) => set("endDate", e.target.value)}
-                    className={clsx(input, "font-num w-[150px]")}
+                    className={clsx(field, "font-num w-[150px]")}
                     aria-label="End date"
                   />
                 </>
               ) : (
                 <>
-                  <input type="time" value={d.startTime} onChange={(e) => setStart(e.target.value)} className={clsx(input, "font-num w-[104px]")} aria-label="Start time" />
+                  <input type="time" value={d.startTime} onChange={(e) => setStart(e.target.value)} className={clsx(field, "font-num w-[104px]")} aria-label="Start time" />
                   <span className="text-[12px] text-n-400">–</span>
-                  <input type="time" value={d.endTime} onChange={(e) => set("endTime", e.target.value)} className={clsx(input, "font-num w-[104px]")} aria-label="End time" />
+                  <input type="time" value={d.endTime} onChange={(e) => set("endTime", e.target.value)} className={clsx(field, "font-num w-[104px]")} aria-label="End time" />
                 </>
               )}
             </div>
@@ -232,8 +232,15 @@ export function EventDialog({
   );
 }
 
-const input =
-  "h-9 w-full rounded-sm border border-n-200 bg-n-0 px-2.5 text-[13px] text-n-800 outline-none transition-colors duration-[120ms] placeholder:text-n-400 focus:border-rust-400";
+/**
+ * The look of a field, with no width of its own. A field that sets its own
+ * width can't be built on `input` below: both would be width utilities, and
+ * which one wins comes down to stylesheet order - `w-full` did, so a 92px
+ * time picker came out the width of the dialog and crushed the date beside it.
+ */
+const field =
+  "h-9 rounded-sm border border-n-200 bg-n-0 px-2.5 text-[13px] text-n-800 outline-none transition-colors duration-[120ms] placeholder:text-n-400 focus:border-rust-400";
+const input = `${field} w-full`;
 
 function Label({ children }: { children: React.ReactNode }) {
   return <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-500">{children}</span>;

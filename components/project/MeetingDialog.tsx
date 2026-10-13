@@ -115,7 +115,7 @@ function MeetingDialog({
             />
             <div className="space-y-2.5 rounded-sm border border-n-100 bg-n-25 p-3">
               <div className="flex items-center gap-2">
-                <input type="date" value={d.date} onChange={(e) => set("date", e.target.value)} aria-label="Date" className={clsx(input, "font-num min-w-0 flex-1")} />
+                <input type="date" value={d.date} onChange={(e) => set("date", e.target.value)} aria-label="Date" className={clsx(field, "font-num min-w-0 flex-1")} />
                 <TimeSelect value={d.startTime} onChange={pickStart} label="Start" />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -184,8 +184,15 @@ function MeetingDialog({
   );
 }
 
-const input =
-  "h-9 w-full rounded-sm border border-n-200 bg-n-0 px-2.5 text-[13px] text-n-800 outline-none transition-colors duration-[120ms] placeholder:text-n-400 focus:border-rust-400";
+/**
+ * The look of a field, with no width of its own. A field that sets its own
+ * width can't be built on `input` below: both would be width utilities, and
+ * which one wins comes down to stylesheet order - `w-full` did, so a 92px
+ * time picker came out the width of the dialog and crushed the date beside it.
+ */
+const field =
+  "h-9 rounded-sm border border-n-200 bg-n-0 px-2.5 text-[13px] text-n-800 outline-none transition-colors duration-[120ms] placeholder:text-n-400 focus:border-rust-400";
+const input = `${field} w-full`;
 
 type Length = 30 | 60 | "custom";
 const LENGTHS: Length[] = [30, 60, "custom"];
@@ -206,7 +213,7 @@ function TimeSelect({ value, onChange, label, after }: { value: string; onChange
     .filter((t) => !after || toMin(t) > toMin(after))
     .sort((a, b) => toMin(a) - toMin(b));
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={clsx(input, "font-num w-[92px] shrink-0 cursor-pointer")}>
+    <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={clsx(field, "font-num w-[92px] shrink-0 cursor-pointer")}>
       {slots.map((t) => <option key={t} value={t}>{t}</option>)}
     </select>
   );
