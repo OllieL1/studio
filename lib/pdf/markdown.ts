@@ -445,21 +445,78 @@ function measure(width: number, draw: (doc: PDFKit.PDFDocument, width: number) =
 
 /* ── Blocks ──────────────────────────────────────────────────────────────── */
 
+/**
+ * Break a line of code to fit `cols` characters. The face is monospace, so a
+ * character count is exact. Tabs become four spaces first: the face has no tab
+ * glyph, so they used to vanish, indentation and all.
+ *
+ * It breaks at a space when there's one in the back half of the row, and
+ * mid-token only when there isn't. Continuation rows hang two spaces in from
+ * the line's own indent, so a wrapped line reads as one statement.
+ */
+export function wrapCode(line: string, cols: number): string[] {
+  const text = line.replace(/\t/g, "    ").replace(/\s+$/, "");
+  if (text.length <= cols) return [text];
+
+  const indent = /^ */.exec(text)![0].length;
+  const hang = " ".repeat(Math.min(indent + 2, Math.floor(cols / 2)));
+  const rows: string[] = [];
+  let rest = text;
+  while (rest.length > cols) {
+    let cut = rest.lastIndexOf(" ", cols);
+    if (cut <= Math.max(hang.length, cols / 2)) cut = cols;
+    rows.push(rest.slice(0, cut).replace(/\s+$/, ""));
+    rest = hang + rest.slice(cut).replace(/^ +/, "");
+  }
+  rows.push(rest);
+  return rows;
+}
+
+/**
+ * A fenced code block: wrapped to the column, and drawn in as many pieces as
+ * the page breaks need.
+ *
+ * Every row is placed at an absolute position, so a row that wrapped on its
+ * own, or one that ran past the bottom margin (where pdfkit quietly starts a
+ * new page for each line drawn), landed on top of the next. Here the rows are
+ * wrapped first, then laid out a page's worth at a time, each piece with its
+ * own tinted box.
+ */
 function codeBlock(doc: PDFKit.PDFDocument, body: string[], style: MdStyle) {
   const size = style.size * 0.86;
   const lineHeight = size * 1.45;
-  const height = body.length * lineHeight + 10;
-  style.ensure?.(height + 6);
+  const pad = 5;
+  const inset = 8;
 
-  const top = doc.y + 2;
-  doc.rect(style.x, top, style.width, height).fillColor(RULE).fillOpacity(0.5).fill().fillOpacity(1);
-  doc.rect(style.x, top, 2, height).fillColor(RULE).fill();
+  doc.font("mono").fontSize(size);
+  const cols = Math.max(20, Math.floor((style.width - inset * 2) / doc.widthOfString("0")));
+  const rows = body.flatMap((l) => wrapCode(l, cols));
 
-  doc.font("mono").fontSize(size).fillColor(MUTED);
-  body.forEach((l, i) => {
-    doc.text(l || " ", style.x + 8, top + 5 + i * lineHeight, { width: style.width - 16, lineBreak: false });
-  });
-  doc.y = top + height + 6;
+  let i = 0;
+  while (i < rows.length) {
+    // Keep a few rows together, so a block never opens with one at a page's foot.
+    style.ensure?.(Math.min(rows.length - i, 3) * lineHeight + pad * 2 + 2);
+
+    const top = doc.y + 2;
+    // Nested in a callout or column there's no page flow to follow (`ensure` is
+    // off, and the block is measured whole), so it stays in one piece.
+    const room = style.ensure
+      ? Math.floor((doc.page.height - doc.page.margins.bottom - top - pad * 2) / lineHeight)
+      : Infinity;
+    const n = Math.max(1, Math.min(rows.length - i, room));
+    const height = n * lineHeight + pad * 2;
+
+    doc.rect(style.x, top, style.width, height).fillColor(RULE).fillOpacity(0.5).fill().fillOpacity(1);
+    doc.rect(style.x, top, 2, height).fillColor(RULE).fill();
+
+    doc.font("mono").fontSize(size).fillColor(MUTED);
+    for (let k = 0; k < n; k++) {
+      doc.text(rows[i + k] || " ", style.x + inset, top + pad + k * lineHeight, { lineBreak: false });
+    }
+
+    i += n;
+    doc.y = top + height + (i < rows.length ? 0 : 6);
+  }
   doc.fillColor(INK);
 }
 

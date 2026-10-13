@@ -6,6 +6,8 @@ import { buildStatsPdf } from "../lib/pdf/stats";
 import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
 import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
 import { measureMath } from "../lib/pdf/math";
+import { newDoc, MARGIN } from "../lib/pdf/doc";
+import { notesStyle, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
 import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
 const tests: [string, () => Promise<void>][] = [];
@@ -271,6 +273,109 @@ test("lectures: tables, quotes, rules and nested lists all render", async () => 
 test("lectures: a bundle with no course still builds", async () => {
   const buf = await buildLecturesPdf({ course: null, lectures: [lecture(), lecture({ id: "l2" })], generatedAt: new Date(2026, 8, 20) });
   assert.ok(isPdf(buf));
+});
+
+
+/* ── Code blocks ─────────────────────────────────────────────────────────── */
+
+/** Render markdown the way the exports do, recording every row of text drawn and where. */
+async function drawn(md: string) {
+  const { doc, done } = newDoc({ title: "t", subject: "t", createdAt: new Date(2026, 9, 1) });
+  const calls: { page: number; text: string; x: number; y: number }[] = [];
+  let page = 0;
+  const addPage = doc.addPage.bind(doc);
+  doc.addPage = ((...a: Parameters<typeof addPage>) => { page++; return addPage(...a); }) as typeof doc.addPage;
+  const text = doc.text.bind(doc) as (...a: unknown[]) => unknown;
+  (doc as unknown as { text: (...a: unknown[]) => unknown }).text = (...a: unknown[]) => {
+    const [t, x, y] = a;
+    if (typeof x === "number" && typeof y === "number") calls.push({ page, text: String(t), x, y });
+    return text(...a);
+  };
+  const style = notesStyle(doc);
+  renderMarkdown(doc, md, { ...style, ensure: (h) => { if (doc.y + h > doc.page.height - MARGIN) doc.addPage(); } });
+  const size = style.size * 0.86;
+  const measure = (s: string) => doc.font("mono").fontSize(size).widthOfString(s);
+  const dims = { width: doc.page.width, height: doc.page.height };
+  doc.end();
+  await done;
+  return { calls, pages: page + 1, measure, ...dims };
+}
+
+const squash = (s: string) => s.replace(/\s+/g, "");
+
+test("code: wrapping keeps a short line whole and trims what trails it", async () => {
+  assert.deepEqual(wrapCode("let x = 1;", 40), ["let x = 1;"]);
+  assert.deepEqual(wrapCode("let x = 1;   ", 40), ["let x = 1;"]);
+  assert.deepEqual(wrapCode("", 40), [""]);
+});
+
+test("code: tabs become spaces, so indentation survives", async () => {
+  assert.deepEqual(wrapCode("\t\treturn x;", 40), ["        return x;"]);
+});
+
+test("code: a long line breaks at a space and hangs under its own indent", async () => {
+  const rows = wrapCode("    call(alpha, beta, gamma, delta, epsilon, zeta, eta, theta)", 30);
+  assert.ok(rows.length > 1);
+  for (const r of rows) assert.ok(r.length <= 30, `"${r}" is ${r.length} wide`);
+  assert.ok(rows[1].startsWith("      "), "continuation hangs two in from the line's indent");
+  assert.ok(!/^ {7}/.test(rows[1]), "...and no further");
+  assert.equal(squash(rows.join("")), squash("    call(alpha, beta, gamma, delta, epsilon, zeta, eta, theta)"));
+});
+
+test("code: with no space to break at, a long token is cut to fit - and nothing is lost", async () => {
+  const line = "x".repeat(250);
+  const rows = wrapCode(line, 40);
+  for (const r of rows) assert.ok(r.length <= 40);
+  assert.equal(squash(rows.join("")), line);
+});
+
+test("code: a line indented past the width still terminates and still fits", async () => {
+  const line = " ".repeat(60) + "deeplyNested(" + "y".repeat(100) + ")";
+  const rows = wrapCode(line, 20);
+  for (const r of rows) assert.ok(r.length <= 20, `"${r}"`);
+  assert.equal(squash(rows.join("")), squash(line));
+});
+
+test("code: a long line wraps inside the page instead of running onto the next line", async () => {
+  const long = "callSomething(" + "argument, ".repeat(40) + "last);";
+  const md = ["Before.", "", "```", "first line", long, "final line", "```", "", "After."].join("\n");
+  const r = await drawn(md);
+  const code = r.calls.filter((c) => c.x === MARGIN + 8);
+  assert.ok(code.length >= 5, `the long line should wrap onto extra rows, got ${code.length} rows`);
+  for (const c of code) {
+    assert.ok(c.x + r.measure(c.text) <= r.width - MARGIN, `"${c.text.slice(0, 20)}..." runs off the right margin`);
+  }
+  const ys = code.map((c) => `${c.page}:${c.y.toFixed(2)}`);
+  assert.equal(new Set(ys).size, ys.length, "two rows drawn at the same spot - one is on top of the other");
+  assert.equal(squash(code.map((c) => c.text).join("")), squash(["first line", long, "final line"].join("")), "nothing lost");
+});
+
+test("code: a block taller than a page flows across pages rather than piling up", async () => {
+  const body = Array.from({ length: 140 }, (_, i) => `  step${i}(); // number ${i}`);
+  const r = await drawn(["Intro.", "", "```", ...body, "```", "", "Outro."].join("\n"));
+  const code = r.calls.filter((c) => c.x === MARGIN + 8);
+  assert.equal(code.length, 140);
+  // The old renderer made a page per line past the first: 140 rows came to ~100 pages.
+  assert.ok(r.pages >= 2 && r.pages <= 5, `expected 2-5 pages, got ${r.pages}`);
+  for (const c of code) {
+    assert.ok(c.y >= MARGIN && c.y <= r.height - MARGIN, `row at y=${c.y} on page ${c.page} is outside the margins`);
+  }
+  const spots = code.map((c) => `${c.page}:${c.y.toFixed(2)}`);
+  assert.equal(new Set(spots).size, spots.length, "rows overlap");
+  const order = code.map((c) => Number(/number (\d+)/.exec(c.text)![1]));
+  assert.deepEqual(order, [...order].sort((a, b) => a - b), "rows came out of order");
+});
+
+test("code: the page break never leaves a block's first row stranded alone", async () => {
+  // Fill a page with prose so the block starts close to the foot of it.
+  const prose = Array.from({ length: 44 }, (_, i) => `Paragraph ${i} of filler text.`).join("\n\n");
+  const body = Array.from({ length: 12 }, (_, i) => `row${i}();`);
+  const r = await drawn([prose, "", "```", ...body, "```"].join("\n"));
+  const code = r.calls.filter((c) => c.x === MARGIN + 8);
+  assert.equal(code.length, 12);
+  const firstPage = code[0].page;
+  const onFirst = code.filter((c) => c.page === firstPage).length;
+  assert.ok(onFirst >= 3 || onFirst === 12, `the block opened with just ${onFirst} row(s) at the foot of a page`);
 });
 
 let failed = 0;
