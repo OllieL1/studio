@@ -536,9 +536,13 @@ input[type="range"]::-webkit-slider-thumb:active {
   /* On dark the fill alone is too close to the card; the border carries it. */
   border: 1px solid var(--color-n-100);
   border-radius: var(--radius-md);
-  overflow-x: auto;
+  /* Wrap long lines rather than scroll: in the live editor a click on a
+     scrollbar is a click on the block, which opens it for editing. */
+  overflow-x: hidden;
 }
 .prose-notes .code-block code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   background: none;
   border: 0;
   padding: 0;

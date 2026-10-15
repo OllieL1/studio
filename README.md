@@ -335,6 +335,16 @@ separate process would survive the window and keep the stick busy.
 | `npm run usb:deploy` | Build and update the stick. Copies only changed files (by content hash). **Never overwrites the stick's database** - it copies data across only on the first deploy, then applies any new migrations |
 | `npm run usb:pull` | Copy the stick's live data into `prisma/dev.db` for development |
 
+**On Windows (WSL):** the stick shows up in Windows as a drive letter but WSL
+doesn't mount it by itself. Once per plug-in, with the stick as `D:`:
+
+```
+sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d -o uid=$(id -u),gid=$(id -g)
+```
+
+`usb:deploy` and `usb:pull` then find it on their own (or set `STUDIO_USB=/mnt/d`).
+Run `sudo umount /mnt/d` before unplugging, then eject it in Windows too.
+
 **The stick is the live copy.** `npm run dev` runs against `prisma/dev.db`,
 which is only a copy - the nav shows a "Dev copy" badge, and the stick's
 launcher refuses to start while the dev server is running, so data can't end

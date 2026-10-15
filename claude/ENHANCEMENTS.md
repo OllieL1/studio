@@ -1,5 +1,9 @@
 # Enhancement List - Check Off as we go
 
+15/10
+[x] Can we ensure code wrap works in our live markdown editor in code blocks? Currently it all goes onto one line but the scrolling is broken because when you try to scroll by clicking, it just brings you into editing 
+[x] Can we build in the ability to export lecture slides in bulk? Build in a clean way of either selecting which ones to export, choosing to combine them into one PDF or individual downloads? This makes the most sense to have in the lectures page where we can export in bulk my own notes? 
+
 11/10
 Lets add these changes in the same branch as we are in (github-integration). Later on this evening, I will get the mac to pull these changes and integrate the local changes from the mac oto. Do not deploy these changes to the stick yet.
 [x] For the project, can we add a button in meetings to pull all remaining open tasks from the last meeting into the prep for the new meeting? Then please update the task due dates to the new meeting (or the meeting we have pulled in). Only pull the open tasks from previous meetings i.e. not all open tasks. 

@@ -1,5 +1,5 @@
 /**
- * Put Studio on the USB stick, or update it. Run on the Mac:
+ * Put Studio on the USB stick, or update it. Run on the Mac, or in WSL on Windows:
  *
  *   npm run usb:deploy
  *
@@ -31,9 +31,10 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findStick, isWindowsDrive } from "./stick.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const STICK = process.env.STUDIO_USB ?? "/Volumes/Studio";
+const STICK = findStick();
 const CACHE = join(REPO, ".usb-cache");
 const STAGE = join(CACHE, "stage");
 const DEST = join(STICK, "studio");
@@ -44,7 +45,7 @@ const info = (m) => console.log(`  ${m}`);
 const die = (m) => { console.error(`\n✗ ${m}\n`); process.exit(1); };
 
 // ── 0. Preconditions ──────────────────────────────────────────────────────
-if (!existsSync(STICK)) die(`Can't find the stick at ${STICK}. Is it plugged in?`);
+if (!existsSync(STICK)) die(`Can't find the stick at ${STICK}. Is it plugged in? (In WSL, mount it first - see README.)`);
 try { writeFileSync(join(STICK, ".studio-write-test"), "ok"); rmSync(join(STICK, ".studio-write-test")); }
 catch { die(`The stick at ${STICK} isn't writable.`); }
 const nodeVersion = existsSync(join(CACHE, "node-version")) ? readFileSync(join(CACHE, "node-version"), "utf8").trim() : null;
@@ -183,7 +184,7 @@ for (const [from, to] of [["mac-arm64/node", "mac-arm64/node"], ["win-x64/node.e
   }
   // The Mac binary must be executable. FAT32 treats everything as executable,
   // but set it anyway rather than rely on the filesystem.
-  chmodSync(dst, 0o755);
+  try { chmodSync(dst, 0o755); } catch { /* Windows drive via WSL: no modes */ }
 }
 info(`Node ${nodeVersion ?? "(unknown version)"} for Mac and Windows`);
 
@@ -191,7 +192,7 @@ info(`Node ${nodeVersion ?? "(unknown version)"} for Mac and Windows`);
 writeFileSync(join(DEST, "launcher.mjs"), readFileSync(join(REPO, "scripts/usb/launcher.mjs")));
 writeFileSync(join(STICK, "Start Studio.command"), readFileSync(join(REPO, "scripts/usb/Start Studio.command")));
 writeFileSync(join(STICK, "Start Studio.bat"), readFileSync(join(REPO, "scripts/usb/Start Studio.bat")));
-chmodSync(join(STICK, "Start Studio.command"), 0o755);
+try { chmodSync(join(STICK, "Start Studio.command"), 0o755); } catch { /* Windows drive via WSL */ }
 
 // Credentials: only what the app needs from .env, never DATABASE_URL.
 const env = existsSync(join(REPO, ".env")) ? readFileSync(join(REPO, ".env"), "utf8") : "";
@@ -219,12 +220,18 @@ if (!existsSync(db)) {
 
 // ── 5. Apply schema changes to the stick's database ─────────────────────
 step("Database migrations");
+// SQLite can't lock files reliably on a Windows drive seen from WSL, so
+// migrate a local copy and copy it back.
+const viaCopy = isWindowsDrive(STICK);
+const work = viaCopy ? join(CACHE, "migrate.db") : db;
+if (viaCopy) writeFileSync(work, readFileSync(db));
 const out = execSync("npx prisma migrate deploy", {
   cwd: REPO,
-  env: { ...process.env, DATABASE_URL: `file:${db}` },
+  env: { ...process.env, DATABASE_URL: `file:${work}` },
   encoding: "utf8",
 });
 const applied = (out.match(/Applying migration/g) ?? []).length;
+if (viaCopy && applied) writeFileSync(db, readFileSync(work));
 info(applied ? `${applied} migration(s) applied` : "already up to date");
 
 // ── 6. Stamp ─────────────────────────────────────────────────────────────

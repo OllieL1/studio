@@ -14,6 +14,7 @@ export const runtime = "nodejs";
  *   ?course=<course>     every lecture on the course, with a cover and contents
  *   ?ids=a,b,c           just those lectures, in the order given
  *   &empty=1             include lectures with no typed notes
+ *   &download=1          save as a file instead of opening in the browser
  */
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="studio-${name}-${toISODate(new Date())}.pdf"`,
+      "Content-Disposition": `${q.get("download") === "1" ? "attachment" : "inline"}; filename="studio-${name}-${toISODate(new Date())}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

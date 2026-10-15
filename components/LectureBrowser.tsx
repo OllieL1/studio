@@ -43,6 +43,9 @@ export function LectureBrowser({
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState("");
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
 
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params.toString());
@@ -68,6 +71,45 @@ export function LectureBrowser({
   }, [lectures, activeFilter, q]);
 
   const course = courses.find((c) => c.id === activeCourse) ?? null;
+
+  // Only lectures with typed notes have anything to export.
+  const exportable = shown.filter((l) => l.hasNotes);
+  const chosen = exportable.filter((l) => picked.has(l.id)); // in on-screen order
+  const allChosen = exportable.length > 0 && chosen.length === exportable.length;
+
+  const toggle = (id: string) =>
+    setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const stopSelecting = () => { setSelecting(false); setPicked(new Set()); };
+
+  const save = async (ids: string[], fallback: string) => {
+    const res = await fetch(`/api/lectures/pdf?ids=${ids.join(",")}&download=1`);
+    if (!res.ok) throw new Error("export failed");
+    const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? fallback;
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  };
+
+  const exportPicked = async (mode: "combined" | "separate") => {
+    if (chosen.length === 0 || busy) return;
+    setBusy(true);
+    try {
+      if (mode === "combined") await save(chosen.map((l) => l.id), "studio-lectures.pdf");
+      else {
+        // One file each, spaced out so the browser doesn't drop any.
+        for (const l of chosen) {
+          await save([l.id], `${l.title}.pdf`);
+          await new Promise((r) => setTimeout(r, 350));
+        }
+      }
+    } catch {
+      window.alert("Couldn't export those notes. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -118,7 +160,17 @@ export function LectureBrowser({
               placeholder="Filter…"
               className="h-8 w-36 rounded-sm border border-n-200 px-2.5 text-[12.5px] outline-none transition-colors focus:border-rust-400"
             />
-            {course && (
+            <button
+              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+              aria-pressed={selecting}
+              className={clsx(
+                "shrink-0 rounded-md border px-3 py-1.5 text-[12px] font-semibold transition-colors duration-[120ms]",
+                selecting ? "border-rust-400 bg-rust-100 text-rust-700" : "border-n-200 text-n-600 hover:bg-n-50",
+              )}
+            >
+              {selecting ? "Cancel" : "Select to export"}
+            </button>
+            {course && !selecting && (
               <Link
                 href={`/courses/${course.id}/notes`}
                 className="shrink-0 rounded-md bg-rust-500 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600"
@@ -149,6 +201,34 @@ export function LectureBrowser({
             {shown.length} shown
           </span>
         </div>
+
+        {selecting && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-n-100 pt-2.5">
+            <button
+              onClick={() => setPicked(allChosen ? new Set() : new Set(exportable.map((l) => l.id)))}
+              className="rounded-md px-2 py-1 text-[11.5px] font-medium text-n-600 hover:bg-n-50"
+            >
+              {allChosen ? "Clear" : `Select all with notes (${exportable.length})`}
+            </button>
+            <span className="font-num text-[11.5px] text-n-500">{chosen.length} selected</span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                disabled={chosen.length === 0 || busy}
+                onClick={() => void exportPicked("separate")}
+                className="rounded-md border border-n-200 px-3 py-1.5 text-[12px] font-semibold text-n-700 transition-colors duration-[120ms] hover:bg-n-50 disabled:opacity-40"
+              >
+                Separate PDFs
+              </button>
+              <button
+                disabled={chosen.length === 0 || busy}
+                onClick={() => void exportPicked("combined")}
+                className="rounded-md bg-rust-500 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600 disabled:opacity-40"
+              >
+                {busy ? "Exporting…" : "One combined PDF"}
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {shown.length === 0 ? (
@@ -161,7 +241,13 @@ export function LectureBrowser({
       ) : (
         <Card>
           {shown.map((l) => (
-            <LectureRow key={l.id} lecture={l} />
+            <LectureRow
+              key={l.id}
+              lecture={l}
+              selecting={selecting}
+              picked={picked.has(l.id)}
+              onToggle={() => toggle(l.id)}
+            />
           ))}
         </Card>
       )}
@@ -169,7 +255,9 @@ export function LectureBrowser({
   );
 }
 
-function LectureRow({ lecture: l }: { lecture: Lecture }) {
+function LectureRow({
+  lecture: l, selecting, picked, onToggle,
+}: { lecture: Lecture; selecting: boolean; picked: boolean; onToggle: () => void }) {
   const [open, setOpen] = useState(false);
   const revision = l.items.find((i) => i.isRevision);
 
@@ -182,6 +270,17 @@ function LectureRow({ lecture: l }: { lecture: Lecture }) {
       />
 
       <div className="flex items-start gap-3 py-2.5 pl-4 pr-3 hover:bg-n-25">
+        {selecting && (
+          <input
+            type="checkbox"
+            checked={picked}
+            disabled={!l.hasNotes}
+            onChange={onToggle}
+            aria-label={`Select ${l.title}`}
+            title={l.hasNotes ? undefined : "No typed notes to export"}
+            className="mt-1 h-4 w-4 shrink-0 accent-rust-500 disabled:opacity-30"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <Link

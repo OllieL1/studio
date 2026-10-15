@@ -7,9 +7,10 @@
 import { existsSync, copyFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findStick } from "./stick.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const STICK_DB = join(process.env.STUDIO_USB ?? "/Volumes/Studio", "studio", "data", "studio.db");
+const STICK_DB = join(findStick(), "studio", "data", "studio.db");
 const LOCAL = join(REPO, "prisma", "dev.db");
 
 if (!existsSync(STICK_DB)) { console.error(`\n✗ No database found at ${STICK_DB}. Is the stick plugged in?\n`); process.exit(1); }
