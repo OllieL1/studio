@@ -31,6 +31,7 @@ export default async function LecturesPage({
       ...(courseParam ? { courseId: courseParam } : {}),
     },
     include: {
+      attachments: { select: { id: true } },
       items: { orderBy: { position: "asc" } },
       course: { select: { id: true, shortName: true, colour: true, name: true } },
     },
@@ -65,6 +66,7 @@ export default async function LecturesPage({
           notebook: l.notebook,
           notebookPages: l.notebookPages,
           hasNotes: !!l.notesMd,
+          slideCount: l.attachments.length,
           words: l.notesMd ? wordCount(l.notesMd) : 0,
           course: l.course!,
           items: l.items.map((i) => ({

@@ -14,7 +14,7 @@ type Item = { id: string; label: string; done: boolean; isRevision: boolean };
 type Lecture = {
   id: string; title: string; kind: string; dueAt: string | null; startMin: number | null;
   notebook: string | null; notebookPages: string | null;
-  hasNotes: boolean; words: number;
+  hasNotes: boolean; words: number; slideCount: number;
   course: { id: string; shortName: string; colour: string; name: string };
   items: Item[];
 };
@@ -46,6 +46,7 @@ export function LectureBrowser({
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [what, setWhat] = useState<"notes" | "slides">("notes");
 
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params.toString());
@@ -72,8 +73,9 @@ export function LectureBrowser({
 
   const course = courses.find((c) => c.id === activeCourse) ?? null;
 
-  // Only lectures with typed notes have anything to export.
-  const exportable = shown.filter((l) => l.hasNotes);
+  // Only lectures with typed notes (or slides) have anything to export.
+  const has = (l: Lecture) => (what === "notes" ? l.hasNotes : l.slideCount > 0);
+  const exportable = shown.filter(has);
   const chosen = exportable.filter((l) => picked.has(l.id)); // in on-screen order
   const allChosen = exportable.length > 0 && chosen.length === exportable.length;
 
@@ -82,7 +84,7 @@ export function LectureBrowser({
   const stopSelecting = () => { setSelecting(false); setPicked(new Set()); };
 
   const save = async (ids: string[], fallback: string) => {
-    const res = await fetch(`/api/lectures/pdf?ids=${ids.join(",")}&download=1`);
+    const res = await fetch(`/api/lectures/${what === "notes" ? "pdf" : "slides"}?ids=${ids.join(",")}&download=1`);
     if (!res.ok) throw new Error("export failed");
     const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? fallback;
     const url = URL.createObjectURL(await res.blob());
@@ -96,7 +98,7 @@ export function LectureBrowser({
     if (chosen.length === 0 || busy) return;
     setBusy(true);
     try {
-      if (mode === "combined") await save(chosen.map((l) => l.id), "studio-lectures.pdf");
+      if (mode === "combined") await save(chosen.map((l) => l.id), `studio-lectures-${what}.pdf`);
       else {
         // One file each, spaced out so the browser doesn't drop any.
         for (const l of chosen) {
@@ -204,11 +206,26 @@ export function LectureBrowser({
 
         {selecting && (
           <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-n-100 pt-2.5">
+            <div role="group" aria-label="What to export" className="flex rounded-md border border-n-200 p-0.5">
+              {(["notes", "slides"] as const).map((w) => (
+                <button
+                  key={w}
+                  aria-pressed={what === w}
+                  onClick={() => { setWhat(w); setPicked(new Set()); }}
+                  className={clsx(
+                    "rounded px-2.5 py-1 text-[11.5px] font-semibold transition-colors duration-[120ms]",
+                    what === w ? "bg-n-800 text-n-0" : "text-n-500 hover:bg-n-50",
+                  )}
+                >
+                  {w === "notes" ? "My notes" : "Slides"}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => setPicked(allChosen ? new Set() : new Set(exportable.map((l) => l.id)))}
               className="rounded-md px-2 py-1 text-[11.5px] font-medium text-n-600 hover:bg-n-50"
             >
-              {allChosen ? "Clear" : `Select all with notes (${exportable.length})`}
+              {allChosen ? "Clear" : `Select all with ${what === "notes" ? "notes" : "slides"} (${exportable.length})`}
             </button>
             <span className="font-num text-[11.5px] text-n-500">{chosen.length} selected</span>
             <div className="ml-auto flex items-center gap-2">
@@ -244,6 +261,8 @@ export function LectureBrowser({
             <LectureRow
               key={l.id}
               lecture={l}
+              exportable={has(l)}
+              what={what}
               selecting={selecting}
               picked={picked.has(l.id)}
               onToggle={() => toggle(l.id)}
@@ -256,8 +275,8 @@ export function LectureBrowser({
 }
 
 function LectureRow({
-  lecture: l, selecting, picked, onToggle,
-}: { lecture: Lecture; selecting: boolean; picked: boolean; onToggle: () => void }) {
+  lecture: l, selecting, picked, onToggle, exportable, what,
+}: { lecture: Lecture; exportable: boolean; what: "notes" | "slides"; selecting: boolean; picked: boolean; onToggle: () => void }) {
   const [open, setOpen] = useState(false);
   const revision = l.items.find((i) => i.isRevision);
 
@@ -274,10 +293,10 @@ function LectureRow({
           <input
             type="checkbox"
             checked={picked}
-            disabled={!l.hasNotes}
+            disabled={!exportable}
             onChange={onToggle}
             aria-label={`Select ${l.title}`}
-            title={l.hasNotes ? undefined : "No typed notes to export"}
+            title={exportable ? undefined : `No ${what === "notes" ? "typed notes" : "slides"} to export`}
             className="mt-1 h-4 w-4 shrink-0 accent-rust-500 disabled:opacity-30"
           />
         )}
@@ -306,6 +325,11 @@ function LectureRow({
             <span className={clsx("flex items-center gap-1", l.hasNotes ? "text-ok" : "text-n-400")}>
               <Dot on={l.hasNotes} />
               {l.hasNotes ? `Typed · ${l.words} words` : "No typed notes"}
+            </span>
+
+            <span className={clsx("flex items-center gap-1", l.slideCount ? "text-ok" : "text-n-400")}>
+              <Dot on={l.slideCount > 0} />
+              {l.slideCount ? `${l.slideCount} slide PDF${l.slideCount === 1 ? "" : "s"}` : "No slides"}
             </span>
 
             <span className={clsx("flex items-center gap-1", l.notebook ? "text-ok" : "text-n-400")}>
