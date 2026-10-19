@@ -36,6 +36,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
         googleConnected={plan.googleConnected}
         googleError={plan.googleError}
         calendar={plan.calendar}
+        sleep={plan.sleep}
       />
     </div>
   );

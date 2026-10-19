@@ -1,7 +1,7 @@
 import { fmtDateLongYear } from "../dates";
 import { layoutDay, type CalendarItem } from "../calendar";
 import { fmtLength, fmtMinutes, rangeLabel } from "../plan";
-import type { PlanDay, BlockLike } from "../planView";
+import { timeLabel, type PlanDay, type BlockLike } from "../planView";
 import { footers, newDoc, pageSize, FAINT, INK, MARGIN, MUTED, RULE, RUST } from "./doc";
 
 /**
@@ -113,7 +113,7 @@ function overview(doc: PDFKit.PDFDocument, input: PlanPdfInput, days: PlanPdfInp
       const tag = block ? courseOf(row.block.courseId, input.courses)?.shortName : row.item.courseShort;
       if (block) checkbox(doc, x, y + 1, 9, colour);
       else dot(doc, x + 3.5, y + 5, colour);
-      doc.font("mono").fontSize(7).fillColor(block ? INK : FAINT).text(`${fmtMinutes(row.start)}–${fmtMinutes(row.end)}`, x + 13, y);
+      doc.font("mono").fontSize(7).fillColor(block ? INK : FAINT).text(timeLabel(row), x + 13, y);
       const label = tag ? `${tag} · ${title}` : title;
       doc.font(block ? "bold" : "body").fontSize(SANS_SMALL).fillColor(block ? INK : MUTED);
       const h = doc.heightOfString(label, { width: colW - 13 });
@@ -201,7 +201,7 @@ function dayPage(doc: PDFKit.PDFDocument, input: PlanPdfInput, day: PlanPdfInput
     const title = block ? row.block.title : row.item.title;
     const tag = block ? courseOf(row.block.courseId, input.courses)?.shortName : row.item.courseShort;
     const label = tag ? `${tag} · ${title}` : title;
-    const time = `${fmtMinutes(row.start)}–${fmtMinutes(row.end)}`;
+    const time = timeLabel(row);
     const textX = x + (block ? 8 + BOX + 6 : 8);
     const textW = w - (textX - x) - 6;
     if (block) checkbox(doc, x + 8, y + 5, BOX, colour);

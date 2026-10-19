@@ -60,6 +60,16 @@ sync will be the first against Google itself.
 closed above the days; planned blocks are dashed in their course colour,
 the same as on /calendar (which gains a Planned filter).
 
+**Follow-up (19/10 evening).** An event running past midnight (a 16:00-00:30
+shift) now reads "16:00-00:30 +1" on its first day and "until 00:30 -
+continues from Thursday" on the next; each part is its own row, so only one
+is ever selected and the arrows move on. Leaving it off the plan hides both
+parts. **Sleep** shows every night, 01:00-08:00 by default - change the times
+or switch it off in the sidebar (a bedtime after midnight or before it both
+work; a night that starts before midnight belongs to that evening).
+Backspace on one night leaves just that night off. It's counted in the free
+time, but never synced to Google and left out of the calendar view and PDF.
+
 **PDF** - landscape overview of the range, then a portrait page per day
 drawn to scale (same hours on every page so they line up), a pencil-sized
 box on every planned block and deadline, five blank to-do boxes and ruled

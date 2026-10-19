@@ -4,6 +4,7 @@ import { visibleCourseWhere } from "./types";
 import { getCalendarItems } from "./calendarData";
 import { isGoogleConfigured, listCalendars } from "./google";
 import { syncState, type SyncState } from "./plan";
+import { DEFAULT_SLEEP, type Sleep } from "./planView";
 
 /** A planned block as the editor sees it. ISO strings cross to the client. */
 export type PlanBlockView = {
@@ -38,7 +39,7 @@ export async function blockView(id: string) {
 export async function getPlan(from: Date, days: number) {
   const start = startOfDay(from);
   const end = addDays(start, days);
-  const [{ items, googleConnected, googleError }, blocks, hidden, courses, target] = await Promise.all([
+  const [{ items, googleConnected, googleError }, blocks, hidden, courses, target, sleep] = await Promise.all([
     getCalendarItems(start, end, { withPlan: false }),
     db.planBlock.findMany({ where: { startAt: { gte: start, lt: end } }, include: blockInclude, orderBy: { startAt: "asc" } }),
     db.planHidden.findMany({ select: { key: true } }),
@@ -48,6 +49,7 @@ export async function getPlan(from: Date, days: number) {
       select: { id: true, name: true, shortName: true, code: true, colour: true },
     }),
     planCalendar({ lookup: true }),
+    getSleep(),
   ]);
 
   return {
@@ -60,7 +62,18 @@ export async function getPlan(from: Date, days: number) {
     googleConnected,
     googleError,
     calendar: target,
+    sleep,
   };
+}
+
+export async function getSleep(): Promise<Sleep> {
+  try {
+    const p = await db.preference.findUnique({ where: { id: "singleton" }, select: { sleepOn: true, sleepFrom: true, sleepTo: true } });
+    return p ? { on: p.sleepOn, from: p.sleepFrom, to: p.sleepTo } : DEFAULT_SLEEP;
+  } catch {
+    // An older database without the columns yet.
+    return DEFAULT_SLEEP;
+  }
 }
 
 /**

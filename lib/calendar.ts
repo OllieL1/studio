@@ -8,7 +8,8 @@ import { addDays, fmtDate, fmtDateYear, fmtMonthYear, startOfDay, startOfWeek, t
    the month and week views render a single list rather than four.
    ────────────────────────────────────────────────────────────────────────── */
 
-export type CalendarSource = "deadline" | "class" | "event" | "meeting" | "google" | "plan";
+/** "sleep" exists only on the weekly schedule - never on /calendar or Google. */
+export type CalendarSource = "deadline" | "class" | "event" | "meeting" | "google" | "plan" | "sleep";
 export type CalendarView = "month" | "week";
 
 export type CalendarItem = {

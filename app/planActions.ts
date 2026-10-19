@@ -81,6 +81,15 @@ export async function setHidden(key: string, hidden: boolean) {
   return { ok: true as const };
 }
 
+/** Sleep on the schedule: when, and whether it's shown at all. */
+export async function setSleep(sleep: { on: boolean; from: number; to: number }) {
+  const clamp = (m: number) => Math.max(0, Math.min(24 * 60 - 1, Math.round(m)));
+  const data = { sleepOn: sleep.on, sleepFrom: clamp(sleep.from), sleepTo: clamp(sleep.to) };
+  await db.preference.upsert({ where: { id: "singleton" }, update: data, create: { id: "singleton", ...data } });
+  refresh();
+  return { ok: true as const };
+}
+
 export async function setPlanCalendar(calendarId: string) {
   await db.googleAuth.update({ where: { id: "singleton" }, data: { planCalendarId: calendarId } });
   refresh();

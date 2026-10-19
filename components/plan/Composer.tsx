@@ -84,7 +84,7 @@ export function Composer({
       className="animate-scale-in relative my-1 scroll-mb-36 scroll-mt-24 rounded-[10px] border border-rust-300 bg-n-0 shadow-[var(--shadow-pop)]"
     >
       <div className="flex items-center gap-3 px-3 pt-2.5">
-        <span className="font-num w-[92px] shrink-0 text-[12.5px] font-semibold text-rust-600">
+        <span className="font-num w-[110px] shrink-0 text-[12.5px] font-semibold text-rust-600">
           {fmtMinutes(slot.start)}–{fmtMinutes(slot.end)}
         </span>
         <span
@@ -102,7 +102,7 @@ export function Composer({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5 pl-[119px] pt-1 max-sm:pl-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5 pl-[137px] pt-1 max-sm:pl-3">
         <span className="font-num text-[11px] text-n-500">{fmtLength(slot.end - slot.start)}</span>
         {course && (
           <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ color: cssColour(course.colour), background: `color-mix(in oklab, ${cssColour(course.colour)} 10%, var(--color-n-0))` }}>
@@ -143,8 +143,22 @@ export function Composer({
  * 12-hour clocks in some locales and is clumsy from the keyboard. Takes
  * "14", "14:30", "1430" or "2.30pm"; anything else waits until it parses.
  */
-function TimeField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+export function TimeField({
+  label, value, onChange, onCommit,
+}: {
+  label: string;
+  value: number;
+  /** Every time the text parses - live, as in the composer. */
+  onChange?: (v: number) => void;
+  /** Once, on Enter or leaving the field - for settings that save. */
+  onCommit?: (v: number) => void;
+}) {
   const [text, setText] = useState<string | null>(null);
+  const commit = () => {
+    const v = text === null ? null : readTime(text);
+    if (v !== null && v !== value) onCommit?.(v % (24 * 60));
+    setText(null);
+  };
   return (
     <input
       inputMode="numeric"
@@ -153,9 +167,10 @@ function TimeField({ label, value, onChange }: { label: string; value: number; o
       onChange={(e) => {
         setText(e.target.value);
         const v = readTime(e.target.value);
-        if (v !== null) onChange(v);
+        if (v !== null) onChange?.(v);
       }}
-      onBlur={() => setText(null)}
+      onKeyDown={(e) => { if (onCommit && e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
+      onBlur={onCommit ? commit : () => setText(null)}
       aria-label={label}
       className="font-num h-7 w-[54px] rounded-sm border border-n-200 bg-n-0 px-1.5 text-center text-[11.5px] text-n-700 outline-none focus:border-rust-400"
     />

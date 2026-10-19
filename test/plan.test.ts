@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildDays, navKeys, dayJump } from "../lib/planView";
+import { buildDays, navKeys, dayJump, sleepItems, timeLabel } from "../lib/planView";
 import type { CalendarItem } from "../lib/calendar";
 import { parseEntry, resolveSlot, planRange, syncPlan, syncState, blockHash, eventSummary, fmtLength, type SyncBlock } from "../lib/plan";
 
@@ -183,6 +183,47 @@ test("a left-off event can be shown again to put it back", () => {
   });
   const row = days[0].rows[0];
   assert.ok(row.type === "fixed" && row.hidden);
+});
+
+test("an overnight shift is one event with a key per day, labelled with its real times", () => {
+  const shift = item("shift", d(3, 16), d(4, 0, 30), { source: "google" });
+  const days = buildDays({ from: d(3, 0), days: 2, fixed: [shift], blocks: [], hidden: new Set(), showHidden: new Set() });
+  const [thu, fri] = days.map((x) => x.rows[0]);
+  assert.notEqual(thu.key, fri.key, "each day's part can be selected on its own");
+  assert.equal(timeLabel(thu), "16:00–00:30 +1");
+  assert.equal(timeLabel(fri), "until 00:30");
+  const keys = navKeys(days);
+  assert.equal(new Set(keys).size, keys.length, "no key appears twice, so the arrows always move");
+});
+
+test("hiding an overnight event hides both of its days", () => {
+  const shift = item("shift", d(3, 16), d(4, 0, 30));
+  const days = buildDays({ from: d(3, 0), days: 2, fixed: [shift], blocks: [], hidden: new Set(["shift"]), showHidden: new Set() });
+  assert.deepEqual(days.map((x) => x.rows[0].type), ["empty", "empty"]);
+});
+
+test("sleep: one per night, and a night past midnight belongs to its evening", () => {
+  const plain = sleepItems(d(0, 0), 3, { on: true, from: 60, to: 480 });
+  assert.equal(plain.length, 3);
+  assert.equal(new Date(plain[0].start).getHours(), 1);
+  assert.equal(new Date(plain[0].end).getHours(), 8);
+
+  const late = sleepItems(d(0, 0), 2, { on: true, from: 23 * 60 + 30, to: 7 * 60 + 30 });
+  assert.equal(late.length, 3, "the night before the range covers its first morning");
+  const days = buildDays({ from: d(0, 0), days: 2, fixed: late, blocks: [], hidden: new Set(), showHidden: new Set() });
+  assert.deepEqual(days[0].rows.map(timeLabel), ["until 07:30", "23:30–07:30 +1"]);
+
+  assert.equal(sleepItems(d(0, 0), 3, { on: false, from: 60, to: 480 }).length, 0);
+});
+
+test("free time is measured around sleep", () => {
+  const days = buildDays({
+    from: d(0, 0), days: 1, fixed: [...sleepItems(d(0, 0), 1, { on: true, from: 60, to: 480 }), item("lec", d(0, 10), d(0, 12))],
+    blocks: [], hidden: new Set(), showHidden: new Set(),
+  });
+  const [sleep, lec] = days[0].rows;
+  assert.ok(sleep.type === "fixed" && lec.type === "fixed");
+  assert.equal(lec.start - sleep.end, 120);
 });
 
 let passed = 0, failed = 0;

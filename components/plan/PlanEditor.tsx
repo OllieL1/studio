@@ -8,10 +8,10 @@ import { TASK_KIND_LABEL } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
 import { fmtLength, fmtMinutes } from "@/lib/plan";
-import { blockKey, buildDays, dayJump, GAP_WORTH_SHOWING, navKeys, type PlanDay, type Row } from "@/lib/planView";
-import { createBlock, deleteBlock, restoreBlock, setHidden, syncRange, updateBlock, type BlockInput } from "@/app/planActions";
+import { blockKey, buildDays, dayJump, GAP_WORTH_SHOWING, navKeys, sleepItems, timeLabel, type PlanDay, type Row, type Sleep } from "@/lib/planView";
+import { createBlock, deleteBlock, restoreBlock, setHidden, setSleep, syncRange, updateBlock, type BlockInput } from "@/app/planActions";
 import { WeekGrid } from "../calendar/WeekGrid";
-import { Composer, Key, type ComposerCourse, type ComposerResult } from "./Composer";
+import { Composer, Key, TimeField, type ComposerCourse, type ComposerResult } from "./Composer";
 import { SyncBar } from "./SyncBar";
 
 type Draft = {
@@ -30,7 +30,8 @@ type BlockOp =
 
 type Undo =
   | { type: "block"; block: PlanBlockView; label: string }
-  | { type: "fixed"; key: string; label: string };
+  /** `key` is what's hidden (the event); `row` is where the cursor goes back to. */
+  | { type: "fixed"; key: string; row: string; label: string };
 
 export function PlanEditor({
   from: fromISO,
@@ -43,6 +44,7 @@ export function PlanEditor({
   googleConnected,
   googleError,
   calendar,
+  sleep: serverSleep,
 }: {
   from: string;
   days: number;
@@ -54,6 +56,7 @@ export function PlanEditor({
   googleConnected: boolean;
   googleError: string | null;
   calendar: { id: string; name: string | null } | null;
+  sleep: Sleep;
 }) {
   const from = useMemo(() => parseLocalDate(fromISO), [fromISO]);
   const [, startTransition] = useTransition();
@@ -82,9 +85,18 @@ export function PlanEditor({
   // the cursor follows it across the swap.
   const alias = useRef(new Map<string, string>());
 
+  const [sleep, applySleep] = useOptimistic(serverSleep, (_: Sleep, next: Sleep) => next);
+  // Sleep sits in the days like any fixed event, so free time is counted
+  // around it - but it's only ever drawn here, never synced or printed.
+  const withSleep = useMemo(() => [...fixed, ...sleepItems(from, dayCount, sleep)], [fixed, from, dayCount, sleep]);
+  const changeSleep = (next: Sleep) => startTransition(async () => {
+    applySleep(next);
+    await setSleep(next);
+  });
+
   const days = useMemo(
-    () => buildDays({ from, days: dayCount, fixed, blocks, hidden, showHidden }),
-    [from, dayCount, fixed, blocks, hidden, showHidden],
+    () => buildDays({ from, days: dayCount, fixed: withSleep, blocks, hidden, showHidden }),
+    [from, dayCount, withSleep, blocks, hidden, showHidden],
   );
   const keys = useMemo(() => navKeys(days), [days]);
   const resolve = useCallback((key: string | null) => {
@@ -194,20 +206,21 @@ export function PlanEditor({
       // Already left off and shown struck through: Backspace puts it back.
       setCursor(key);
       startTransition(async () => {
-        applyHidden({ key, on: false });
-        await setHidden(key, false);
+        applyHidden({ key: row.item.id, on: false });
+        await setHidden(row.item.id, false);
       });
     } else {
-      setUndo({ type: "fixed", key, label: row.item.title });
+      // Hiding is by event, so both halves of an overnight shift go together.
+      setUndo({ type: "fixed", key: row.item.id, row: key, label: row.item.title });
       startTransition(async () => {
-        applyHidden({ key, on: true });
-        await setHidden(key, true);
+        applyHidden({ key: row.item.id, on: true });
+        await setHidden(row.item.id, true);
       });
     }
   }, [findRow, keys, applyBlock, applyHidden]);
 
   const hideChip = (item: CalendarItem, on: boolean) => {
-    if (on) setUndo({ type: "fixed", key: item.id, label: item.title });
+    if (on) setUndo({ type: "fixed", key: item.id, row: item.id, label: item.title });
     startTransition(async () => {
       applyHidden({ key: item.id, on });
       await setHidden(item.id, on);
@@ -218,7 +231,7 @@ export function PlanEditor({
     if (!undo) return;
     setUndo(null);
     if (undo.type === "fixed") {
-      setCursor(undo.key);
+      setCursor(undo.row);
       startTransition(async () => {
         applyHidden({ key: undo.key, on: false });
         await setHidden(undo.key, false);
@@ -420,7 +433,7 @@ export function PlanEditor({
         />
       </div>
 
-      <Sidebar days={days} courses={courseById} mod={mod} />
+      <Sidebar days={days} courses={courseById} mod={mod} sleep={sleep} onSleep={changeSleep} />
 
       {undo && (
         <div role="status" className="animate-fade-up fixed bottom-24 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-n-200 bg-n-900 py-1.5 pl-4 pr-1.5 text-[12.5px] text-n-0 shadow-[var(--shadow-modal)]">
@@ -533,7 +546,7 @@ function DaySection({
                   onClick={() => onCompose(prev.key, "below")}
                   className="group/gap flex w-full items-center gap-3 px-2 py-0.5 text-left"
                 >
-                  <span className="w-[92px] shrink-0" />
+                  <span className="w-[110px] shrink-0" />
                   <span className="h-px flex-1 border-t border-dashed border-n-200" />
                   <span className="font-num text-[10.5px] text-n-400 group-hover/gap:text-rust-600">{fmtLength(gap)} free</span>
                   <span className="h-px w-6 border-t border-dashed border-n-200" />
@@ -584,7 +597,7 @@ function RowView({
           selected ? "bg-rust-50 text-rust-700 ring-1 ring-inset ring-rust-200" : "text-n-400 hover:bg-n-25",
         )}
       >
-        <span className="w-[92px] shrink-0" />
+        <span className="w-[110px] shrink-0" />
         <span>Nothing planned{selected ? " - press Enter to add something" : ""}</span>
       </div>
     );
@@ -596,6 +609,7 @@ function RowView({
     ? (course ? cssColour(course.colour) : "var(--color-n-400)")
     : cssColour(row.item.colour) || (row.item.source === "google" ? "var(--color-info)" : "var(--color-n-400)");
   const hidden = row.type === "fixed" && row.hidden;
+  const asleep = row.type === "fixed" && row.item.source === "sleep";
 
   return (
     <div
@@ -609,13 +623,15 @@ function RowView({
         selected ? "bg-rust-50 ring-1 ring-inset ring-rust-200" : "hover:bg-n-25",
       )}
     >
-      <span className={clsx("font-num w-[92px] shrink-0 pt-px text-[12.5px]", isBlock ? "font-semibold text-n-800" : "text-n-500", hidden && "line-through")}>
-        {fmtMinutes(row.start)}–{fmtMinutes(row.end)}
+      <span className={clsx("font-num w-[110px] shrink-0 whitespace-nowrap pt-px text-[12.5px]", isBlock ? "font-semibold text-n-800" : asleep ? "text-n-400" : "text-n-500", hidden && "line-through")}>
+        <TimeRange row={row} />
       </span>
 
       {/* Planned blocks are boxes, like the checkboxes they become on paper; fixed events are dots. */}
       {isBlock ? (
         <span aria-hidden className="mt-[3px] h-[13px] w-[13px] shrink-0 rounded-[4px] border-[1.5px]" style={{ borderColor: colour, background: `color-mix(in oklab, ${colour} 12%, var(--color-n-0))` }} />
+      ) : asleep ? (
+        <MoonIcon />
       ) : (
         <span aria-hidden className="mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: colour, opacity: hidden ? 0.4 : 1 }} />
       )}
@@ -623,7 +639,7 @@ function RowView({
       <div className="min-w-0 flex-1">
         <p className={clsx(
           "truncate text-[13.5px] leading-5",
-          isBlock ? "font-semibold text-n-900" : hidden ? "text-n-400 line-through" : "text-n-700",
+          isBlock ? "font-semibold text-n-900" : hidden ? "text-n-400 line-through" : asleep ? "text-n-500" : "text-n-700",
         )}>
           {isBlock ? row.block.title : row.item.title}
         </p>
@@ -636,8 +652,13 @@ function RowView({
             </>
           ) : hidden ? (
             <span className="text-n-400">Left off this plan · Backspace to put back</span>
+          ) : asleep ? (
+            <span className="text-n-400">{row.startsBefore ? "From last night · " : ""}Not synced · change times in the sidebar</span>
           ) : (
-            fixedMeta(row.item)
+            <>
+              {row.startsBefore && <span className="text-n-400">Continues from {WEEKDAY[(new Date(row.item.start).getDay() + 6) % 7]} · </span>}
+              {fixedMeta(row.item)}
+            </>
           )}
         </p>
       </div>
@@ -658,6 +679,15 @@ function RowView({
       </span>
     </div>
   );
+}
+
+/**
+ * The real times, not the day's slice of them: a shift from 16:00 to 00:30
+ * reads "16:00–00:30 +1" on its first day and "until 00:30" the next.
+ */
+function TimeRange({ row }: { row: Row<PlanBlockView> }) {
+  const [main, next] = timeLabel(row).split(" +");
+  return <>{main}{next && <sup className="ml-0.5 text-[9px] text-n-400">+{next}</sup>}</>;
 }
 
 function fixedMeta(item: CalendarItem) {
@@ -693,7 +723,15 @@ function SyncDot({ state }: { state: PlanBlockView["state"] }) {
 
 /* ── Sidebar ───────────────────────────────────────────────────────────── */
 
-function Sidebar({ days, courses, mod }: { days: PlanDay<PlanBlockView>[]; courses: Map<string, ComposerCourse>; mod: string }) {
+function Sidebar({
+  days, courses, mod, sleep, onSleep,
+}: {
+  days: PlanDay<PlanBlockView>[];
+  courses: Map<string, ComposerCourse>;
+  mod: string;
+  sleep: Sleep;
+  onSleep: (s: Sleep) => void;
+}) {
   const byCourse = new Map<string | null, number>();
   let total = 0;
   for (const d of days) for (const r of d.rows) {
@@ -734,6 +772,8 @@ function Sidebar({ days, courses, mod }: { days: PlanDay<PlanBlockView>[]; cours
           )}
         </div>
 
+        <SleepCard sleep={sleep} onChange={onSleep} />
+
         <div className="card p-4 text-[12px] text-n-600">
           <p className="eyebrow mb-2.5">Keys</p>
           <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5">
@@ -756,6 +796,35 @@ function Sidebar({ days, courses, mod }: { days: PlanDay<PlanBlockView>[]; cours
   );
 }
 
+/** Sleep times for every night, or none. Backspace on one night leaves just that night off. */
+function SleepCard({ sleep, onChange }: { sleep: Sleep; onChange: (s: Sleep) => void }) {
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between">
+        <p className="eyebrow">Sleep</p>
+        <button
+          role="switch"
+          aria-checked={sleep.on}
+          aria-label="Show sleep on the schedule"
+          onClick={() => onChange({ ...sleep, on: !sleep.on })}
+          className={clsx("relative h-[18px] w-[30px] rounded-full transition-colors duration-[180ms]", sleep.on ? "bg-rust-500" : "bg-n-200")}
+        >
+          <span className={clsx("absolute top-[2px] h-[14px] w-[14px] rounded-full bg-n-0 transition-transform duration-[180ms]", sleep.on ? "translate-x-[14px]" : "translate-x-[2px]")} />
+        </button>
+      </div>
+      <div className={clsx("mt-2.5 flex items-center gap-1.5 transition-opacity duration-[120ms]", !sleep.on && "pointer-events-none opacity-40")}>
+        <TimeField label="Bedtime" value={sleep.from} onCommit={(v) => onChange({ ...sleep, from: v })} />
+        <span className="text-n-300">–</span>
+        <TimeField label="Wake up" value={sleep.to} onCommit={(v) => onChange({ ...sleep, to: v })} />
+        <span className="font-num ml-auto text-[11px] text-n-400">{fmtLength(((sleep.to - sleep.from + 1440) % 1440) || 1440)}</span>
+      </div>
+      <p className="mt-2 text-[11.5px] leading-[17px] text-n-500">
+        Counted in the free time, never sent to Google. ⌫ on one night leaves just that night off.
+      </p>
+    </div>
+  );
+}
+
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
 const WEEKDAY = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -775,6 +844,14 @@ function clashes(day: PlanDay<PlanBlockView>, slot: { start: number; end: number
     .filter((r) => r.type !== "empty" && r.key !== except && !(r.type === "fixed" && r.hidden))
     .filter((r) => r.type !== "empty" && r.start < slot.end && r.end > slot.start)
     .map((r) => (r.type === "block" ? r.block.title : r.type === "fixed" ? r.item.title : ""));
+}
+
+function MoonIcon() {
+  return (
+    <svg aria-hidden width="13" height="13" viewBox="0 0 14 14" fill="none" className="mt-[3px] shrink-0 text-n-400">
+      <path d="M11.5 8.6A5 5 0 0 1 5.4 2.5a5 5 0 1 0 6.1 6.1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function GridIcon() {

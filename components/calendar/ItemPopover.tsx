@@ -18,6 +18,7 @@ const SOURCE_LABEL: Record<CalendarItem["source"], string> = {
   meeting: "Project meeting",
   google: "Google Calendar",
   plan: "Planned block",
+  sleep: "Sleep",
 };
 
 /**

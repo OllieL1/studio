@@ -468,6 +468,13 @@ model Preference {
   darkFrom Int @default(21)
   darkTo   Int @default(7)
 
+  /// Sleep on the weekly schedule, as minutes from midnight. Shown every
+  /// night so the free time around it is honest; never synced to Google.
+  /// An end at or before the start runs past midnight.
+  sleepOn   Boolean @default(true)
+  sleepFrom Int     @default(60)
+  sleepTo   Int     @default(480)
+
   updatedAt DateTime @updatedAt
 }
 
