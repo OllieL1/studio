@@ -127,12 +127,14 @@ export type CalendarEventInput = {
 export async function upsertEvent(
   input: CalendarEventInput,
   existingEventId: string | null,
+  /** Write somewhere other than the usual calendar (the weekly plan does). */
+  targetCalendarId?: string,
 ): Promise<{ ok: true; eventId: string; htmlLink: string } | { ok: false; error: string }> {
   const token = await getAccessToken();
   if (!token) return { ok: false, error: "Not connected to Google Calendar." };
 
   const auth = await db.googleAuth.findUnique({ where: { id: "singleton" } });
-  const calendarId = encodeURIComponent(auth?.calendarId ?? "primary");
+  const calendarId = encodeURIComponent(targetCalendarId ?? auth?.calendarId ?? "primary");
 
   const body = {
     summary: input.summary,
@@ -157,7 +159,7 @@ export async function upsertEvent(
   });
 
   // The event was deleted in Google — create a fresh one instead of failing.
-  if (res.status === 404 && existingEventId) return upsertEvent(input, null);
+  if (res.status === 404 && existingEventId) return upsertEvent(input, null, targetCalendarId);
 
   if (!res.ok) return { ok: false, error: `Google refused: ${res.status} ${await res.text()}` };
 
@@ -165,11 +167,11 @@ export async function upsertEvent(
   return { ok: true, eventId: data.id, htmlLink: data.htmlLink };
 }
 
-export async function deleteEvent(eventId: string): Promise<boolean> {
+export async function deleteEvent(eventId: string, targetCalendarId?: string): Promise<boolean> {
   const token = await getAccessToken();
   if (!token) return false;
   const auth = await db.googleAuth.findUnique({ where: { id: "singleton" } });
-  const calendarId = encodeURIComponent(auth?.calendarId ?? "primary");
+  const calendarId = encodeURIComponent(targetCalendarId ?? auth?.calendarId ?? "primary");
   const res = await fetch(`${CALENDAR_API}/calendars/${calendarId}/events/${eventId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },

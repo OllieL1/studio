@@ -20,13 +20,22 @@ export function WeekGrid({
   items,
   onNewEvent,
   onItem,
+  days: daysProp,
+  readOnly = false,
 }: {
   anchor: Date;
   items: CalendarItem[];
-  onNewEvent: (d: Date, minutes: number) => void;
-  onItem: (item: CalendarItem, rect: DOMRect) => void;
+  onNewEvent?: (d: Date, minutes: number) => void;
+  onItem?: (item: CalendarItem, rect: DOMRect) => void;
+  /** Any run of days instead of the Monday-to-Sunday week (the schedule preview). */
+  days?: Date[];
+  /** A picture only: nothing to click, no new events. */
+  readOnly?: boolean;
 }) {
-  const { days } = viewRange("week", anchor);
+  const weekDays = viewRange("week", anchor).days;
+  const days = daysProp ?? weekDays;
+  const cols = { gridTemplateColumns: `52px repeat(${days.length}, minmax(0, 1fr))` };
+  const onItemClick = onItem ?? (() => {});
   const byDay = useMemo(() => itemsByDay(items), [items]);
   const { from, to } = useMemo(() => hourWindow(items, days), [items, days]);
   const hours = Array.from({ length: to - from }, (_, i) => from + i);
@@ -47,11 +56,12 @@ export function WeekGrid({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const showsToday = days.some((d) => isSameDay(d, new Date()));
+    // A preview shows the whole day from its first hour.
+    const showsToday = !readOnly && days.some((d) => isSameDay(d, new Date()));
     const hour = showsToday ? Math.max(from, new Date().getHours() - 1) : from;
     el.scrollTop = (hour - from) * HOUR_PX;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anchor.getTime(), from]);
+  }, [anchor.getTime(), from, days.length]);
 
   const allDayByDay = days.map((d) => (byDay.get(toISODate(d)) ?? []).filter((i) => i.allDay));
   const maxAllDay = Math.max(0, ...allDayByDay.map((l) => l.length));
@@ -60,9 +70,9 @@ export function WeekGrid({
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <div className="min-w-[760px]">
+        <div style={{ minWidth: 52 + days.length * 101 }}>
           {/* ── Day headers ────────────────────────────────────────────── */}
-          <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-n-100 bg-n-25">
+          <div className="grid border-b border-n-100 bg-n-25" style={cols}>
             <div />
             {days.map((d, i) => {
               const isToday = isSameDay(d, now ?? new Date());
@@ -70,9 +80,9 @@ export function WeekGrid({
                 <div key={i} className="border-l border-n-100 px-2 py-2">
                   <div className={clsx(
                     "text-[10.5px] font-semibold uppercase tracking-[0.08em]",
-                    isToday ? "text-rust-600" : i >= 5 ? "text-n-400" : "text-n-500",
+                    isToday ? "text-rust-600" : (d.getDay() + 6) % 7 >= 5 ? "text-n-400" : "text-n-500",
                   )}>
-                    {DAY_SHORT[i]}
+                    {DAY_SHORT[(d.getDay() + 6) % 7]}
                   </div>
                   <div className={clsx(
                     "font-num mt-0.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[16px] font-semibold",
@@ -87,7 +97,7 @@ export function WeekGrid({
 
           {/* ── All-day row ────────────────────────────────────────────── */}
           {maxAllDay > 0 && (
-            <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-n-200">
+            <div className="grid border-b border-n-200" style={cols}>
               <div className="flex items-start justify-end px-1.5 pt-1.5">
                 <span className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-n-400">All day</span>
               </div>
@@ -100,7 +110,7 @@ export function WeekGrid({
                     className="flex min-w-0 flex-col gap-[3px] border-l border-n-100 p-1"
                     style={blocked ? { backgroundColor: tint(blocked.colour, 5), backgroundImage: hatch(blocked.colour, 10) } : undefined}
                   >
-                    {shown.map((item) => <Chip key={item.id} item={item} onClick={onItem} />)}
+                    {shown.map((item) => <Chip key={item.id} item={item} onClick={onItemClick} />)}
                     {!expandAllDay && list.length > MAX_ALLDAY && (
                       <button
                         onClick={() => setExpandAllDay(true)}
@@ -115,7 +125,7 @@ export function WeekGrid({
               {allDayOverflow && expandAllDay && (
                 <button
                   onClick={() => setExpandAllDay(false)}
-                  className="col-span-8 border-t border-n-100 py-1 text-[10.5px] font-semibold text-n-500 hover:bg-n-50"
+                  className="col-span-full border-t border-n-100 py-1 text-[10.5px] font-semibold text-n-500 hover:bg-n-50"
                 >
                   Show less
                 </button>
@@ -125,7 +135,7 @@ export function WeekGrid({
 
           {/* ── Hour grid ──────────────────────────────────────────────── */}
           <div ref={scrollRef} className="max-h-[640px] overflow-y-auto">
-            <div className="relative grid grid-cols-[52px_repeat(7,1fr)]" style={{ height: hours.length * HOUR_PX }}>
+            <div className="relative grid" style={{ ...cols, height: hours.length * HOUR_PX }}>
               {/* Hour labels */}
               <div className="relative">
                 {hours.map((h, i) => (
@@ -149,8 +159,9 @@ export function WeekGrid({
                 return (
                   <div
                     key={di}
-                    className={clsx("relative cursor-cell border-l border-n-100", di >= 5 && "bg-n-25/50")}
+                    className={clsx("relative border-l border-n-100", !readOnly && "cursor-cell", (day.getDay() + 6) % 7 >= 5 && "bg-n-25/50")}
                     onClick={(e) => {
+                      if (readOnly || !onNewEvent) return;
                       const rect = e.currentTarget.getBoundingClientRect();
                       const y = e.clientY - rect.top;
                       // Snap to the half hour under the cursor.
@@ -181,10 +192,12 @@ export function WeekGrid({
                       return (
                         <button
                           key={item.id}
-                          onClick={(ev) => { ev.stopPropagation(); onItem(item, ev.currentTarget.getBoundingClientRect()); }}
+                          onClick={(ev) => { ev.stopPropagation(); onItemClick(item, ev.currentTarget.getBoundingClientRect()); }}
+                          tabIndex={readOnly ? -1 : undefined}
                           title={`${item.title}\n${fmt(s)}–${fmt(e)}`}
                           className={clsx(
-                            "absolute overflow-hidden rounded-[5px] px-1.5 text-left transition-[filter] duration-[120ms] hover:z-10 hover:brightness-[0.96]",
+                            "absolute overflow-hidden rounded-[5px] px-1.5 text-left transition-[filter] duration-[120ms]",
+                            readOnly ? "cursor-default" : "hover:z-10 hover:brightness-[0.96]",
                             short ? "py-0.5" : "py-1",
                             item.done && "opacity-55",
                             className,

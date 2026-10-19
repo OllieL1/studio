@@ -1,5 +1,71 @@
 # Enhancement List - Check Off as we go
 
+[x] New Feature: Draft Weekly Schedule 
+- Purpose: I like to plan a rough weekly schedule around my fixed events. Essentially time blocking when I want to do my work. This is always subject to change but it is very useful to me.
+- How I want it to work:
+	- Button on home page "Draft Weekly Schedule" - on the right next to Today essentially above the next 3 weeks block 
+	- This opens a page that has imported my full schedule for the week (google calendar and studio) split by day Monday to Sunday
+	- I can move between events using arrow keys (or click on them manually). If I enter on an event, it inserts an entry below where I can type immediately in a box. This should work in a very similar way to the create task box (shorthand subject name, ability to do time as 9-11 or 20-21 or 9 - 11. Shift enter should add an entry above. Ensure the schedule is always sorted chronologically. Space days out nicely.
+	- Allow manual detail entry for the schedule events but it should essentially be very easy to never touch the mouse. Pressing enter again will save the entry. To delete an entry, press backspace when on it (not active in the textbox but on it with the arrow key navigation). Fixed events should be able to be deleted from the draft weekly schedule i.e. I may intend to not attend a lecture. This should not delete that lecture from the calendar or from tasks, just from the weekly schedule. 
+	- There should be a Sync to Calendar button at the bottom that adds all the new schedule events to my google calendar. Note in future, if we update the schedule this should be intelligent in changing existing events and not adding duplicate entries (same applies if we remove things from the schedule).
+	- At the top of the page, there should be buttons Current Week and Next Week and Custom Range. Default to current week (from Monday). Custom range should allow me to pick a start date and number of days for which the schedule will be generated for.
+	- Schedule obviously needs to persist so when we reopen it we see the schedule we have already created. 
+	- We should have a beautiful PDF export with checkboxes for tasks. This is intended for use with the Apple pencil on my iPad so factor this in. 
+	- Have the option to see a preview of a calendar view of the schedule. This will be how the schedule looks just for the range it is in,  in a horizontal view that can be opened and closed. That view can be just read only i.e. just a preview.   
+
+---
+
+## Status - Weekly schedule (19/10/26)
+
+Agreed before building: an entry with no time slots in straight after the
+one above (1h unless a length is typed); planned blocks sync to the Google
+calendar called **Studio** (found by name, changeable in Settings); the PDF
+is an overview plus a page per day; blocks also show on /calendar and in
+Today on home.
+
+**Where** - **Draft weekly schedule** beside Today on the home page, or
+search "Weekly schedule" with ⌘K. Lives at `/plan`.
+
+**The page** - This week / Next week / Custom… (start date and 1-14 days),
+with ‹ › to step by the range. Each day is a card: deadlines and all-day
+events as chips along the top, then classes, meetings, uni and Google
+events and your planned blocks in time order, with free stretches of an
+hour or more marked ("2h free" - click one to fill it). The sidebar totals
+what's planned per course and lists the keys.
+
+**Keyboard** - ↑↓ move, ←→ jump a day, Enter adds below the selected entry
+and Shift-Enter above, type it in one line and Enter again saves (and the
+next Enter adds another straight after). E edits a block, Backspace removes
+a block or leaves a fixed event off the plan (the lecture or event itself is
+untouched - "N left off" in the day's header shows and restores them), ⌘Z /
+Ctrl-Z undoes, P opens the calendar view, T jumps to today. Mouse works too:
+click to select, double-click to edit, + on a day to add.
+
+**Typing** - same shorthand as quick-add for the course (FP, @psi, code).
+Times: 9-11, 9 - 11, 20-21, 9.30-11, 2-4pm, 11-1; 1-7 with no am/pm mean
+afternoon. A single time needs a clear form (14:00, 3pm, at 4) so "Weekly
+quiz 4" keeps its number. Lengths: 2h, 1.5h, 1h30, 45m. The slot, length,
+course and any clash show live as you type; Tab reaches the start, end and
+course fields to set them by hand.
+
+**Sync to Calendar** - at the bottom: says what's new, changed and removed
+and sends just that. Each block remembers its Google event and what Google
+was last told, so re-syncing never duplicates; moving or renaming a block
+patches its event, removing one deletes it. Fixed events left off the plan
+are never touched. Only the range on screen is synced. **Tested with Google
+stubbed only** - the dev copy isn't signed in to Google, so the first real
+sync will be the first against Google itself.
+
+**Calendar view** - a read-only week grid of just this range, opened and
+closed above the days; planned blocks are dashed in their course colour,
+the same as on /calendar (which gains a Planned filter).
+
+**PDF** - landscape overview of the range, then a portrait page per day
+drawn to scale (same hours on every page so they line up), a pencil-sized
+box on every planned block and deadline, five blank to-do boxes and ruled
+notes space. Everything is pale so ink reads over it.
+
+
 [x] Can we improve the today, overdue, next 3 weeks display?
 - Today is good and makes sense. 
 - Overdue is capped at 6 entries. This should not be the case. Maybe display overdue in a 2 column layout to fit more if over 8 entries and ensure it is not capped.

@@ -46,6 +46,14 @@ export function chipStyle(item: CalendarItem): { className: string; style: React
       style: {},
     };
   }
+  if (item.source === "plan") {
+    // Planned, not booked: a dashed outline in the course colour, barely
+    // tinted, so a block reads as an intention beside the real events.
+    return {
+      className: "border border-dashed text-n-800",
+      style: { borderColor: c ?? "var(--color-rust-400)", background: tint(c ?? "var(--color-rust-400)", 6) },
+    };
+  }
   if (item.source === "meeting") {
     // Filled in the course colour: meetings are the fixed points of the project.
     return {

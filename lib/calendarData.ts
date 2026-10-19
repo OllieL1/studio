@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { addDays, startOfDay, toISODate, atMinutes } from "./dates";
+import { addDays, startOfDay, startOfWeek as startOfWeekOf, toISODate, atMinutes } from "./dates";
 import { visibleCourseWhere } from "./types";
 import { dietOrder, isBlocked, type CalendarItem } from "./calendar";
 import { isTaskDone, readinessFor } from "./progress";
@@ -165,10 +165,10 @@ export async function getActiveNow(now: Date = new Date()): Promise<ActiveNow | 
  * are dropped from the Google feed — the local copy is richer and editable,
  * and showing both would put every synced item on the calendar twice.
  */
-export async function getCalendarItems(start: Date, end: Date) {
+export async function getCalendarItems(start: Date, end: Date, { withPlan = true }: { withPlan?: boolean } = {}) {
   const courseWhere = visibleCourseWhere();
 
-  const [tasks, events, syncedTaskIds, syncedEventIds, auth] = await Promise.all([
+  const [tasks, events, syncedTaskIds, syncedEventIds, auth, planBlocks] = await Promise.all([
     db.task.findMany({
       where: {
         cancelled: false,
@@ -186,6 +186,12 @@ export async function getCalendarItems(start: Date, end: Date) {
     isGoogleConfigured()
       ? db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } })
       : Promise.resolve(null),
+    // Every synced block, removed or not: its Google copy is never shown as
+    // a Google event, only (while it's still planned) as the block itself.
+    db.planBlock.findMany({
+      where: { OR: [{ calendarEventId: { not: null } }, { deletedAt: null, startAt: { lt: end }, endAt: { gt: start } }] },
+      include: { course: true },
+    }),
   ]);
 
   const items: CalendarItem[] = [];
@@ -287,12 +293,40 @@ export async function getCalendarItems(start: Date, end: Date) {
   }
   const meetingGoogleIds = meetings.map((m) => m.calendarEventId).filter(Boolean) as string[];
 
+  // The weekly schedule's planned blocks.
+  if (withPlan) {
+    for (const b of planBlocks) {
+      if (b.deletedAt || b.startAt >= end || b.endAt <= start) continue;
+      items.push({
+        id: `plan-${b.id}`,
+        source: "plan",
+        title: b.title,
+        start: b.startAt.toISOString(),
+        end: b.endAt.toISOString(),
+        allDay: false,
+        colour: b.course?.colour ?? null,
+        courseShort: b.course?.shortName ?? null,
+        courseId: b.courseId,
+        href: `/plan?from=${toISODate(startOfWeekOf(b.startAt))}&days=7`,
+        blocked: false,
+        done: false,
+        kind: null,
+        gradeWeight: null,
+        location: null,
+        editable: false,
+        onGoogle: !!b.calendarEventId,
+        notes: null,
+      });
+    }
+  }
+  const planGoogleIds = planBlocks.map((b) => b.calendarEventId).filter(Boolean) as string[];
+
   let googleError: string | null = null;
   const googleConnected = !!auth;
 
   if (googleConnected) {
     const ours = new Set(
-      [...[...syncedTaskIds, ...syncedEventIds].map((x) => x.calendarEventId).filter(Boolean) as string[], ...meetingGoogleIds],
+      [...[...syncedTaskIds, ...syncedEventIds].map((x) => x.calendarEventId).filter(Boolean) as string[], ...meetingGoogleIds, ...planGoogleIds],
     );
     const { events: google, error } = await listEventsInRange(start, end);
     googleError = error;

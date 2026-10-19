@@ -84,6 +84,7 @@ export default async function SettingsPage({
         connected={!!auth}
         email={auth?.email ?? null}
         calendarId={auth?.calendarId ?? "primary"}
+        planCalendarId={auth?.planCalendarId ?? null}
         calendars={calendars.map((c) => ({ id: c.id, summary: c.summary, primary: !!c.primary }))}
         linkedCount={linked}
       />

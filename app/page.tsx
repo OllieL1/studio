@@ -6,12 +6,13 @@ import {
   getCourses, getOverall, getDayTasks, getComingUp, getOverdue,
   getHeadlineStats, getDailySeries,
 } from "@/lib/queries";
-import { fmtDateLong, fmtDuration, fmtRelative, daysUntil } from "@/lib/dates";
+import { fmtDateLong, fmtDuration, fmtHM, fmtRelative, daysUntil } from "@/lib/dates";
 import { Card, Eyebrow, EmptyState, ProgressBar, SectionHeading, Stat, Pill } from "@/components/ui";
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
 import { ComingUp } from "@/components/ComingUp";
+import { getDayPlan } from "@/lib/planData";
 import { isGoogleConfigured } from "@/lib/google";
 import { cssColour } from "@/lib/palette";
 import { clsx } from "@/lib/clsx";
@@ -24,7 +25,7 @@ export default async function HomePage() {
   // Tasks whose linked GitHub issues closed get ticked - after the page has gone out.
   after(() => syncLinkedIssues().catch(() => {}));
   const now = new Date();
-  const [courses, todayTasks, upcoming, overdue, stats, daily, composerCourses] =
+  const [courses, todayTasks, upcoming, overdue, stats, daily, composerCourses, planned] =
     await Promise.all([
       getCourses(),
       getDayTasks(now),
@@ -37,6 +38,7 @@ export default async function HomePage() {
         orderBy: { position: "asc" },
         select: { id: true, name: true, shortName: true, code: true, colour: true },
       }),
+      getDayPlan(now),
     ]);
 
   const overall = getOverall(courses);
@@ -130,16 +132,32 @@ export default async function HomePage() {
         <SectionHeading
           title="Today"
           sub={
-            classes.length + dueToday.length === 0
+            classes.length + dueToday.length + planned.length === 0
               ? "Nothing scheduled."
-              : `${classes.length} class${classes.length === 1 ? "" : "es"} · ${dueToday.length} due`
+              : [
+                  `${classes.length} class${classes.length === 1 ? "" : "es"}`,
+                  planned.length > 0 && `${planned.length} planned`,
+                  `${dueToday.length} due`,
+                ].filter(Boolean).join(" · ")
+          }
+          action={
+            <Link
+              href={"/plan" as Route}
+              className="flex h-9 shrink-0 items-center gap-2 rounded-[10px] border border-n-200 bg-n-0 px-3 text-[13px] font-semibold text-n-700 transition-colors duration-[120ms] hover:bg-n-50 hover:text-n-900"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                <rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M1.5 5.5h11M4.5 1v3M9.5 1v3M4 8h3M4 10.2h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              Draft weekly schedule
+            </Link>
           }
         />
 
         <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
           <div className="min-w-0 space-y-4">
             <Card>
-              {classes.length === 0 && dueToday.length === 0 ? (
+              {classes.length === 0 && dueToday.length === 0 && planned.length === 0 ? (
                 <EmptyState
                   title="A clear day."
                   body="No classes and nothing due. Good time to get ahead on something with a deadline."
@@ -153,6 +171,22 @@ export default async function HomePage() {
                       </div>
                       {classes.map((t) => (
                         <TaskRow key={t.id} task={t} />
+                      ))}
+                    </div>
+                  )}
+                  {planned.length > 0 && (
+                    <div>
+                      <div className="flex items-baseline justify-between border-b border-n-100 px-4 py-2.5">
+                        <Eyebrow>Planned</Eyebrow>
+                        <Link href={"/plan" as Route} className="text-[11.5px] font-medium text-n-400 hover:text-rust-600">Edit plan</Link>
+                      </div>
+                      {planned.map((b) => (
+                        <div key={b.id} className="relative flex items-baseline gap-3 border-b border-n-100 py-2.5 pl-4 pr-3 last:border-b-0">
+                          <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: b.course ? cssColour(b.course.colour) : "var(--color-n-300)" }} />
+                          <span className="font-num w-[86px] shrink-0 text-[12px] text-n-500">{fmtHM(b.startAt)}–{fmtHM(b.endAt)}</span>
+                          <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-n-800">{b.title}</span>
+                          {b.course && <span className="shrink-0 text-[11.5px] font-medium" style={{ color: cssColour(b.course.colour) }}>{b.course.shortName}</span>}
+                        </div>
                       ))}
                     </div>
                   )}

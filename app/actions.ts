@@ -662,6 +662,9 @@ export async function removeFromCalendar(taskId: string) {
 export async function disconnectGoogle() {
   await db.googleAuth.deleteMany({ where: { id: "singleton" } });
   await db.task.updateMany({ data: { calendarEventId: null } });
+  // Planned blocks forget their events too; ones only kept to delete theirs go.
+  await db.planBlock.deleteMany({ where: { deletedAt: { not: null } } });
+  await db.planBlock.updateMany({ data: { calendarEventId: null, calendarId: null, syncedHash: null } });
   refresh();
 }
 

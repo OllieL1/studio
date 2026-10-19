@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { disconnectGoogle, setCalendarTarget } from "@/app/actions";
+import { setPlanCalendar } from "@/app/planActions";
 import { Card, Eyebrow } from "./ui";
 import { clsx } from "@/lib/clsx";
 import { GOOGLE_REDIRECT_URI } from "@/lib/origin";
@@ -13,6 +14,7 @@ export function GooglePanel({
   connected,
   email,
   calendarId,
+  planCalendarId,
   calendars,
   linkedCount,
 }: {
@@ -20,6 +22,8 @@ export function GooglePanel({
   connected: boolean;
   email: string | null;
   calendarId: string;
+  /** Where the weekly schedule's blocks go; null until one is chosen or found. */
+  planCalendarId: string | null;
   calendars: { id: string; summary: string; primary: boolean }[];
   linkedCount: number;
 }) {
@@ -85,34 +89,22 @@ export function GooglePanel({
       </div>
 
       {connected && calendars.length > 0 && (
-        <div className="mt-4 border-t border-n-100 pt-4">
-          <Eyebrow className="mb-2">Write events to</Eyebrow>
-          <div className="flex flex-wrap gap-1.5">
-            {calendars.map((c) => {
-              const on = c.id === calendarId;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() =>
-                    startTransition(async () => {
-                      await setCalendarTarget(c.id);
-                      router.refresh();
-                    })
-                  }
-                  aria-pressed={on}
-                  className={clsx(
-                    "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-all duration-[180ms]",
-                    on
-                      ? "border-transparent bg-rust-500 text-white"
-                      : "border-n-200 text-n-600 hover:bg-n-50",
-                  )}
-                >
-                  {c.summary}
-                  {c.primary && <span className="ml-1 opacity-60">· default</span>}
-                </button>
-              );
-            })}
-          </div>
+        <div className="mt-4 space-y-4 border-t border-n-100 pt-4">
+          <CalendarPicker
+            label="Write events to"
+            calendars={calendars}
+            selected={calendarId}
+            disabled={pending}
+            onPick={(id) => startTransition(async () => { await setCalendarTarget(id); router.refresh(); })}
+          />
+          <CalendarPicker
+            label="Weekly schedule syncs to"
+            hint={planCalendarId ? undefined : "Make a calendar called “Studio” in Google and it's picked automatically - or choose one here."}
+            calendars={calendars}
+            selected={planCalendarId}
+            disabled={pending}
+            onPick={(id) => startTransition(async () => { await setPlanCalendar(id); router.refresh(); })}
+          />
         </div>
       )}
 
@@ -156,6 +148,44 @@ export function GooglePanel({
         )}
       </div>
     </Card>
+  );
+}
+
+function CalendarPicker({
+  label, hint, calendars, selected, disabled, onPick,
+}: {
+  label: string;
+  hint?: string;
+  calendars: { id: string; summary: string; primary: boolean }[];
+  selected: string | null;
+  disabled: boolean;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div>
+      <Eyebrow className="mb-2">{label}</Eyebrow>
+      <div className="flex flex-wrap gap-1.5">
+        {calendars.map((c) => {
+          const on = c.id === selected;
+          return (
+            <button
+              key={c.id}
+              onClick={() => onPick(c.id)}
+              disabled={disabled}
+              aria-pressed={on}
+              className={clsx(
+                "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-all duration-[180ms]",
+                on ? "border-transparent bg-rust-500 text-white" : "border-n-200 text-n-600 hover:bg-n-50",
+              )}
+            >
+              {c.summary}
+              {c.primary && <span className="ml-1 opacity-60">· default</span>}
+            </button>
+          );
+        })}
+      </div>
+      {hint && <p className="mt-1.5 text-[11.5px] text-n-500">{hint}</p>}
+    </div>
   );
 }
 

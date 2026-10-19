@@ -15,7 +15,7 @@ import { ItemPopover } from "./ItemPopover";
 export type CourseOption = { id: string; name: string; shortName: string; colour: string };
 
 /** Which kinds of item are currently shown. Google can be hidden to focus on uni. */
-export type Filters = { deadlines: boolean; classes: boolean; events: boolean; google: boolean };
+export type Filters = { deadlines: boolean; classes: boolean; events: boolean; plan: boolean; google: boolean };
 
 /**
  * The calendar: month or week, a sidebar of what's coming, and event
@@ -45,7 +45,7 @@ export function CalendarShell({
   const [dialog, setDialog] = useState<EventDraft | null>(null);
   const [popover, setPopover] = useState<{ item: CalendarItem; rect: DOMRect } | null>(null);
   const [filters, setFilters] = useState<Filters>({
-    deadlines: true, classes: true, events: true, google: true,
+    deadlines: true, classes: true, events: true, plan: true, google: true,
   });
 
   const go = useCallback(
@@ -62,6 +62,7 @@ export function CalendarShell({
         i.source === "deadline" ? filters.deadlines
           : i.source === "class" ? filters.classes
           : i.source === "event" || i.source === "meeting" ? filters.events
+          : i.source === "plan" ? filters.plan
           : filters.google,
       ),
     [items, filters],
@@ -135,6 +136,7 @@ export function CalendarShell({
     deadlines: items.filter((i) => i.source === "deadline").length,
     classes: items.filter((i) => i.source === "class").length,
     events: items.filter((i) => i.source === "event" || i.source === "meeting").length,
+    plan: items.filter((i) => i.source === "plan").length,
     google: items.filter((i) => i.source === "google").length,
   };
 
@@ -209,6 +211,10 @@ export function CalendarShell({
           onToggle={() => setFilters((f) => ({ ...f, classes: !f.classes }))} />
         <FilterChip label="Events & meetings" count={counts.events} on={filters.events} swatch={<EventSwatch />}
           onToggle={() => setFilters((f) => ({ ...f, events: !f.events }))} />
+        {counts.plan > 0 && (
+          <FilterChip label="Planned" count={counts.plan} on={filters.plan} swatch={<PlanSwatch />}
+            onToggle={() => setFilters((f) => ({ ...f, plan: !f.plan }))} />
+        )}
         {googleConnected && (
           <FilterChip label="Google" count={counts.google} on={filters.google} swatch={<GoogleSwatch />}
             onToggle={() => setFilters((f) => ({ ...f, google: !f.google }))} />
@@ -300,6 +306,9 @@ export function ClassSwatch() {
 }
 export function EventSwatch() {
   return <span className="block h-2.5 w-2.5 rounded-[3px] border-[1.5px] border-n-600 bg-n-0" />;
+}
+export function PlanSwatch() {
+  return <span className="block h-2.5 w-2.5 rounded-[3px] border border-dashed border-rust-400 bg-rust-50" />;
 }
 export function GoogleSwatch() {
   return <span className="block h-2.5 w-2.5 rounded-[3px] border-l-[3px] border-info bg-info-soft" />;

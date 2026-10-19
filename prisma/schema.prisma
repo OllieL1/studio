@@ -48,6 +48,7 @@ model Course {
   sessions SessionCourse[]
   events   Event[]
   meetings Meeting[]
+  planBlocks PlanBlock[]
   papers   Paper[]
   notes    Note[]
 
@@ -270,6 +271,9 @@ model GoogleAuth {
   email        String?
   /// Which calendar events get written to. "primary" unless changed.
   calendarId   String   @default("primary")
+  /// Where the weekly schedule's planned blocks go. Null until chosen - the
+  /// first sync then picks a calendar named "Studio" if there is one.
+  planCalendarId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -580,4 +584,40 @@ model TaskIssue {
 
   @@id([taskId, repo, number])
   @@index([repo, number])
+}
+
+/// A time block on the weekly schedule: when you mean to do some work.
+/// Fixed events (classes, meetings, Google) aren't copied in - the schedule
+/// reads them live - so only what you plan is stored here.
+model PlanBlock {
+  id       String  @id @default(cuid())
+  title    String
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  startAt  DateTime
+  endAt    DateTime
+
+  /// The Google event this block was synced to, and a fingerprint of what
+  /// Google was sent - so a sync only touches what actually changed.
+  calendarEventId String?
+  /// Which Google calendar that event lives in, so changing the plan
+  /// calendar later moves blocks rather than stranding them.
+  calendarId      String?
+  syncedHash      String?
+  /// Removed from the schedule, but its Google event isn't deleted until
+  /// the next sync. Unsynced blocks are deleted outright.
+  deletedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startAt])
+}
+
+/// A fixed event left off the weekly schedule ("not going to that lecture").
+/// Only hides it from the plan - the lecture, task or Google event is
+/// untouched. `key` is the calendar item id, e.g. "task-…", "google-…".
+model PlanHidden {
+  key       String   @id
+  createdAt DateTime @default(now())
 }
