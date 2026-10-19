@@ -31,7 +31,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findStick, isWindowsDrive } from "./stick.mjs";
+import { busyDatabase, findStick, isWindowsDrive } from "./stick.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STICK = findStick();
@@ -46,8 +46,14 @@ const die = (m) => { console.error(`\n✗ ${m}\n`); process.exit(1); };
 
 // ── 0. Preconditions ──────────────────────────────────────────────────────
 if (!existsSync(STICK)) die(`Can't find the stick at ${STICK}. Is it plugged in? (In WSL, mount it first - see README.)`);
+if (isWindowsDrive(STICK) && !readFileSync("/proc/mounts", "utf8").split("\n").some((l) => l.split(" ")[1] === STICK))
+  die(`${STICK} isn't a mounted drive (just an empty folder). Mount the stick first - see README.`);
 try { writeFileSync(join(STICK, ".studio-write-test"), "ok"); rmSync(join(STICK, ".studio-write-test")); }
 catch { die(`The stick at ${STICK} isn't writable.`); }
+{
+  const busy = existsSync(join(DEST, "data", "studio.db")) && busyDatabase(join(DEST, "data", "studio.db"));
+  if (busy) die(`The stick's database is in use. ${busy}`);
+}
 const nodeVersion = existsSync(join(CACHE, "node-version")) ? readFileSync(join(CACHE, "node-version"), "utf8").trim() : null;
 for (const f of ["mac-arm64/node", "win-x64/node.exe"]) {
   if (!existsSync(join(CACHE, f))) die(`Missing ${f} in .usb-cache - run: npm run usb:runtimes`);
@@ -194,11 +200,18 @@ writeFileSync(join(STICK, "Start Studio.command"), readFileSync(join(REPO, "scri
 writeFileSync(join(STICK, "Start Studio.bat"), readFileSync(join(REPO, "scripts/usb/Start Studio.bat")));
 try { chmodSync(join(STICK, "Start Studio.command"), 0o755); } catch { /* Windows drive via WSL */ }
 
-// Credentials: only what the app needs from .env, never DATABASE_URL.
-const env = existsSync(join(REPO, ".env")) ? readFileSync(join(REPO, ".env"), "utf8") : "";
-const keep = env.split(/\r?\n/).filter((l) => /^(GOOGLE_|SPOTIFY_)/.test(l.trim()));
-writeFileSync(join(DEST, "config.env"),
-  ["# Studio credentials - Google Calendar and Spotify.", "# If the stick is lost, see README.txt.", ...keep, ""].join("\n"));
+// Credentials: what the app needs from .env (never DATABASE_URL), merged over
+// what's already on the stick - so a machine that only has some of them
+// (say Spotify but not Google) doesn't wipe the rest.
+const CRED = /^(GOOGLE_|SPOTIFY_)/;
+const parseEnv = (text) => new Map(text.split(/\r?\n/).map((l) => l.trim()).filter((l) => CRED.test(l)).map((l) => [l.split("=")[0], l]));
+const configPath = join(DEST, "config.env");
+const creds = existsSync(configPath) ? parseEnv(readFileSync(configPath, "utf8")) : new Map();
+const fromEnv = existsSync(join(REPO, ".env")) ? parseEnv(readFileSync(join(REPO, ".env"), "utf8")) : new Map();
+for (const [k, line] of fromEnv) creds.set(k, line);
+writeFileSync(configPath,
+  ["# Studio credentials - Google Calendar and Spotify.", "# If the stick is lost, see README.txt.", ...creds.values(), ""].join("\n"));
+info(`credentials on the stick: ${[...creds.keys()].join(", ") || "none"}`);
 
 // Stop Spotlight indexing the stick: fewer writes, no hidden clutter.
 writeFileSync(join(STICK, ".metadata_never_index"), "");
@@ -231,7 +244,14 @@ const out = execSync("npx prisma migrate deploy", {
   encoding: "utf8",
 });
 const applied = (out.match(/Applying migration/g) ?? []).length;
-if (viaCopy && applied) writeFileSync(db, readFileSync(work));
+if (viaCopy && applied) {
+  // Checked again: Studio may have been started during the build.
+  const busy = busyDatabase(db);
+  if (busy) die(`Not writing the migrated database back - ${busy}`);
+  writeFileSync(db, readFileSync(work));
+  // A leftover index of a WAL that no longer exists is harmless, but stale.
+  rmSync(`${db}-shm`, { force: true });
+}
 info(applied ? `${applied} migration(s) applied` : "already up to date");
 
 // ── 6. Stamp ─────────────────────────────────────────────────────────────

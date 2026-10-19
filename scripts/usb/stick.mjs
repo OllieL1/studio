@@ -7,7 +7,7 @@
  *
  *   sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d -o uid=$(id -u),gid=$(id -g)
  */
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 export function findStick() {
@@ -28,6 +28,24 @@ export function findStick() {
     if (labelled.length) return labelled[0]; // blank stick, labelled STUDIO
   }
   return "/Volumes/Studio";
+}
+
+/**
+ * Why a database can't safely be copied as a single file right now, or null.
+ *
+ * SQLite keeps recent changes in "<db>-wal" until Studio shuts down cleanly.
+ * Copying or replacing studio.db while that file holds changes either loses
+ * them or - worse - has them replayed over the new file when Studio next
+ * opens it, scrambling whatever the new file put on those pages. (That's
+ * how the 19 Oct deploy broke the weekly schedule's tables.)
+ */
+export function busyDatabase(dbPath) {
+  const wal = `${dbPath}-wal`;
+  if (existsSync(wal) && statSync(wal).size > 0) {
+    return "Studio is running from it, or didn't shut down cleanly (its -wal file still holds changes). "
+      + "Quit Studio - or open and quit it once if it's already closed - then try again.";
+  }
+  return null;
 }
 
 /** A Windows drive seen from WSL (9p/drvfs): SQLite locking is unreliable there. */
