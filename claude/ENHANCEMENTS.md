@@ -30,6 +30,14 @@ The Add prep task dropdown splits into Tasks and Backlog; picking one from the
 backlog adds it as prep and takes it off the backlog. The up-arrow brings a
 task back.
 
+**Follow-up.** The timeline is back to three weeks ("Next 3 weeks", 21 days
+from tomorrow). Pushing a task to the backlog now clears its due date (and
+takes it off Google Calendar if it was there); bringing it back leaves it
+undated. Pulling tasks into the next meeting already moved their due dates
+to that meeting - unchanged. Adding a prep task by hand that has no due date
+now gives it the meeting's date too, so a task picked from the backlog is due
+for the meeting it was picked for.
+
 
 15/10
 [x] Can we ensure code wrap works in our live markdown editor in code blocks? Currently it all goes onto one line but the scrolling is broken because when you try to scroll by clicking, it just brings you into editing 

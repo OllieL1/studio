@@ -28,10 +28,10 @@ type Entry =
 type Day = { date: Date; entries: Entry[] };
 
 /**
- * The next two weeks as a vertical timeline: one node per day with
+ * The next three weeks as a vertical timeline: one node per day with
  * something on it, sized by the heaviest grade weight that day, with
  * quiet stretches and week breaks drawn on the rail so the shape of the
- * fortnight reads at a glance.
+ * next few weeks reads at a glance.
  */
 export function ComingUp({
   tasks,
@@ -73,7 +73,7 @@ export function ComingUp({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 border-b border-n-100 px-4 py-2.5">
-        <Eyebrow>Next 2 weeks</Eyebrow>
+        <Eyebrow>Next 3 weeks</Eyebrow>
         {summary && <span className="font-num text-[11px] text-n-400">{summary}</span>}
       </div>
 
@@ -88,7 +88,7 @@ export function ComingUp({
 
         {grouped.length === 0 ? (
           <Row label={null} node={<span className="h-[7px] w-[7px] rounded-full border border-n-300 bg-n-0" />} rail="above" dashed>
-            <p className="font-display pt-4 text-[15px] text-n-700">A clear fortnight.</p>
+            <p className="font-display pt-4 text-[15px] text-n-700">Three clear weeks.</p>
             <p className="mt-0.5 pb-1 text-[12px] text-n-500">Nothing due and no meetings until {fmtShort(end)}.</p>
           </Row>
         ) : (

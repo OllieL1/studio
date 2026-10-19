@@ -124,10 +124,10 @@ export async function getDayTasks(day: Date) {
 
 /**
  * What's coming up after today, for the home page timeline: deadlines (not
- * classes - those are routine) and supervisor meetings. Uncapped - two
+ * classes - those are routine) and supervisor meetings. Uncapped - three
  * weeks is short enough to show in full.
  */
-export async function getComingUp(days = 14) {
+export async function getComingUp(days = 21) {
   const now = new Date();
   const from = startOfDay(addDays(now, 1));
   const to = endOfDay(addDays(now, days));

@@ -6,7 +6,7 @@ import { resolveEventTimes } from "@/lib/events";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { lookupPaper, makeCiteKey, PAPER_STATUSES, type PaperMeta } from "@/lib/papers";
 import { carryOverTasks, draftAgenda } from "@/lib/project";
-import { pushToCalendar } from "@/app/actions";
+import { pushToCalendar, removeFromCalendar } from "@/app/actions";
 import { isTaskDone } from "@/lib/progress";
 import { shortAuthors } from "@/lib/papers";
 import { projectRepoWork } from "@/lib/githubData";
@@ -126,8 +126,16 @@ export async function saveMeetingText(id: string, field: "agenda" | "notes", mar
 
 export async function setMeetingPrep(meetingId: string, taskId: string, on: boolean) {
   if (on) {
-    // Choosing it as prep is choosing to do it: it comes off the backlog.
-    await db.task.update({ where: { id: taskId }, data: { backlog: false } });
+    // Choosing it as prep is choosing to do it: it comes off the backlog,
+    // and if it has no due date it's due for this meeting.
+    const [task, meeting] = await Promise.all([
+      db.task.findUnique({ where: { id: taskId }, select: { dueAt: true } }),
+      db.meeting.findUnique({ where: { id: meetingId }, select: { startAt: true } }),
+    ]);
+    await db.task.update({
+      where: { id: taskId },
+      data: { backlog: false, ...(task && !task.dueAt && meeting ? { dueAt: meeting.startAt } : {}) },
+    });
     await db.meetingPrep.upsert({
       where: { meetingId_taskId: { meetingId, taskId } },
       update: {},
@@ -141,10 +149,18 @@ export async function setMeetingPrep(meetingId: string, taskId: string, on: bool
 
 /**
  * Push a task to the backlog, or bring it back. Backlogged tasks stay on
- * the project but stop travelling from meeting to meeting.
+ * the project but stop travelling from meeting to meeting, and lose their
+ * due date - pushed back means not due yet. Bringing one back leaves it
+ * undated until it's given a date or pulled into a meeting's prep.
  */
 export async function setTaskBacklog(taskId: string, on: boolean) {
-  await db.task.update({ where: { id: taskId }, data: { backlog: on } });
+  if (on) {
+    // A dateless task can't sit on Google Calendar.
+    await removeFromCalendar(taskId);
+    await db.task.update({ where: { id: taskId }, data: { backlog: true, dueAt: null } });
+  } else {
+    await db.task.update({ where: { id: taskId }, data: { backlog: false } });
+  }
   refresh();
 }
 

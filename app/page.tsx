@@ -28,7 +28,7 @@ export default async function HomePage() {
     await Promise.all([
       getCourses(),
       getDayTasks(now),
-      getComingUp(14),
+      getComingUp(21),
       getOverdue(),
       getHeadlineStats(),
       getDailySeries(21),
@@ -177,7 +177,7 @@ export default async function HomePage() {
             <ComingUp
               tasks={upcoming.tasks}
               meetings={upcoming.meetings}
-              days={14}
+              days={21}
               now={now}
               today={
                 classes.length + dueToday.length === 0
