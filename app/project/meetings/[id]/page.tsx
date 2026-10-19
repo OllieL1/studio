@@ -79,7 +79,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
             <Card>
               {m.actions.length === 0 && <p className="px-4 py-4 text-[12.5px] text-n-400">No actions yet.</p>}
               {m.actions.map((t) => (
-                <TaskRow key={t.id} task={{ ...t, course: t.course ? { id: t.course.id, shortName: t.course.shortName, colour: t.course.colour, name: t.course.name } : null }} showCourse={false} />
+                <TaskRow key={t.id} task={{ ...t, course: t.course ? { id: t.course.id, shortName: t.course.shortName, colour: t.course.colour, name: t.course.name } : null }} showCourse={false} backlogToggle />
               ))}
               <AddAction meetingId={m.id} />
             </Card>
@@ -100,7 +100,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
               meetingId={m.id}
               courseId={m.courseId}
               carry={carry}
-              prep={m.prep.map((p) => ({ id: p.task.id, title: p.task.title, done: isTaskDone(p.task) }))}
+              prep={m.prep.map((p) => ({ id: p.task.id, title: p.task.title, done: isTaskDone(p.task), backlog: p.task.backlog }))}
             />
           </Card>
         </aside>

@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
       title: t.title,
       courseId: t.courseId,
       kind: t.kind,
+      backlog: t.backlog,
     })),
   );
 }

@@ -4,13 +4,14 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addMeetingAction, carryOverFromLastMeeting, draftAgendaFor, saveMeetingText, setMeetingPrep } from "@/app/projectActions";
+import { addMeetingAction, carryOverFromLastMeeting, draftAgendaFor, saveMeetingText, setMeetingPrep, setTaskBacklog } from "@/app/projectActions";
 import { toggleTask } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
 import { fmtDayDate } from "@/lib/dates";
 import { MarkdownField } from "../MarkdownField";
 
-type PrepTask = { id: string; title: string; done: boolean };
+type PrepTask = { id: string; title: string; done: boolean; backlog: boolean };
+type Option = { id: string; title: string; backlog: boolean };
 
 /** Tasks to finish before the meeting. Advisory, like task prerequisites. */
 export function PrepList({
@@ -30,7 +31,7 @@ export function PrepList({
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [q, setQ] = useState("");
-  const [options, setOptions] = useState<{ id: string; title: string }[]>([]);
+  const [options, setOptions] = useState<Option[]>([]);
 
   useEffect(() => {
     if (!adding) return;
@@ -39,13 +40,18 @@ export function PrepList({
     if (q.trim()) params.set("q", q.trim());
     const t = setTimeout(async () => {
       const res = await fetch(`/api/tasks?${params}`);
-      const data = (await res.json()) as { id: string; title: string }[];
-      setOptions(data.filter((o) => !prep.some((p) => p.id === o.id)).slice(0, 10));
+      const data = (await res.json()) as Option[];
+      const fresh = data.filter((o) => !prep.some((p) => p.id === o.id));
+      setOptions([...fresh.filter((o) => !o.backlog).slice(0, 8), ...fresh.filter((o) => o.backlog).slice(0, 6)]);
     }, 120);
     return () => clearTimeout(t);
   }, [adding, q, courseId, prep]);
 
   const run = (fn: () => Promise<unknown>) => startTransition(async () => { await fn(); router.refresh(); });
+
+  const tasks = options.filter((o) => !o.backlog);
+  const backlog = options.filter((o) => o.backlog);
+  const pick = (o: Option) => { run(() => setMeetingPrep(meetingId, o.id, true)); setQ(""); };
 
   const carryOver = () =>
     startTransition(async () => {
@@ -84,9 +90,27 @@ export function PrepList({
                 </svg>
               )}
             </button>
-            <Link href={`/tasks/${t.id}` as Route} className={clsx("min-w-0 flex-1 truncate text-[13px] hover:underline", t.done ? "text-n-400 line-through" : "text-n-700")}>
+            <Link href={`/tasks/${t.id}` as Route} className={clsx("min-w-0 flex-1 truncate text-[13px] hover:underline", t.done ? "text-n-400 line-through" : t.backlog ? "text-n-500" : "text-n-700")}>
               {t.title}
             </Link>
+            {t.backlog && !t.done && (
+              <span className="shrink-0 rounded-[4px] bg-n-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-n-500">Backlog</span>
+            )}
+            {!t.done && (
+              <button
+                onClick={() => run(() => setTaskBacklog(t.id, !t.backlog))}
+                disabled={pending}
+                aria-label={t.backlog ? `Bring ${t.title} back from the backlog` : `Push ${t.title} to the backlog`}
+                title={t.backlog ? "Bring back - it'll carry to the next meeting again" : "Push to backlog - it won't carry to the next meeting"}
+                className="rounded p-1 text-n-300 opacity-0 hover:bg-n-100 hover:text-n-600 focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                {t.backlog ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M5 8.5V2M2.2 4.6 5 1.8l2.8 2.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M5 1.5V8M2.2 5.4 5 8.2l2.8-2.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}
+              </button>
+            )}
             <button
               onClick={() => run(() => setMeetingPrep(meetingId, t.id, false))}
               aria-label={`Remove ${t.title} from prep`}
@@ -106,15 +130,17 @@ export function PrepList({
             placeholder="Find a project task…"
             className="h-8 w-full border-b border-n-100 bg-transparent px-2.5 text-[12.5px] outline-none"
           />
-          <div className="max-h-48 overflow-y-auto p-1">
+          <div className="max-h-64 overflow-y-auto p-1">
             {options.length === 0 ? (
               <p className="px-2 py-2 text-[11.5px] text-n-400">No open tasks match. Create one on the Tasks tab.</p>
-            ) : options.map((o) => (
-              <button key={o.id} onClick={() => { run(() => setMeetingPrep(meetingId, o.id, true)); setQ(""); }}
-                className="block w-full truncate rounded px-2 py-1.5 text-left text-[12.5px] text-n-700 hover:bg-rust-50">
-                {o.title}
-              </button>
-            ))}
+            ) : (
+              <>
+                {tasks.length > 0 && <OptionGroup label="Tasks" options={tasks} onPick={pick} />}
+                {backlog.length > 0 && (
+                  <OptionGroup label="Backlog" hint="comes off the backlog" options={backlog} onPick={pick} divided={tasks.length > 0} />
+                )}
+              </>
+            )}
           </div>
           <div className="border-t border-n-100 px-2 py-1.5 text-right">
             <button onClick={() => setAdding(false)} className="text-[11px] font-semibold text-n-500 hover:text-n-800">Done</button>
@@ -125,6 +151,31 @@ export function PrepList({
           + Add prep task
         </button>
       )}
+    </div>
+  );
+}
+
+function OptionGroup({
+  label, hint, options, onPick, divided = false,
+}: {
+  label: string;
+  hint?: string;
+  options: Option[];
+  onPick: (o: Option) => void;
+  divided?: boolean;
+}) {
+  return (
+    <div className={clsx(divided && "mt-1 border-t border-n-100 pt-1")}>
+      <p className="flex items-baseline justify-between px-2 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-n-400">
+        {label}
+        {hint && <span className="font-medium normal-case tracking-normal">{hint}</span>}
+      </p>
+      {options.map((o) => (
+        <button key={o.id} onClick={() => onPick(o)}
+          className={clsx("block w-full truncate rounded px-2 py-1.5 text-left text-[12.5px] hover:bg-rust-50", o.backlog ? "text-n-500" : "text-n-700")}>
+          {o.title}
+        </button>
+      ))}
     </div>
   );
 }

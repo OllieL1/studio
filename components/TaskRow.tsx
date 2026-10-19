@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleItem, toggleTask, deleteTask, addItem, deleteItem } from "@/app/actions";
+import { setTaskBacklog } from "@/app/projectActions";
 import { fmtRelative, fmtTime, urgencyOf } from "@/lib/dates";
 import { TASK_KIND_LABEL, canAddSubtasks } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
@@ -24,6 +25,7 @@ export type TaskRowData = {
   gradeWeight: number | null;
   items: { id: string; label: string; doneAt: Date | string | null }[];
   calendarEventId?: string | null;
+  backlog?: boolean;
   course?: { id: string; shortName: string; colour: string; name: string } | null;
 };
 
@@ -36,11 +38,17 @@ export function TaskRow({
   task,
   showCourse = true,
   defaultOpen = false,
+  backlogToggle = false,
+  backlogPill = true,
   onDeleted,
 }: {
   task: TaskRowData;
   showCourse?: boolean;
   defaultOpen?: boolean;
+  /** Offer "push to backlog" / "bring back" - project tasks only. */
+  backlogToggle?: boolean;
+  /** Tag backlogged rows - off where a heading already says so. */
+  backlogPill?: boolean;
   onDeleted?: () => void;
 }) {
   const router = useRouter();
@@ -137,6 +145,7 @@ export function TaskRow({
             {task.priority > 0 && !done && (
               <Pill tone="rust">Priority</Pill>
             )}
+            {backlogPill && task.backlog && !done && <Pill>Backlog</Pill>}
             {task.gradeWeight != null && (
               <span className="font-num text-[11px] font-medium text-n-400">
                 {task.gradeWeight}%
@@ -183,6 +192,26 @@ export function TaskRow({
             hasDate={!!task.dueAt}
             compact
           />
+          {backlogToggle && !done && (
+            <button
+              onClick={() =>
+                startTransition(async () => {
+                  await setTaskBacklog(task.id, !task.backlog);
+                  router.refresh();
+                })
+              }
+              disabled={pending}
+              aria-label={task.backlog ? `Bring ${task.title} back from the backlog` : `Push ${task.title} to the backlog`}
+              title={task.backlog ? "Bring back - it'll carry to the next meeting again" : "Push to backlog - it won't carry to the next meeting"}
+              className="rounded-md p-1.5 text-n-300 opacity-0 transition-all duration-[120ms] hover:bg-n-100 hover:text-n-600 focus-visible:opacity-100 group-hover:opacity-100"
+            >
+              {task.backlog ? (
+                <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M5 8.5V2M2.2 4.6 5 1.8l2.8 2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M5 1.5V8M2.2 5.4 5 8.2l2.8-2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              )}
+            </button>
+          )}
           {expandable && (
             <button
               onClick={() => setOpen((v) => !v)}

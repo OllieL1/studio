@@ -3,7 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { courseHref, visibleCourseWhere } from "@/lib/types";
 import {
-  getCourses, getOverall, getDayTasks, getUpcoming, getOverdue,
+  getCourses, getOverall, getDayTasks, getComingUp, getOverdue,
   getHeadlineStats, getDailySeries,
 } from "@/lib/queries";
 import { fmtDateLong, fmtDuration, fmtRelative, daysUntil } from "@/lib/dates";
@@ -11,8 +11,10 @@ import { Card, Eyebrow, EmptyState, ProgressBar, SectionHeading, Stat, Pill } fr
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
+import { ComingUp } from "@/components/ComingUp";
 import { isGoogleConfigured } from "@/lib/google";
 import { cssColour } from "@/lib/palette";
+import { clsx } from "@/lib/clsx";
 import { after } from "next/server";
 import { syncLinkedIssues } from "@/lib/githubData";
 
@@ -26,7 +28,7 @@ export default async function HomePage() {
     await Promise.all([
       getCourses(),
       getDayTasks(now),
-      getUpcoming(),
+      getComingUp(14),
       getOverdue(),
       getHeadlineStats(),
       getDailySeries(21),
@@ -134,63 +136,56 @@ export default async function HomePage() {
           }
         />
 
-        <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-          <Card>
-            {classes.length === 0 && dueToday.length === 0 ? (
-              <EmptyState
-                title="A clear day."
-                body="No classes and nothing due. Good time to get ahead on something with a deadline."
-              />
-            ) : (
-              <>
-                {classes.length > 0 && (
-                  <div>
-                    <div className="border-b border-n-100 px-4 py-2.5">
-                      <Eyebrow>Scheduled</Eyebrow>
-                    </div>
-                    {classes.map((t) => (
-                      <TaskRow key={t.id} task={t} />
-                    ))}
-                  </div>
-                )}
-                {dueToday.length > 0 && (
-                  <div>
-                    <div className="border-b border-n-100 px-4 py-2.5">
-                      <Eyebrow>Due today</Eyebrow>
-                    </div>
-                    {dueToday.map((t) => (
-                      <TaskRow key={t.id} task={t} />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-
-          <div className="space-y-4">
-            {overdue.length > 0 && (
-              <Card>
-                <div className="flex items-center justify-between border-b border-n-100 px-4 py-2.5">
-                  <Eyebrow className="text-danger">Overdue</Eyebrow>
-                  <Pill tone="danger">{overdue.length}</Pill>
-                </div>
-                {overdue.map((t) => (
-                  <TaskRow key={t.id} task={t} />
-                ))}
-              </Card>
-            )}
-
+        <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
+          <div className="min-w-0 space-y-4">
             <Card>
-              <div className="border-b border-n-100 px-4 py-2.5">
-                <Eyebrow>Next 3 weeks</Eyebrow>
-              </div>
-              {upcoming.length === 0 ? (
-                <EmptyState title="Nothing due soon." body="Your next three weeks are clear." />
+              {classes.length === 0 && dueToday.length === 0 ? (
+                <EmptyState
+                  title="A clear day."
+                  body="No classes and nothing due. Good time to get ahead on something with a deadline."
+                />
               ) : (
-                upcoming.map((t) => <TaskRow key={t.id} task={t} />)
+                <>
+                  {classes.length > 0 && (
+                    <div>
+                      <div className="border-b border-n-100 px-4 py-2.5">
+                        <Eyebrow>Scheduled</Eyebrow>
+                      </div>
+                      {classes.map((t) => (
+                        <TaskRow key={t.id} task={t} />
+                      ))}
+                    </div>
+                  )}
+                  {dueToday.length > 0 && (
+                    <div>
+                      <div className="border-b border-n-100 px-4 py-2.5">
+                        <Eyebrow>Due today</Eyebrow>
+                      </div>
+                      {dueToday.map((t) => (
+                        <TaskRow key={t.id} task={t} />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </Card>
+
+            {overdue.length > 0 && <Overdue tasks={overdue} />}
           </div>
+
+          <Card>
+            <ComingUp
+              tasks={upcoming.tasks}
+              meetings={upcoming.meetings}
+              days={14}
+              now={now}
+              today={
+                classes.length + dueToday.length === 0
+                  ? "Nothing on today."
+                  : `${classes.length} class${classes.length === 1 ? "" : "es"} · ${dueToday.length} due`
+              }
+            />
+          </Card>
         </div>
       </section>
 
@@ -240,6 +235,33 @@ export default async function HomePage() {
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Everything overdue, never capped. Past eight it splits into two columns,
+ * read down the left then the right, so a long list stays scannable.
+ */
+function Overdue({ tasks }: { tasks: Awaited<ReturnType<typeof getOverdue>> }) {
+  const split = tasks.length > 8;
+  const half = Math.ceil(tasks.length / 2);
+  const columns = split ? [tasks.slice(0, half), tasks.slice(half)] : [tasks];
+  return (
+    <Card>
+      <div className="flex items-center justify-between border-b border-n-100 px-4 py-2.5">
+        <Eyebrow className="text-danger">Overdue</Eyebrow>
+        <Pill tone="danger">{tasks.length}</Pill>
+      </div>
+      <div className={clsx(split && "grid sm:grid-cols-2 sm:divide-x sm:divide-n-100")}>
+        {columns.map((col, i) => (
+          <div key={i} className={clsx("min-w-0", split && i === 1 && "border-t border-n-100 sm:border-t-0")}>
+            {col.map((t) => (
+              <TaskRow key={t.id} task={t} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

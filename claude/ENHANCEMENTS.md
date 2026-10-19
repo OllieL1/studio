@@ -1,5 +1,36 @@
 # Enhancement List - Check Off as we go
 
+[x] Can we improve the today, overdue, next 3 weeks display?
+- Today is good and makes sense. 
+- Overdue is capped at 6 entries. This should not be the case. Maybe display overdue in a 2 column layout to fit more if over 8 entries and ensure it is not capped.
+- Can we change the next 3 weeks display to a vertical timeline beautiful display. Instead of next 3 weeks make it next 2 weeks and then display in a sort of timeline structure that visually shows whats coming up, what weight it has.
+[x] In project, allow me to backlog tasks. Sometimes prep tasks for meetings can be pushed back. These are still project tasks but they dont appear in the pull from last meeting functionality (if marked as backlog). When adding prep tasks, separate in the dropdown menu the tasks and the backlog tasks. 
+
+
+---
+
+## Status - 19/10/26
+
+**Home - Today, Overdue, Next 2 weeks.** Today is unchanged. Overdue now sits
+under it in the left column and is never capped; past eight entries it splits
+into two columns (read down the left, then the right). The right column is a
+vertical timeline of the next 14 days, starting from a Today pin: one node per
+day with something on it, week breaks ("Next week", "w/b 2 Nov") and quiet
+stretches drawn on the rail. Weight shows twice: the day's node is a dot in
+the course colour that grows with the heaviest grade weight that day (hollow
+for ungraded work), and each graded item carries its % with a small meter of
+its share of the course grade. Exams with a date and supervisor meetings
+(diamonds) appear too; anything can be ticked off straight from the timeline.
+
+**Project backlog.** Any open project task can be pushed to the backlog - the
+down-arrow on its row (Tasks tab, meeting actions) or on a prep item. Backlogged
+tasks are still project tasks, in their own Backlog section on the Tasks tab,
+but "Pull in N open" skips them and they stay out of Overdue on the home page.
+The Add prep task dropdown splits into Tasks and Backlog; picking one from the
+backlog adds it as prep and takes it off the backlog. The up-arrow brings a
+task back.
+
+
 15/10
 [x] Can we ensure code wrap works in our live markdown editor in code blocks? Currently it all goes onto one line but the scrolling is broken because when you try to scroll by clicking, it just brings you into editing 
 [x] Can we build in the ability to export lecture slides in bulk? Build in a clean way of either selecting which ones to export, choosing to combine them into one PDF or individual downloads? This makes the most sense to have in the lectures page where we can export in bulk my own notes? 

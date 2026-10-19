@@ -187,15 +187,15 @@ test("agenda for the first meeting with nothing logged", () => {
 /* ── Carry-over ── */
 
 test("carry-over takes the last meeting's open actions and prep, once each", () => {
-  const t = (id: string, o: { done?: boolean; cancelled?: boolean; items?: boolean[] } = {}) => ({
-    id, cancelled: !!o.cancelled, doneAt: o.done ? new Date() : null,
+  const t = (id: string, o: { done?: boolean; cancelled?: boolean; backlog?: boolean; items?: boolean[] } = {}) => ({
+    id, cancelled: !!o.cancelled, backlog: !!o.backlog, doneAt: o.done ? new Date() : null,
     items: (o.items ?? []).map((d) => ({ doneAt: d ? new Date() : null })),
   });
   const ids = carryOverTasks({
     actions: [t("open"), t("done", { done: true }), t("dropped", { cancelled: true }), t("half", { items: [true, false] }), t("ticked", { items: [true, true] }), t("both")],
-    prep: [t("prep"), t("both"), t("already")],
+    prep: [t("prep"), t("both"), t("already"), t("parked", { backlog: true })],
   }, ["already"]);
-  assert.deepEqual(ids, ["open", "half", "both", "prep"]);
+  assert.deepEqual(ids, ["open", "half", "both", "prep"], "backlogged prep stays behind");
 });
 
 let passed = 0, failed = 0;

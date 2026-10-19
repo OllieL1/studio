@@ -394,7 +394,8 @@ async function ProjectTasks({
     select: { id: true, name: true, shortName: true, code: true, colour: true },
   });
   const course = courses.find((c) => c.id === courseId);
-  const open = tasks.filter((t) => !isTaskDone(t));
+  const open = tasks.filter((t) => !isTaskDone(t) && !t.backlog);
+  const backlog = tasks.filter((t) => !isTaskDone(t) && t.backlog);
   const done = tasks.filter((t) => isTaskDone(t));
   const row = (t: (typeof tasks)[number]) => ({ ...t, course: course ? { id: course.id, shortName: course.shortName, colour: course.colour, name: course.name } : null });
 
@@ -410,9 +411,18 @@ async function ProjectTasks({
         {open.length === 0 ? (
           <EmptyState title="No open project tasks." body="Add one above, or turn a meeting's action items into tasks." />
         ) : (
-          open.map((t) => <TaskRow key={t.id} task={row(t)} showCourse={false} />)
+          open.map((t) => <TaskRow key={t.id} task={row(t)} showCourse={false} backlogToggle />)
         )}
       </Card>
+      {backlog.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-baseline justify-between px-1">
+            <Eyebrow>Backlog · {backlog.length}</Eyebrow>
+            <span className="text-[11.5px] text-n-400">Pushed back - not pulled into the next meeting</span>
+          </div>
+          <Card>{backlog.map((t) => <TaskRow key={t.id} task={row(t)} showCourse={false} backlogToggle backlogPill={false} />)}</Card>
+        </section>
+      )}
       {done.length > 0 && (
         <details className="group">
           <summary className="cursor-pointer select-none px-1 text-[12.5px] font-semibold text-n-500 hover:text-n-800">
@@ -422,7 +432,7 @@ async function ProjectTasks({
         </details>
       )}
       <p className="px-1 text-[11.5px] text-n-400">
-        Open a task to set a planned start - it then appears as a bar on the schedule.
+        Open a task to set a planned start - it then appears as a bar on the schedule. The arrow on a row pushes it to the backlog.
       </p>
     </div>
   );

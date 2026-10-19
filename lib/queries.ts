@@ -122,34 +122,41 @@ export async function getDayTasks(day: Date) {
   });
 }
 
-/** Upcoming deadlines (non-class work), for the home page radar. */
-export async function getUpcoming(days = 21, limit = 8) {
+/**
+ * What's coming up after today, for the home page timeline: deadlines (not
+ * classes - those are routine) and supervisor meetings. Uncapped - two
+ * weeks is short enough to show in full.
+ */
+export async function getComingUp(days = 14) {
   const now = new Date();
-  const tasks = await db.task.findMany({
-    where: {
-      cancelled: false,
-      kind: { in: ["COURSEWORK", "QUIZ", "OTHER"] },
-      dueAt: { gte: startOfDay(now), lte: endOfDay(addDays(now, days)) },
-    },
-    include: { items: true, course: true },
-    orderBy: { dueAt: "asc" },
-  });
-  return tasks
-    .filter((t) => !(t.items.length ? t.items.every((i) => i.doneAt) : t.doneAt))
-    .slice(0, limit);
+  const from = startOfDay(addDays(now, 1));
+  const to = endOfDay(addDays(now, days));
+  const [tasks, meetings] = await Promise.all([
+    db.task.findMany({
+      where: { cancelled: false, kind: { in: ["COURSEWORK", "QUIZ", "OTHER", "EXAM"] }, dueAt: { gte: from, lte: to } },
+      include: { items: true, course: true },
+      orderBy: [{ dueAt: "asc" }, { gradeWeight: "desc" }],
+    }),
+    db.meeting.findMany({
+      where: { startAt: { gte: from, lte: to } },
+      select: { id: true, title: true, startAt: true, location: true },
+      orderBy: { startAt: "asc" },
+    }),
+  ]);
+  return {
+    tasks: tasks.filter((t) => !(t.items.length ? t.items.every((i) => i.doneAt) : t.doneAt)),
+    meetings,
+  };
 }
 
-/** Anything past its deadline and not finished. */
-export async function getOverdue(limit = 6) {
+/** Anything past its deadline and not finished, and not pushed to the backlog. */
+export async function getOverdue() {
   const tasks = await db.task.findMany({
-    where: { cancelled: false, kind: { not: "EXAM" }, dueAt: { lt: startOfDay(new Date()) } },
+    where: { cancelled: false, backlog: false, kind: { not: "EXAM" }, dueAt: { lt: startOfDay(new Date()) } },
     include: { items: true, course: true },
     orderBy: { dueAt: "desc" },
-    take: 60,
   });
-  return tasks
-    .filter((t) => !(t.items.length ? t.items.every((i) => i.doneAt) : t.doneAt))
-    .slice(0, limit);
+  return tasks.filter((t) => !(t.items.length ? t.items.every((i) => i.doneAt) : t.doneAt));
 }
 
 export async function getActiveTimer() {

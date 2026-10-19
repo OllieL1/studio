@@ -112,6 +112,9 @@ model Task {
 
   priority  Int     @default(0) // 0 normal, 1 high
   cancelled Boolean @default(false)
+  /// Deliberately pushed back: still a live task, but never pulled into the
+  /// next meeting's prep and kept out of the overdue list.
+  backlog   Boolean @default(false)
 
   /// Typed lecture notes, as markdown. Rendered in-app and exported to PDF.
   notesMd       String?

@@ -126,6 +126,8 @@ export async function saveMeetingText(id: string, field: "agenda" | "notes", mar
 
 export async function setMeetingPrep(meetingId: string, taskId: string, on: boolean) {
   if (on) {
+    // Choosing it as prep is choosing to do it: it comes off the backlog.
+    await db.task.update({ where: { id: taskId }, data: { backlog: false } });
     await db.meetingPrep.upsert({
       where: { meetingId_taskId: { meetingId, taskId } },
       update: {},
@@ -134,6 +136,15 @@ export async function setMeetingPrep(meetingId: string, taskId: string, on: bool
   } else {
     await db.meetingPrep.deleteMany({ where: { meetingId, taskId } });
   }
+  refresh();
+}
+
+/**
+ * Push a task to the backlog, or bring it back. Backlogged tasks stay on
+ * the project but stop travelling from meeting to meeting.
+ */
+export async function setTaskBacklog(taskId: string, on: boolean) {
+  await db.task.update({ where: { id: taskId }, data: { backlog: on } });
   refresh();
 }
 
