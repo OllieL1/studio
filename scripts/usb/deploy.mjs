@@ -27,11 +27,11 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync,
-  writeFileSync, utimesSync, copyFileSync, chmodSync,
+  writeFileSync, utimesSync, copyFileSync, chmodSync, renameSync,
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { busyDatabase, findStick, isWindowsDrive } from "./stick.mjs";
+import { findStick, fingerprint, foldedCopy, isWindowsDrive, studioRunning } from "./stick.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STICK = findStick();
@@ -51,8 +51,8 @@ if (isWindowsDrive(STICK) && !readFileSync("/proc/mounts", "utf8").split("\n").s
 try { writeFileSync(join(STICK, ".studio-write-test"), "ok"); rmSync(join(STICK, ".studio-write-test")); }
 catch { die(`The stick at ${STICK} isn't writable.`); }
 {
-  const busy = existsSync(join(DEST, "data", "studio.db")) && busyDatabase(join(DEST, "data", "studio.db"));
-  if (busy) die(`The stick's database is in use. ${busy}`);
+  const running = await studioRunning(STICK);
+  if (running) die(`${running} Close its window, then deploy again.`);
 }
 const nodeVersion = existsSync(join(CACHE, "node-version")) ? readFileSync(join(CACHE, "node-version"), "utf8").trim() : null;
 for (const f of ["mac-arm64/node", "win-x64/node.exe"]) {
@@ -234,10 +234,17 @@ if (!existsSync(db)) {
 // ── 5. Apply schema changes to the stick's database ─────────────────────
 step("Database migrations");
 // SQLite can't lock files reliably on a Windows drive seen from WSL, so
-// migrate a local copy and copy it back.
+// migrate a local copy and copy it back. The copy takes studio.db-wal with
+// it: closing Studio's window leaves its last changes there, and writing a
+// new studio.db back beside an old WAL would get them replayed over it.
 const viaCopy = isWindowsDrive(STICK);
 const work = viaCopy ? join(CACHE, "migrate.db") : db;
-if (viaCopy) writeFileSync(work, readFileSync(db));
+const before = fingerprint(db);
+if (viaCopy) {
+  let folded;
+  try { folded = await foldedCopy(db, work); } catch (e) { die(`Couldn't read the stick's database: ${e.message}. Nothing was changed.`); }
+  if (folded) info("folded in Studio's last unsaved changes (it was closed with its window)");
+}
 const out = execSync("npx prisma migrate deploy", {
   cwd: REPO,
   env: { ...process.env, DATABASE_URL: `file:${work}` },
@@ -245,12 +252,18 @@ const out = execSync("npx prisma migrate deploy", {
 });
 const applied = (out.match(/Applying migration/g) ?? []).length;
 if (viaCopy && applied) {
-  // Checked again: Studio may have been started during the build.
-  const busy = busyDatabase(db);
-  if (busy) die(`Not writing the migrated database back - ${busy}`);
-  writeFileSync(db, readFileSync(work));
-  // A leftover index of a WAL that no longer exists is harmless, but stale.
-  rmSync(`${db}-shm`, { force: true });
+  // Checked again: nothing may have touched the stick's copy since.
+  const running = await studioRunning(STICK);
+  if (running || fingerprint(db) !== before) {
+    die(`The stick's database changed while migrating${running ? ` - ${running.toLowerCase()}` : ""}. Nothing was written back; close Studio and deploy again.`);
+  }
+  // Swap in the migrated file so that at no point is there a new studio.db
+  // beside an old WAL. If this is interrupted, studio.db.migrated holds
+  // everything.
+  const next = `${db}.migrated`;
+  writeFileSync(next, readFileSync(work));
+  for (const f of [`${db}-wal`, `${db}-shm`]) rmSync(f, { force: true });
+  renameSync(next, db);
 }
 info(applied ? `${applied} migration(s) applied` : "already up to date");
 
