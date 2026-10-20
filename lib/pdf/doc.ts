@@ -63,6 +63,12 @@ export function newDoc({
   doc.registerFont("prose-bold", path.join(FONT_DIR, "Lato-Bold.ttf"));
   doc.registerFont("prose-italic", path.join(FONT_DIR, "Lato-Italic.ttf"));
 
+  // Noto Sans JP, for any text with Japanese/CJK in it - none of the faces
+  // above have those glyphs, so they'd print as blanks.
+  doc.registerFont("cjk", path.join(FONT_DIR, "NotoSansJP-Regular.otf"));
+  doc.registerFont("cjk-bold", path.join(FONT_DIR, "NotoSansJP-Bold.otf"));
+  withCjkFallback(doc);
+
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -71,6 +77,41 @@ export function newDoc({
   });
 
   return { doc, done };
+}
+
+const CJK = /[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
+const BOLD_FACES = new Set(["bold", "display", "prose-bold"]);
+
+/**
+ * pdfkit has no per-glyph fallback, so a string containing Japanese is set
+ * (and measured) wholly in Noto Sans JP, then the previous face is restored.
+ * Latin-only strings are untouched.
+ */
+function withCjkFallback(doc: PDFKit.PDFDocument) {
+  const d = doc as unknown as Record<string, (...args: unknown[]) => unknown>;
+  let face = "body";
+  const setFont = d.font.bind(doc);
+  d.font = (src: unknown, ...rest: unknown[]) => {
+    if (typeof src === "string") face = src;
+    return setFont(src, ...rest);
+  };
+  for (const method of ["text", "widthOfString", "heightOfString"]) {
+    const original = d[method].bind(doc);
+    d[method] = (str: unknown, ...rest: unknown[]) => {
+      if (typeof str !== "string" || !CJK.test(str) || face.startsWith("cjk")) return original(str, ...rest);
+      const previous = face;
+      // pdfkit's text() measures through widthOfString, so `face` must follow
+      // the switch or the inner call would restore the old font mid-string.
+      face = BOLD_FACES.has(previous) ? "cjk-bold" : "cjk";
+      setFont(face);
+      try {
+        return original(str, ...rest);
+      } finally {
+        face = previous;
+        setFont(previous);
+      }
+    };
+  }
 }
 
 /** The usable width of the current page. */

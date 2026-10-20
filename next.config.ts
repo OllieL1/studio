@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
       // The PDF export's own fonts, and pdfkit's built-in font metrics -
       // both are read from disk at runtime, so tracing can't infer them.
       "./assets/fonts/*.ttf",
+      "./assets/fonts/*.otf",
       "./node_modules/pdfkit/js/data/*.afm",
       // MathJax typesets the equations in exported PDFs. It's loaded through
       // createRequire (it's CommonJS-only), which tracing can't follow.
