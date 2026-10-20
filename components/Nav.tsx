@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { courseHref } from "@/lib/types";
-import { OPEN_PALETTE_EVENT } from "./CommandPalette";
 import { Wordmark } from "./Wordmark";
 import { ActiveNow } from "./ActiveNow";
 import { cssColour } from "@/lib/palette";
@@ -28,8 +27,9 @@ const LINKS = [
 ] as const;
 
 /** Pages compact enough to live as an icon in the always-visible cluster,
- *  next to search - trading a label for the room it saves. */
+ *  trading a label for the room it saves. Search needs no icon: ⌘K. */
 const ICON_LINKS = [
+  { href: "/plan", label: "Weekly schedule", icon: PlanIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
   { href: "/stats", label: "Stats", icon: StatsIcon },
 ] as const;
@@ -191,7 +191,7 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
           </div>
         </nav>
 
-        {/* Settings, Stats and search as icons to save the room their words
+        {/* The weekly schedule, Settings and Stats as icons to save the room their words
             took, then whatever's on right now - the one time-sensitive
             thing here - anchored at the very end, visible at every width. */}
         <div className="ml-auto flex min-w-0 items-center gap-1">
@@ -200,7 +200,6 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
           <div className="min-[1100px]:hidden">
             <ReposMenu repos={repos} variant="icon" />
           </div>
-          <SearchHint />
           {ICON_LINKS.map((l) => (
             <Link
               key={l.href}
@@ -256,21 +255,14 @@ function Mark() {
   );
 }
 
-/** Opens the ⌘K palette. Icon-only - the label cost more room than it was
- *  worth once search sat alongside two other icons and a badge. */
-function SearchHint() {
+/** The weekly schedule: a week grid with a block pencilled in. */
+function PlanIcon() {
   return (
-    <button
-      onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-n-500 transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-700"
-      aria-label="Search"
-      title="Search"
-    >
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-        <circle cx="7" cy="7" r="4.6" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M10.6 10.6L14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-    </button>
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <rect x="4.6" y="8.6" width="4.2" height="2.6" rx="0.8" fill="currentColor" />
+    </svg>
   );
 }
 

@@ -70,6 +70,12 @@ work; a night that starts before midnight belongs to that evening).
 Backspace on one night leaves just that night off. It's counted in the free
 time, but never synced to Google and left out of the calendar view and PDF.
 
+**Tweaks (20/10).** Sleep defaults to midnight-08:00 (a bedtime still on
+the old 01:00 default moved with it) and shows as just "Sleep". Only
+coursework and quizzes appear as Due on the plan. The search icon in the nav
+is now the weekly schedule's - ⌘K / Ctrl-K still searches. Free time is
+shown after the day's last entry too, up to midnight.
+
 **PDF** - landscape overview of the range, then a portrait page per day
 drawn to scale (same hours on every page so they line up), a pencil-sized
 box on every planned block and deadline, five blank to-do boxes and ruled

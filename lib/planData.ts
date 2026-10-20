@@ -6,6 +6,8 @@ import { isGoogleConfigured, listCalendars } from "./google";
 import { syncState, type SyncState } from "./plan";
 import { DEFAULT_SLEEP, type Sleep } from "./planView";
 
+const PLAN_DUE_KINDS = ["COURSEWORK", "QUIZ"];
+
 /** A planned block as the editor sees it. ISO strings cross to the client. */
 export type PlanBlockView = {
   id: string;
@@ -53,7 +55,9 @@ export async function getPlan(from: Date, days: number) {
   ]);
 
   return {
-    fixed: items,
+    // Only coursework and quizzes are "due" on the plan - ad-hoc tasks and
+    // the rest have their own lists and would crowd each day's header.
+    fixed: items.filter((i) => i.source !== "deadline" || PLAN_DUE_KINDS.includes(i.kind ?? "")),
     blocks: blocks.filter((b) => !b.deletedAt).map(toView),
     /** Removed blocks whose Google event is still to be deleted. */
     removed: blocks.filter((b) => b.deletedAt).length,

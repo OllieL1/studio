@@ -128,7 +128,7 @@ export function timeLabel(row: Row): string {
 /* ── Sleep ───────────────────────────────────────────────────────────────── */
 
 export type Sleep = { on: boolean; from: number; to: number };
-export const DEFAULT_SLEEP: Sleep = { on: true, from: 60, to: 8 * 60 };
+export const DEFAULT_SLEEP: Sleep = { on: true, from: 0, to: 8 * 60 };
 
 /**
  * One sleep per night across the range, as calendar items so they sit in

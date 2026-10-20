@@ -478,6 +478,11 @@ function DaySection({
   const instead = (key: string) => draft?.editing && blockKey(draft.editing.id) === key;
 
   let lastEnd = -1;
+  // The entry that runs latest - the end-of-day free time is measured from it.
+  const last = day.rows.reduce<Exclude<Row<PlanBlockView>, { type: "empty" }> | null>(
+    (best, r) => (r.type !== "empty" && (!best || r.end > best.end) ? r : best),
+    null,
+  );
 
   return (
     <section
@@ -542,15 +547,7 @@ function DaySection({
           return (
             <Fragment key={row.key}>
               {gap >= GAP_WORTH_SHOWING && !draft && prev && (
-                <button
-                  onClick={() => onCompose(prev.key, "below")}
-                  className="group/gap flex w-full items-center gap-3 px-2 py-0.5 text-left"
-                >
-                  <span className="w-[110px] shrink-0" />
-                  <span className="h-px flex-1 border-t border-dashed border-n-200" />
-                  <span className="font-num text-[10.5px] text-n-400 group-hover/gap:text-rust-600">{fmtLength(gap)} free</span>
-                  <span className="h-px w-6 border-t border-dashed border-n-200" />
-                </button>
+                <FreeGap minutes={gap} onClick={() => onCompose(prev.key, "below")} />
               )}
               {before(row.key) && composer(draft!)}
               {instead(row.key) ? composer(draft!) : (
@@ -568,8 +565,24 @@ function DaySection({
             </Fragment>
           );
         })}
+        {/* And whatever's left of the evening, up to midnight. */}
+        {last && 24 * 60 - last.end >= GAP_WORTH_SHOWING && !draft && (
+          <FreeGap minutes={24 * 60 - last.end} onClick={() => onCompose(last.key, "below")} />
+        )}
       </div>
     </section>
+  );
+}
+
+/** "2h free" between entries - click it to fill it. */
+function FreeGap({ minutes, onClick }: { minutes: number; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="group/gap flex w-full items-center gap-3 px-2 py-0.5 text-left">
+      <span className="w-[110px] shrink-0" />
+      <span className="h-px flex-1 border-t border-dashed border-n-200" />
+      <span className="font-num text-[10.5px] text-n-400 group-hover/gap:text-rust-600">{fmtLength(minutes)} free</span>
+      <span className="h-px w-6 border-t border-dashed border-n-200" />
+    </button>
   );
 }
 
@@ -652,9 +665,7 @@ function RowView({
             </>
           ) : hidden ? (
             <span className="text-n-400">Left off this plan · Backspace to put back</span>
-          ) : asleep ? (
-            <span className="text-n-400">{row.startsBefore ? "From last night · " : ""}Not synced · change times in the sidebar</span>
-          ) : (
+          ) : asleep ? null : (
             <>
               {row.startsBefore && <span className="text-n-400">Continues from {WEEKDAY[(new Date(row.item.start).getDay() + 6) % 7]} · </span>}
               {fixedMeta(row.item)}

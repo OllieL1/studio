@@ -472,7 +472,7 @@ model Preference {
   /// night so the free time around it is honest; never synced to Google.
   /// An end at or before the start runs past midnight.
   sleepOn   Boolean @default(true)
-  sleepFrom Int     @default(60)
+  sleepFrom Int     @default(0)
   sleepTo   Int     @default(480)
 
   updatedAt DateTime @updatedAt
