@@ -13,6 +13,9 @@
 export const MIN_COMPARE = 3;
 /** An artist needs this many sessions before it appears in focus-by-artist. */
 export const MIN_ARTIST_SESSIONS = 2;
+/** In a session, an artist counts if they played this long, or this share of it. */
+const ARTIST_MIN_MINUTES = 20;
+const ARTIST_MIN_SHARE = 0.25;
 
 export type MusicTrack = {
   spotifyId: string | null;
@@ -103,6 +106,29 @@ export function musicStats(all: MusicSession[]) {
     focus: a.minutes > 0 ? a.focusWeighted / a.minutes : null,
   }));
 
+  // ── Focus by artist: an artist only counts toward a session they actually
+  // shaped — a quarter of the session or 20+ minutes — so one stray play in a
+  // playlist doesn't tie them to that session's focus.
+  const focusArtists = new Map<string, { minutes: number; sessions: number; focusWeighted: number }>();
+  for (const s of withMusic) {
+    const perArtist = new Map<string, number>();
+    for (const t of s.tracks) perArtist.set(t.artist, (perArtist.get(t.artist) ?? 0) + t.minutes);
+    for (const [artist, mins] of perArtist) {
+      if (mins < ARTIST_MIN_MINUTES && mins < s.rawMinutes * ARTIST_MIN_SHARE) continue;
+      const a = focusArtists.get(artist) ?? { minutes: 0, sessions: 0, focusWeighted: 0 };
+      a.minutes += mins;
+      a.sessions += 1;
+      a.focusWeighted += s.focus * mins;
+      focusArtists.set(artist, a);
+    }
+  }
+  const focusArtistRows = [...focusArtists.entries()].map(([artist, a]) => ({
+    artist,
+    minutes: a.minutes,
+    sessions: a.sessions,
+    focus: a.minutes > 0 ? a.focusWeighted / a.minutes : null,
+  }));
+
   // ── Variety: distinct artists per hour of listening. Normalised by time, so a
   // three-hour session isn't "more varied" just for being longer.
   const bands = [
@@ -149,7 +175,7 @@ export function musicStats(all: MusicSession[]) {
     silent: quiet,
     musicVsSilence: compare(music, quiet),
     topArtists: [...artistRows].sort((a, b) => b.minutes - a.minutes).slice(0, 10),
-    focusByArtist: artistRows
+    focusByArtist: focusArtistRows
       .filter((a) => a.sessions >= MIN_ARTIST_SESSIONS && a.focus != null)
       .sort((a, b) => b.focus! - a.focus!)
       .slice(0, 10),

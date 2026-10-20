@@ -1,5 +1,10 @@
 # Enhancement List - Check Off as we go
 
+20/10
+[x] Please can we improve the focus by artist list in the stats page.
+- Artists should only appear in this list for sessions they either played for at least 25% of the session or a minimum of 20 minutes in the session. This gives more usefulness for the stat as it ties the artist more to the session rather than just being a random artist in a playlist that plays twice. Keeping the 2+ sessions make sense. You dont need to display on the UI what the rules behind who appears is, only the stats. 
+
+19/10
 [x] New Feature: Draft Weekly Schedule 
 - Purpose: I like to plan a rough weekly schedule around my fixed events. Essentially time blocking when I want to do my work. This is always subject to change but it is very useful to me.
 - How I want it to work:

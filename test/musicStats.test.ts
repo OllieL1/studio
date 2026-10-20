@@ -63,10 +63,26 @@ test("top artists rank by listening time", () => {
 });
 
 test("focus by artist is weighted by how much of that artist each session had", () => {
-  // A dominates a 90-focus session and is a sliver of a 30-focus one.
-  const stats = musicStats([s(90, 60, [t("A", 50)]), s(30, 60, [t("A", 10), t("B", 45)])]);
+  // A has 50 of 60 minutes in a 90-focus session and 20 in a 30-focus one (both qualify).
+  const stats = musicStats([s(90, 60, [t("A", 50)]), s(30, 60, [t("A", 20), t("B", 30)])]);
   const a = stats.focusByArtist.find((x) => x.artist === "A")!;
-  approx(a.focus!, (90 * 50 + 30 * 10) / 60, "leans towards the session A mostly soundtracked");
+  approx(a.focus!, (90 * 50 + 30 * 20) / 70, "leans towards the session A mostly soundtracked");
+});
+
+test("an artist only counts for a session where they played 25% of it or 20+ minutes", () => {
+  // 15 of 60 min = 25% qualifies; 14 of 60 min (<25%, <20 min) does not.
+  const quarter = musicStats([s(80, 60, [t("Q", 15)]), s(60, 60, [t("Q", 15)])]);
+  assert.deepEqual(quarter.focusByArtist.map((a) => a.artist), ["Q"]);
+  const sliver = musicStats([s(80, 60, [t("X", 14)]), s(60, 60, [t("X", 14)])]);
+  assert.deepEqual(sliver.focusByArtist, []);
+  // 20 minutes qualifies even when it is under a quarter of a long session.
+  const long = musicStats([s(80, 120, [t("L", 20)]), s(60, 120, [t("L", 20)])]);
+  assert.deepEqual(long.focusByArtist.map((a) => a.artist), ["L"]);
+});
+
+test("sessions where an artist was only a sliver don't count towards their 2+ sessions", () => {
+  const stats = musicStats([s(80, 60, [t("Y", 30)]), s(60, 60, [t("Y", 5)])]);
+  assert.deepEqual(stats.focusByArtist, []);
 });
 
 test("artists heard in only one session are left out of focus-by-artist", () => {
