@@ -623,6 +623,9 @@ function RowView({
     : cssColour(row.item.colour) || (row.item.source === "google" ? "var(--color-info)" : "var(--color-n-400)");
   const hidden = row.type === "fixed" && row.hidden;
   const asleep = row.type === "fixed" && row.item.source === "sleep";
+  // Sleep has no subtitle (unless it's been left off), so its one line is
+  // centred against the time instead of hanging from the top.
+  const oneLine = asleep && !hidden;
 
   return (
     <div
@@ -632,11 +635,12 @@ function RowView({
       onClick={onSelect}
       onDoubleClick={onOpen}
       className={clsx(
-        "group/row relative flex scroll-mb-32 scroll-mt-24 items-start gap-3 rounded-md px-2 py-2 transition-colors duration-[120ms]",
+        "group/row relative flex scroll-mb-32 scroll-mt-24 gap-3 rounded-md px-2 py-2 transition-colors duration-[120ms]",
+        oneLine ? "items-center" : "items-start",
         selected ? "bg-rust-50 ring-1 ring-inset ring-rust-200" : "hover:bg-n-25",
       )}
     >
-      <span className={clsx("font-num w-[110px] shrink-0 whitespace-nowrap pt-px text-[12.5px]", isBlock ? "font-semibold text-n-800" : asleep ? "text-n-400" : "text-n-500", hidden && "line-through")}>
+      <span className={clsx("font-num w-[110px] shrink-0 whitespace-nowrap text-[12.5px]", !oneLine && "pt-px", isBlock ? "font-semibold text-n-800" : asleep ? "text-n-400" : "text-n-500", hidden && "line-through")}>
         <TimeRange row={row} />
       </span>
 
@@ -644,7 +648,7 @@ function RowView({
       {isBlock ? (
         <span aria-hidden className="mt-[3px] h-[13px] w-[13px] shrink-0 rounded-[4px] border-[1.5px]" style={{ borderColor: colour, background: `color-mix(in oklab, ${colour} 12%, var(--color-n-0))` }} />
       ) : asleep ? (
-        <MoonIcon />
+        <MoonIcon centred={oneLine} />
       ) : (
         <span aria-hidden className="mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: colour, opacity: hidden ? 0.4 : 1 }} />
       )}
@@ -656,7 +660,7 @@ function RowView({
         )}>
           {isBlock ? row.block.title : row.item.title}
         </p>
-        <p className="truncate text-[11.5px] leading-4 text-n-500">
+        <p className={clsx("truncate text-[11.5px] leading-4 text-n-500", oneLine && "hidden")}>
           {isBlock ? (
             <>
               {course && <span className="font-medium" style={{ color: colour }}>{course.shortName}</span>}
@@ -857,9 +861,9 @@ function clashes(day: PlanDay<PlanBlockView>, slot: { start: number; end: number
     .map((r) => (r.type === "block" ? r.block.title : r.type === "fixed" ? r.item.title : ""));
 }
 
-function MoonIcon() {
+function MoonIcon({ centred }: { centred: boolean }) {
   return (
-    <svg aria-hidden width="13" height="13" viewBox="0 0 14 14" fill="none" className="mt-[3px] shrink-0 text-n-400">
+    <svg aria-hidden width="13" height="13" viewBox="0 0 14 14" fill="none" className={clsx("shrink-0 text-n-400", !centred && "mt-[3px]")}>
       <path d="M11.5 8.6A5 5 0 0 1 5.4 2.5a5 5 0 1 0 6.1 6.1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
   );
