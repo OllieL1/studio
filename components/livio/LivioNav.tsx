@@ -51,7 +51,9 @@ export function LivioNav() {
               href={l.href as Route}
               className={clsx(
                 "shrink-0 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-[120ms]",
-                isActive(l.href) ? "bg-rust-100 text-rust-700" : "text-n-600 hover:bg-n-50 hover:text-n-800",
+                // Hover only brightens the words: a hover pill read as a
+                // second active page, the tints are that close in dark mode.
+                isActive(l.href) ? "bg-rust-100 text-rust-700" : "text-n-600 hover:text-n-900",
               )}
             >
               {l.label}

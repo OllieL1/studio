@@ -118,7 +118,7 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
                 "rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-[120ms]",
                 isActive(l.href)
                   ? "bg-rust-100 text-rust-700"
-                  : "text-n-600 hover:bg-n-50 hover:text-n-800",
+                  : "text-n-600 hover:text-n-900",
               )}
             >
               {l.label}
@@ -137,7 +137,7 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
                 "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-[120ms]",
                 pathname.startsWith("/courses")
                   ? "bg-rust-100 text-rust-700"
-                  : "text-n-600 hover:bg-n-50 hover:text-n-800",
+                  : "text-n-600 hover:text-n-900",
               )}
             >
               Courses
