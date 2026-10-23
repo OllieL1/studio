@@ -13,6 +13,7 @@ const LINKS: { href: string; label: string }[] = [
   { href: LIVIO_BASE, label: "Home" },
   { href: `${LIVIO_BASE}/todo`, label: "Todo" },
   { href: `${LIVIO_BASE}/careers`, label: "Careers" },
+  { href: `${LIVIO_BASE}/reading`, label: "Reading" },
 ];
 
 /** Studio's nav, pared down: Livio has no timer, courses or repos. */

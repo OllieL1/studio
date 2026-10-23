@@ -697,3 +697,31 @@ model NotionInboxItem {
   toCalendar Boolean   @default(false)
   pulledAt   DateTime  @default(now())
 }
+
+/// Livio's reading list: a book, article, blog, website or paper - what's
+/// being read, what's wanted, and the log of what's done, with how long it
+/// took and how much it was enjoyed. Types and statuses live in lib/reading.ts.
+model ReadingItem {
+  id     String  @id @default(cuid())
+  title  String  @default("")
+  author String?
+  /// BOOK | ARTICLE | BLOG | WEBSITE | PAPER
+  type   String
+  /// WANT | READING | FINISHED | ABANDONED
+  status String
+
+  startedAt  DateTime?
+  /// When it ended - finished or abandoned.
+  finishedAt DateTime?
+  /// ½ to 5, in halves.
+  rating     Float?
+  link       String?
+  /// One line worth remembering - it's what the share card quotes.
+  takeaway   String?
+  notesMd    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}

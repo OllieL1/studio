@@ -65,6 +65,8 @@ export function DataTable<R>({
   focus,
   empty,
   layout = "fit",
+  onRowKey,
+  onCursor,
 }: {
   rows: R[];
   columns: Column<R>[];
@@ -83,6 +85,10 @@ export function DataTable<R>({
   focus?: { id: string; column?: string; edit?: boolean; nonce: number } | null;
   empty?: React.ReactNode;
   layout?: "fit" | "full";
+  /** A page's own keys on the row under the cursor; return true if handled. */
+  onRowKey?: (row: R, e: KeyboardEvent) => boolean;
+  /** Told whenever the cursor lands on a row, or leaves the table. */
+  onCursor?: (row: R | null) => void;
 }) {
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [editing, setEditing] = useState(false);
@@ -128,6 +134,12 @@ export function DataTable<R>({
   };
 
   const current = cursor ? rows[cursor.row] : undefined;
+  const currentId = current ? rowId(current) : null;
+  useEffect(() => {
+    onCursor?.(current ?? null);
+    // Only when the row under the cursor changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId]);
   const column = cursor ? columns[cursor.col] : undefined;
   const canEdit = (r: R | undefined, c: Column<R> | undefined) => !!r && !!c && (c.editable?.(r) ?? true);
 
@@ -168,6 +180,10 @@ export function DataTable<R>({
           return;
       }
       if (!current) return;
+      if (onRowKey?.(current, e)) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === "Enter" || e.key === "e" || e.key === "F2") {
         if (canEdit(current, column)) { e.preventDefault(); setEditing(true); }
       } else if ((e.key === " " || e.key === "o") && onOpen) {

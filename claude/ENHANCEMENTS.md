@@ -23,7 +23,7 @@ We should display an alert for cold emails if it has been longer than 2 weeks. T
 - Todos should also pull from a Notion database. This will allow me on my phone to create todos that when I next log into my computer and launch this app, it pulls the latest tasks. The database in notion is called To-do and has 4 properties: Task (text), Status (Not Started, In Progress, Done), Deadline (Date), Synced (Boolean). When we pull these in, it should display them at the top allowing us to give them the proper relevant properties if needby. They can then be marked as entered and then they join the rest of the entries. Then we can write back to Notion and update the synced property. 
 - We should be able to sync these tasks to google calendar. 
 - We do not need to display Studio tasks on this page. They will display on the home page but this page will be for more generic tasks. The Notion tasks can get written to Studio. 
-[] Reading list 
+[x] Reading list 
 - Reading list page for what I am currently reading. This may be a website, book, blog etc. 
 - Nice to keep a log and have some stats and metrics. We can have start date and end date, and an enjoyment rating as well as a link for properties. 
 - Use a similar : menu as the careers page please 

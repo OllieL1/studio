@@ -21,6 +21,8 @@ export function CardGrid<R>({
   keysActive,
   focus,
   empty,
+  onRowKey,
+  onCursor,
 }: {
   rows: R[];
   rowId: (row: R) => string;
@@ -32,12 +34,19 @@ export function CardGrid<R>({
   keysActive: boolean;
   focus?: { id: string; nonce: number } | null;
   empty?: React.ReactNode;
+  onRowKey?: (row: R, e: KeyboardEvent) => boolean;
+  onCursor?: (row: R | null) => void;
 }) {
   const ids = useMemo(() => rows.map(rowId), [rows, rowId]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const grid = useRef<HTMLDivElement>(null);
   const handled = useRef<number | null>(null);
   const active = activeId ? ids.indexOf(activeId) : -1;
+  useEffect(() => {
+    onCursor?.(active >= 0 ? rows[active] : null);
+    // Only when the card under the cursor changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
   // A card that's gone (deleted, filtered out) takes the cursor with it.
   useLayoutEffect(() => {
@@ -97,6 +106,10 @@ export function CardGrid<R>({
           return;
       }
       if (!current) return;
+      if (onRowKey?.(current, e)) {
+        e.preventDefault();
+        return;
+      }
       if ((e.key === " " || e.key === "o" || e.key === "Enter") && onOpen) {
         e.preventDefault();
         onOpen(current);
