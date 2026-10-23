@@ -4,7 +4,7 @@
 Ths biggest change so far. I would like to build a partner app for Studio that generalises towards the rest of my life. This should work with Studios data but be its own site. 
 We will call this site Livio (Liv(ing) + IO)
 Purpose: provide a more generalised life hub site. The pages will be detailed below:
-[] Home - this is where the magic happens. A beautiful minimalist page pulling in key studio stats, most recent sessions, todays tasks and events, careers stuff, reminders etc. 
+[x] Home - this is where the magic happens. A beautiful minimalist page pulling in key studio stats, most recent sessions, todays tasks and events, careers stuff, reminders etc. 
 [x] Careers - job apps and cold emails management system. Has to be incredibly usable with the keyboard. Type : for a small modal menu to come up with commands like help (for keybinds), cold email (new cold email entry), application (new application entry), :s <search term>, :f ENTER should open a filtering menu, :^ <property> sort up, :!^ <property> sort down
 - Careers should be a table view with properties
 - Company
@@ -30,11 +30,11 @@ We should display an alert for cold emails if it has been longer than 2 weeks. T
 - Make it easy to share as well 
 
 Design
-[] Follow studios design principles with always looking gorgeous, feeling great to use and adhering to best practises. 
+[x] Follow studios design principles with always looking gorgeous, feeling great to use and adhering to best practises. 
 [x] Lets have a gentle purple colour scheme for this site. 
 [x] It should be easy to switch between studio and this site. 
-[] They should be completely integrated with one another
-[] We should have a preferences page here as well for light dark mode and the different connections. Spotify integration is not needed for this site neither is Github. Google is needed, as is Notion.
+[x] They should be completely integrated with one another
+[x] We should have a preferences page here as well for light dark mode and the different connections. Spotify integration is not needed for this site neither is Github. Google is needed, as is Notion.
 
 21/10
 I'd like to make some fixes to the weekly schedule page
