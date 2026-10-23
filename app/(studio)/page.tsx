@@ -6,7 +6,7 @@ import {
   getCourses, getOverall, getDayTasks, getComingUp, getOverdue,
   getHeadlineStats, getDailySeries,
 } from "@/lib/queries";
-import { fmtDateLong, fmtDuration, fmtHM, fmtRelative, daysUntil } from "@/lib/dates";
+import { fmtDateLong, fmtDuration, fmtHM, fmtRelative, daysUntil, greeting } from "@/lib/dates";
 import { Card, Eyebrow, EmptyState, ProgressBar, SectionHeading, Stat, Pill } from "@/components/ui";
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
@@ -359,12 +359,4 @@ function CourseCard({ course }: { course: Awaited<ReturnType<typeof getCourses>>
       </div>
     </Card>
   );
-}
-
-function greeting(d: Date): string {
-  const h = d.getHours();
-  if (h < 5) return "Still up";
-  if (h < 12) return "Morning";
-  if (h < 18) return "Afternoon";
-  return "Evening";
 }

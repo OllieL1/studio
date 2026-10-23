@@ -1,5 +1,41 @@
 # Enhancement List - Check Off as we go
 
+23/10 
+Ths biggest change so far. I would like to build a partner app for Studio that generalises towards the rest of my life. This should work with Studios data but be its own site. 
+We will call this site Livio (Liv(ing) + IO)
+Purpose: provide a more generalised life hub site. The pages will be detailed below:
+[] Home - this is where the magic happens. A beautiful minimalist page pulling in key studio stats, most recent sessions, todays tasks and events, careers stuff, reminders etc. 
+[] Careers - job apps and cold emails management system. Has to be incredibly usable with the keyboard. Type : for a small modal menu to come up with commands like help (for keybinds), cold email (new cold email entry), application (new application entry), :s <search term>, :f ENTER should open a filtering menu, :^ <property> sort up, :!^ <property> sort down
+- Careers should be a table view with properties
+- Company
+- Cold email or job app
+- Date sent 
+- Status: cold email (Email Sent, Back and Forth, Waiting, Interview) job app (Applied,Interview) shared between both (To Do, Offered, Rejected)
+- App link/company link 
+- App deadline (if type app)
+We should display an alert for cold emails if it has been longer than 2 weeks. This should also flag on the home page. 
+- This page should be really easy to use. Properties and rows should be arrow navigateable, search lookup should be powerful, filtering and sort should be easy. No element should look out of place, it should all be carefully decided. 
+[] CV Page
+- I have another project sitting in /Users/ollie/Documents/projects/cv
+- I want to fully build this into this site. It is a CV builder with defaults, tailored versions. We should entirely integrate this into the site so that the two projects are not separate. We should be able to tie a tailored CV to a career entry i.e. to a cold email or job app.
+[] Todo - a generalised todo. 
+- Todos from here should be able to be pulled into Studio if assigned a course but they dont have to be assigned a course
+- Todos should also pull from a Notion database. This will allow me on my phone to create todos that when I next log into my computer and launch this app, it pulls the latest tasks. The database in notion is called To-do and has 4 properties: Task (text), Status (Not Started, In Progress, Done), Deadline (Date), Synced (Boolean). When we pull these in, it should display them at the top allowing us to give them the proper relevant properties if needby. They can then be marked as entered and then they join the rest of the entries. Then we can write back to Notion and update the synced property. 
+- We should be able to sync these tasks to google calendar. 
+- We do not need to display Studio tasks on this page. They will display on the home page but this page will be for more generic tasks. The Notion tasks can get written to Studio. 
+[] Reading list 
+- Reading list page for what I am currently reading. This may be a website, book, blog etc. 
+- Nice to keep a log and have some stats and metrics. We can have start date and end date, and an enjoyment rating as well as a link for properties. 
+- Use a similar : menu as the careers page please 
+- Make it easy to share as well 
+
+Design
+[] Follow studios design principles with always looking gorgeous, feeling great to use and adhering to best practises. 
+[x] Lets have a gentle purple colour scheme for this site. 
+[x] It should be easy to switch between studio and this site. 
+[] They should be completely integrated with one another
+[] We should have a preferences page here as well for light dark mode and the different connections. Spotify integration is not needed for this site neither is Github. Google is needed, as is Notion.
+
 21/10
 I'd like to make some fixes to the weekly schedule page
 [x] n should jump to now (i.e. the event closest to the current time)

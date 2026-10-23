@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { courseHref } from "@/lib/types";
 import { Wordmark } from "./Wordmark";
+import { AppSwitch } from "./AppSwitch";
 import { ActiveNow } from "./ActiveNow";
 import { cssColour } from "@/lib/palette";
 import { MoodleIcon } from "./MoodleIcon";
@@ -70,7 +71,7 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
   return (
     <header ref={headerRef} className="sticky top-0 z-40 border-b border-n-100 bg-n-25/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-1 px-4 sm:px-8">
-        <Link href="/" className="mr-2 flex min-w-0 items-center gap-2.5 sm:mr-4">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
           <Mark />
           <Wordmark className="text-[17px]" />
           {process.env.NODE_ENV === "development" && (
@@ -83,6 +84,9 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
           )}
           <span className="font-num hidden text-[11px] font-medium text-n-400 sm:inline">26/27</span>
         </Link>
+        <div className="mr-1 ml-1 sm:mr-3">
+          <AppSwitch />
+        </div>
 
         {/* A hamburger takes over below `lg`, in this same slot. Below that the
             links, Courses, the repo icon and the live badge can't all fit: at
@@ -203,7 +207,7 @@ export function Nav({ courses, repos }: { courses: CourseLink[]; repos: RepoMenu
           {ICON_LINKS.map((l) => (
             <Link
               key={l.href}
-              href={l.href}
+              href={l.href as Route}
               title={l.label}
               aria-label={l.label}
               className={clsx(

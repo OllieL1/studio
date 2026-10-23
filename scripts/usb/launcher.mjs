@@ -175,6 +175,8 @@ async function start(server, dbFile) {
     const h = await health();
     if (h?.app === "studio" && h.ok) {
       say(`Ready in ${((Date.now() - started) / 1000).toFixed(1)}s → ${URL_}`);
+      // Livio is served by this same process; /livio works on every host.
+      say(`Livio is at ${URL_}/livio`);
       say();
       say("Keep this window open while you use Studio.");
       say("When you're done: close this window, then eject the stick.");

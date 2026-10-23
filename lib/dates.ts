@@ -197,3 +197,12 @@ export function fmtAgo(d: Date, from: Date = new Date()): string {
   if (days < 7) return `${days}d ago`;
   return fmtDayDate(d);
 }
+
+/** The home pages' hello, by time of day. */
+export function greeting(d: Date): string {
+  const h = d.getHours();
+  if (h < 5) return "Still up";
+  if (h < 12) return "Morning";
+  if (h < 18) return "Afternoon";
+  return "Evening";
+}

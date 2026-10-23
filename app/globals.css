@@ -164,6 +164,80 @@
   --syn-attr: #D08A95;
 }
 
+/* ── Livio ─────────────────────────────────────────────────────────────────
+   Livio's root layout sets data-app="livio" on <html>. It repoints the same
+   tokens rather than adding new ones, so every shared component (ui.tsx,
+   modals, pickers) turns violet without knowing which app it's in.
+
+   Computed, not chosen: Studio's rust and stone ramps taken into OKLCH, each
+   step's lightness and chroma kept, hue turned to 292°. Livio is exactly as
+   muted as Studio, and contrast matches step for step (white on 500 is
+   4.30:1 against rust's 4.32:1).                                          */
+:root[data-app="livio"] {
+  --color-rust-50: #f6f5fb;
+  --color-rust-100: #e8e6f5;
+  --color-rust-200: #cfcbea;
+  --color-rust-300: #b0a8db;
+  --color-rust-400: #9588cc;
+  --color-rust-500: #7e70b7;
+  --color-rust-600: #695c9c;
+  --color-rust-700: #53487b;
+  --color-rust-800: #3d365b;
+  --color-rust-900: #2a253d;
+
+  --color-n-0: #ffffff;
+  --color-n-25: #fafafc;
+  --color-n-50: #f3f3f7;
+  --color-n-100: #e8e8ee;
+  --color-n-200: #d7d6e0;
+  --color-n-300: #b9b7c4;
+  --color-n-400: #8f8d9b;
+  --color-n-500: #6f6d79;
+  --color-n-600: #53515c;
+  --color-n-700: #3d3c44;
+  --color-n-800: #27262c;
+  --color-n-900: #18171b;
+
+  --scrim: rgb(24 23 27 / 0.25);
+  --scrim-strong: rgb(24 23 27 / 0.8);
+  --shadow-pop: 0 4px 16px -4px rgb(24 23 27 / 0.1);
+  --shadow-modal: 0 16px 48px -12px rgb(24 23 27 / 0.18);
+}
+
+:root[data-app="livio"][data-theme="dark"] {
+  --color-rust-50: #1d1b26;
+  --color-rust-100: #272434;
+  --color-rust-200: #38344c;
+  --color-rust-300: #50496f;
+  --color-rust-400: #675c94;
+  --color-rust-500: #7768af;
+  --color-rust-600: #9083c9;
+  --color-rust-700: #aa9fdd;
+  --color-rust-800: #c5beee;
+  --color-rust-900: #e1ddfa;
+
+  --color-n-0: #19181c;
+  --color-n-25: #121215;
+  --color-n-50: #1f1f24;
+  --color-n-100: #29282e;
+  --color-n-200: #36343e;
+  --color-n-300: #514e5f;
+  --color-n-400: #838093;
+  --color-n-500: #a09db1;
+  --color-n-600: #bab7cc;
+  --color-n-700: #d5d3e4;
+  --color-n-800: #e6e4f1;
+  --color-n-900: #f3f1fa;
+
+  --dot: #2a2830;
+  --scrim: rgb(0 0 0 / 0.55);
+  --scrim-strong: rgb(0 0 0 / 0.85);
+  --selection-bg: #38344c;
+  --selection-fg: #e1ddfa;
+  --shadow-pop: 0 4px 18px -4px rgb(0 0 0 / 0.55);
+  --shadow-modal: 0 20px 56px -12px rgb(0 0 0 / 0.7);
+}
+
 * {
   border-color: var(--color-n-100);
 }

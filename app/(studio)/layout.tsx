@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, JetBrains_Mono, Lato } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
+import { fontVariables } from "../fonts";
 import { Nav } from "@/components/Nav";
 import { repoMenu } from "@/lib/githubData";
 import { TimerBar } from "@/components/TimerBar";
@@ -14,34 +14,6 @@ import { isStudyLocation, visibleCourseWhere } from "@/lib/types";
 import { getPreferences } from "@/lib/preferences";
 import { isGoogleConfigured } from "@/lib/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  axes: ["SOFT", "WONK", "opsz"],
-});
-
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
-/** Body text for live notes - rendered (`.prose-notes`) and while actually
- *  typing (`.editor-raw`), both in globals.css. */
-const lato = Lato({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-lato",
-  display: "swap",
-});
 
 /**
  * The browser paints its own canvas before our first byte lands, and it picks
@@ -93,7 +65,7 @@ export default async function RootLayout({
     <html
       lang="en-GB"
       data-theme={prefs.theme}
-      className={`${inter.variable} ${fraunces.variable} ${mono.variable} ${lato.variable}`}
+      className={fontVariables}
       // Belt and braces: the page is painted before the stylesheet applies.
       style={{ background: prefs.theme === "dark" ? "#141210" : "#fbfaf8" }}
     >

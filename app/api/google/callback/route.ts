@@ -7,8 +7,13 @@ import { exchangeCode, GOOGLE_SCOPES } from "@/lib/google";
 export async function GET(req: NextRequest) {
   const url = req.nextUrl;
   const base = `${url.protocol}//${url.host}`;
+  const jar = await cookies();
+  // Set by /api/google/auth: Studio's settings, or Livio's preferences.
+  const saved = jar.get("google_oauth_return")?.value;
+  jar.delete("google_oauth_return");
+  const back = saved && /^\/(?![/\\])/.test(saved) ? saved : "/settings";
   const fail = (why: string) =>
-    NextResponse.redirect(new URL(`/settings?google=${why}`, base));
+    NextResponse.redirect(new URL(`${back}?google=${why}`, base));
 
   if (url.searchParams.get("error")) return fail("denied");
 
@@ -16,7 +21,6 @@ export async function GET(req: NextRequest) {
   const state = url.searchParams.get("state");
   if (!code || !state) return fail("missing_code");
 
-  const jar = await cookies();
   const expected = jar.get("google_oauth_state")?.value;
   jar.delete("google_oauth_state");
   if (!expected || expected !== state) return fail("bad_state");
@@ -52,7 +56,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.redirect(new URL("/settings?google=connected", base));
+    return NextResponse.redirect(new URL(`${back}?google=connected`, base));
   } catch {
     return fail("exchange_failed");
   }

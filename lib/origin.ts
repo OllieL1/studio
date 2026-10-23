@@ -27,6 +27,15 @@ export const PORT = Number(process.env.PORT) || 3111;
 /** The friendly name, when /etc/hosts (or the Windows equivalent) knows it. */
 export const HOST_ALIAS = "studio.localhost";
 
+/**
+ * Livio, Studio's partner app, is served by the same process. Its pages live
+ * under /livio, which always works. This alias is a nicer front door to them
+ * (proxy.ts sends its `/` to /livio) and needs its own hosts line:
+ *
+ *   echo "127.0.0.1  livio.localhost" | sudo tee -a /etc/hosts
+ */
+export const LIVIO_HOST_ALIAS = "livio.localhost";
+
 /** Google accepts `localhost` for a loopback redirect. */
 export const LOOPBACK_ORIGIN = `http://localhost:${PORT}`;
 

@@ -6,7 +6,7 @@ import { disconnectGoogle, setCalendarTarget } from "@/app/actions";
 import { setPlanCalendar } from "@/app/planActions";
 import { Card, Eyebrow } from "./ui";
 import { clsx } from "@/lib/clsx";
-import { GOOGLE_REDIRECT_URI } from "@/lib/origin";
+import { GOOGLE_REDIRECT_URI, LOOPBACK_ORIGIN } from "@/lib/origin";
 
 /** Google Calendar connection state and setup instructions. */
 export function GooglePanel({
@@ -17,6 +17,7 @@ export function GooglePanel({
   planCalendarId,
   calendars,
   linkedCount,
+  returnTo = "/settings",
 }: {
   configured: boolean;
   connected: boolean;
@@ -26,6 +27,8 @@ export function GooglePanel({
   planCalendarId: string | null;
   calendars: { id: string; summary: string; primary: boolean }[];
   linkedCount: number;
+  /** Where Google's sign-in comes back to. */
+  returnTo?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -75,8 +78,11 @@ export function GooglePanel({
               Disconnect
             </button>
           ) : (
+            // Started on the loopback origin, not wherever the page is: Google
+            // redirects back to localhost, and the state cookie has to be set
+            // on the host it returns to - from studio.localhost it wasn't.
             <a
-              href="/api/google/auth"
+              href={`${LOOPBACK_ORIGIN}/api/google/auth?return=${encodeURIComponent(returnTo)}`}
               className={clsx(
                 "rounded-md px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors duration-[120ms]",
                 configured ? "bg-rust-500 hover:bg-rust-600" : "pointer-events-none bg-n-300",

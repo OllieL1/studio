@@ -281,6 +281,22 @@ model GoogleAuth {
   updatedAt    DateTime @updatedAt
 }
 
+/// Livio's Notion connection: an internal-integration secret and the To-do
+/// database it was shared with. Pasted in Livio's preferences - no OAuth, so
+/// it works from the stick without a redirect URI.
+model NotionAuth {
+  id           String    @id @default("singleton")
+  token        String
+  databaseId   String
+  /// The database's single data source, which is what gets queried.
+  dataSourceId String
+  /// The database's title, shown so it's obvious which one is connected.
+  title        String?
+  lastPulledAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
 /// A uni event that isn't a piece of work — a supervisor meeting, a talk, a
 /// careers fair. Lives on the calendar, can be tied to a course, and can be
 /// pushed to Google. One-off by design.

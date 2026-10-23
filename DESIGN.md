@@ -252,3 +252,35 @@ written onto `<html data-theme>` with the surface colour inline, and
 `generateViewport` sets `color-scheme` so even the browser's pre-paint canvas
 is the right colour. Verified by recording paint frames over a throttled
 connection: reload, in-app navigation and back produce no light frame.
+
+## Livio (23 Oct 2026)
+
+Livio, Studio's partner app for everything outside the degree, is served by the
+same process with its own root layout (`app/(livio)/layout.tsx`). It follows
+every rule in this file. Only the hue changes.
+
+**Dusty violet, computed rather than picked.** Each step of the rust and stone
+ramps was taken into OKLCH, its lightness and chroma were kept, and its hue was
+turned to 292°. So Livio is exactly as muted as Studio, and contrast matches
+step for step: white on `500` is 4.30:1 (rust 4.32:1), and `600` on the page is
+5.58:1. The neutrals become a cool stone with a faint violet tint, for the same
+reason Studio's are warm: a pure grey next to a tinted primary looks cheap.
+
+| Token | Light | Dark |
+|---|---|---|
+| `500` primary | `#7E70B7` | `#7768AF` |
+| `600` links | `#695C9C` | `#9083C9` |
+| `n-25` page | `#FAFAFC` | `#121215` |
+
+**Same tokens, repointed.** `:root[data-app="livio"]` in `app/globals.css`
+redefines `--color-rust-*` and `--color-n-*`, so `bg-rust-500` is violet in
+Livio. Shared components never need to know which app they're in. The class
+names still say "rust"; read them as "accent".
+
+**Wordmark and mark.** "Liv" + "io", with "io" in the accent, the same pun as
+Stud + io. Studio's mark is a progress ring and Livio's closes it: a full ring
+around a centre. The favicon is that mark on a violet tile.
+
+**Switching.** There's a ⇄ button beside each wordmark, and ⌘⇧Space from
+anywhere. Paired pages swap (Home ↔ Home, Settings ↔ Preferences) and anything
+else goes to the other app's home. The rules are in `lib/apps.ts`.
