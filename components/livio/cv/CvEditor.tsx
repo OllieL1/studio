@@ -311,16 +311,6 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
           <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" />
         </IconButton>
       )}
-      <span aria-hidden className="mx-0.5 h-4 w-px bg-n-200" />
-      <IconButton label="Import JSON" onClick={() => file.current?.click()}>
-        <path d="M8 10V2.5M5 5.5l3-3 3 3M3 10.5v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2" />
-      </IconButton>
-      <IconButton
-        label="Download JSON"
-        onClick={() => download(new Blob([JSON.stringify(toExport(current?.name ?? "Master", doc), null, 2)], { type: "application/json" }), `cv-${slug(current?.name ?? "master")}.json`)}
-      >
-        <path d="M8 2.5V10M5 7l3 3 3-3M3 10.5v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2" />
-      </IconButton>
     </>
   );
 
@@ -370,6 +360,14 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
         </p>
       )}
 
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-n-100 pt-3">
+        <Small onClick={() => file.current?.click()}>Import JSON</Small>
+        <Small
+          onClick={() => download(new Blob([JSON.stringify(toExport(current?.name ?? "Master", doc), null, 2)], { type: "application/json" }), `cv-${slug(current?.name ?? "master")}.json`)}
+        >
+          Download JSON
+        </Small>
+      </div>
       <input
         ref={file}
         type="file"
@@ -630,6 +628,18 @@ function Remove({ onClick }: { onClick: () => void }) {
     <button type="button" onClick={(e) => { e.preventDefault(); onClick(); }} aria-label="Delete from the master" title="Delete from the master (and every version)"
       className="flex h-6 w-5 items-center justify-center rounded text-n-400 hover:bg-danger-soft hover:text-danger">
       <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+    </button>
+  );
+}
+
+function Small({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-md border border-n-200 px-2 py-1 text-[11.5px] font-medium text-n-600 transition-colors hover:bg-n-50 hover:text-n-800"
+    >
+      {children}
     </button>
   );
 }
