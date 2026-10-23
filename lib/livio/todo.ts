@@ -119,3 +119,19 @@ export function parseTodo(text: string, courses: Course[], now: Date = new Date(
   );
   return parseTask(text, asked, now);
 }
+
+/**
+ * What a title typed on the phone already says: "problem sheet @fp fri !"
+ * arrives with its course, due date and priority set and the words taken
+ * out. A Deadline set in Notion itself wins over a date in the title.
+ */
+export function triageFromTitle(title: string, courses: Course[], now: Date = new Date()) {
+  const p = parseTodo(title, courses, now);
+  const due = p.dueDate || p.dueTime ? parseDue([p.dueDate, p.dueTime].filter(Boolean).join(" "), now) ?? null : null;
+  return {
+    title: p.title.trim() || title.trim(),
+    courseId: p.courseId,
+    dueAt: due,
+    priority: p.priority,
+  };
+}

@@ -395,31 +395,67 @@ export function TodoBoard({
                     key={item.id}
                     ref={ref(key)}
                     onMouseDown={() => setCursor(key)}
-                    className={clsx(
-                      "relative flex min-h-11 items-center gap-3 border-b border-rust-100 px-4 last:border-b-0",
-                      active && "bg-rust-100/60",
-                    )}
+                    className={clsx("relative border-b border-rust-100 px-4 last:border-b-0", active && "bg-rust-100/60")}
                   >
-                    <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-rust-500" />
-                    <span className="min-w-0 flex-1 truncate text-[13.5px] text-n-800">
-                      {editing?.key === key && editing.field === "title" ? (
-                        <InlineInput initial={item.title} onDone={(v) => { setEditing(null); if (v !== undefined) patchInbox(item, { title: v }); }} />
-                      ) : hl(item.title)}
-                    </span>
-                    {item.priority && <Priority />}
-                    {editing?.key === key && editing.field === "due" ? (
-                      <DueInput initial={item.dueAt} now={now} onDone={(d) => { setEditing(null); if (d !== undefined) patchInbox(item, { dueAt: d }); }} />
-                    ) : (
-                      <Due at={item.dueAt} now={now} />
+                    <div className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1.5 py-2">
+                      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-rust-500" />
+                      <span className="min-w-0 flex-1 basis-[180px] truncate text-[13.5px] text-n-800">
+                        {editing?.key === key && editing.field === "title" ? (
+                          <InlineInput initial={item.title} onDone={(v) => { setEditing(null); if (v !== undefined) patchInbox(item, { title: v }); }} />
+                        ) : hl(item.title)}
+                      </span>
+                      {/* Every property, visible and clickable - the keys are a shortcut, not the only way. */}
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {editing?.key === key && editing.field === "due" ? (
+                          <DueInput initial={item.dueAt} now={now} onDone={(d) => { setEditing(null); if (d !== undefined) patchInbox(item, { dueAt: d }); }} />
+                        ) : (
+                          <PropChip
+                            set={!!item.dueAt}
+                            title="Due date (d)"
+                            onClick={() => { setCursor(key); setEditing({ key, field: "due" }); }}
+                          >
+                            {item.dueAt ? <Due at={item.dueAt} now={now} /> : <><Plus /> Date</>}
+                          </PropChip>
+                        )}
+                        <PropChip set={!!course} title="Studio course (m) - entering it sends it there" onClick={() => { setCursor(key); setPicking(key); }}>
+                          {course ? (
+                            <>
+                              <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: cssColour(course.colour) }} />
+                              {course.shortName}
+                            </>
+                          ) : <><Plus /> Course</>}
+                        </PropChip>
+                        <PropChip set={item.priority} title="Priority (p)" onClick={() => { setCursor(key); patchInbox(item, { priority: !item.priority }); }}>
+                          <span className={clsx("font-num font-bold", item.priority ? "text-rust-700" : "")}>!</span>
+                        </PropChip>
+                        <PropChip
+                          set={item.toCalendar}
+                          title={item.toCalendar ? "Goes on your Google Calendar when entered (c)" : "Put it on your Google Calendar too (c)"}
+                          onClick={() => { setCursor(key); patchInbox(item, { toCalendar: !item.toCalendar }); }}
+                        >
+                          <CalendarMark on={item.toCalendar} title="" />
+                        </PropChip>
+                        <button
+                          type="button"
+                          onClick={() => enter(item)}
+                          title="Enter it into your todos (↵)"
+                          className="ml-1 rounded-md bg-rust-500 px-2.5 py-1 text-[11.5px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600"
+                        >
+                          Enter
+                        </button>
+                      </span>
+                    </div>
+                    {active && !editing && picking !== key && (
+                      <p className="animate-fade-in -mt-0.5 flex flex-wrap gap-x-3 gap-y-1 pb-2 pl-[18px] text-[11px] text-n-500">
+                        <span><Kbd>d</Kbd> date</span>
+                        <span><Kbd>m</Kbd> course</span>
+                        <span><Kbd>p</Kbd> priority</span>
+                        <span><Kbd>c</Kbd> calendar</span>
+                        <span><Kbd>e</Kbd> rename</span>
+                        <span><Kbd>↵</Kbd> enter</span>
+                        <span><Kbd>⌫</Kbd> dismiss</span>
+                      </p>
                     )}
-                    <span className={clsx("flex items-center gap-1.5 text-[12px]", course ? "text-n-600" : "text-n-400")}>
-                      {course && <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: cssColour(course.colour) }} />}
-                      {course ? course.shortName : "Livio"}
-                    </span>
-                    <CalendarMark on={item.toCalendar} title={item.toCalendar ? "Goes on your calendar when entered" : "Not going on the calendar"} />
-                    <span className={clsx("hidden items-center gap-1 text-[11px] text-n-400 sm:flex", !active && "invisible")}>
-                      <Kbd>↵</Kbd> enter
-                    </span>
                     {picking === key && (
                       <CoursePicker
                         courses={courses}
@@ -594,6 +630,34 @@ function TodoItem({
   );
 }
 
+/** One of an inbox item's properties: filled when set, a faint dashed
+ *  placeholder when not. Clicking edits it. */
+function PropChip({ set, title, onClick, children }: { set: boolean; title: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={clsx(
+        "flex h-6 items-center gap-1 rounded-full border px-2 text-[11.5px] transition-colors duration-[120ms]",
+        set
+          ? "border-rust-200 bg-n-0 text-n-700 hover:border-rust-300"
+          : "border-dashed border-n-300 text-n-400 hover:border-rust-300 hover:text-n-600",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Plus() {
+  return (
+    <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden>
+      <path d="M4 1v6M1 4h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function Priority() {
   return (
     <span title="Priority" className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-rust-100 font-num text-[10px] font-bold text-rust-700">
@@ -620,7 +684,7 @@ function Due({ at, now }: { at: Date | null; now: Date }) {
 
 function CalendarMark({ on, title }: { on: boolean; title: string }) {
   return (
-    <span title={title} className={clsx("shrink-0", on ? "text-rust-500" : "text-n-300")}>
+    <span title={title || undefined} className={clsx("shrink-0", on ? "text-rust-500" : "text-n-300")}>
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
         <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.6" />
         <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

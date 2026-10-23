@@ -1,6 +1,6 @@
 /** Livio's todo rules (lib/livio/todo.ts). */
 import assert from "node:assert/strict";
-import { dueLabel, dueText, groupOf, groupTodos, parseDue, parseTodo, type TodoLike } from "../lib/livio/todo";
+import { dueLabel, dueText, groupOf, groupTodos, parseDue, parseTodo, triageFromTitle, type TodoLike } from "../lib/livio/todo";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -77,6 +77,16 @@ test("a course needs an @ - a bare short name stays in the title", () => {
   assert.equal(asked.courseId, "fp");
   assert.equal(asked.title, "exercise 3");
   assert.equal(asked.priority, true);
+});
+
+test("a title typed on the phone arrives triaged", () => {
+  const t = triageFromTitle("problem sheet @fp fri 5pm !", COURSES, NOW);
+  assert.equal(t.title, "problem sheet");
+  assert.equal(t.courseId, "fp");
+  assert.equal(t.priority, true);
+  assert.deepEqual([t.dueAt?.getDate(), t.dueAt?.getHours()], [23, 17]);
+  // A plain title is left exactly as it was.
+  assert.deepEqual(triageFromTitle("Book dentist", COURSES, NOW), { title: "Book dentist", courseId: null, dueAt: null, priority: false });
 });
 
 let failed = 0;

@@ -1,5 +1,7 @@
 import { db } from "./db";
 import { explainNotionError, queryUnsynced, setStatus, setSynced } from "./notion";
+import { triageFromTitle } from "./livio/todo";
+import { visibleCourseWhere } from "./types";
 
 /**
  * Notion ⇄ Livio. Tasks jotted into Notion land in an inbox; entering one
@@ -45,8 +47,15 @@ export async function pullNotion(force = false): Promise<PullResult> {
   const fresh = pages.filter((p) => !entered.has(p.pageId) && p.status !== "Done");
   const existing = new Set((await db.notionInboxItem.findMany({ select: { pageId: true } })).map((i) => i.pageId));
   const toAdd = fresh.filter((p) => !existing.has(p.pageId));
+  const courses = toAdd.length
+    ? await db.course.findMany({ where: visibleCourseWhere(), select: { id: true, shortName: true, code: true, name: true } })
+    : [];
   for (const p of toAdd) {
-    await db.notionInboxItem.create({ data: { pageId: p.pageId, title: p.title, dueAt: p.dueAt } });
+    // "problem sheet @fp fri !" typed on the phone arrives already triaged.
+    const t = triageFromTitle(p.title, courses);
+    await db.notionInboxItem.create({
+      data: { pageId: p.pageId, title: t.title, dueAt: p.dueAt ?? t.dueAt, courseId: t.courseId, priority: t.priority },
+    });
   }
 
   // Gone from Notion, ticked there, or finished: drop it from the inbox too.
