@@ -651,7 +651,7 @@ function EntryPanel({ row, inGrid, onSave, onDelete, onClose }: {
       </div>
       <div className="flex items-center justify-between border-t border-n-100 px-6 py-3">
         <span className="text-[11.5px] text-n-400">
-          {inGrid ? <>Fields are edited in the table - <Kbd>:</Kbd> grid</> : <>Edit the fields in the table - <Kbd>esc</Kbd> to go back</>}
+          {inGrid ? <><Kbd>esc</Kbd> to go back</> : <>Edit the fields in the table - <Kbd>esc</Kbd> to go back</>}
         </span>
         <button
           type="button"
@@ -716,16 +716,59 @@ function EntryCard({ row, now, hl }: {
 
       {(row.contactName || row.contactEmail || row.link) && (
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-n-100 pt-3 text-[12px]">
-          <span className="min-w-0 truncate text-n-600">
+          <span className="min-w-0 truncate text-n-600" title={row.contactEmail ?? undefined}>
             {row.contactName || row.contactEmail ? hl(row.contactName ?? row.contactEmail ?? "", "contact") : null}
           </span>
-          {row.link && (
-            <a href={row.link} target="_blank" rel="noreferrer" title={row.link} className="shrink-0 text-rust-600 underline-offset-2 hover:underline">
-              {hl(linkLabel(row.link), "link")}
-            </a>
-          )}
+          <span className="flex shrink-0 items-center gap-2.5">
+            {row.link && (
+              <a href={row.link} target="_blank" rel="noreferrer" title={row.link} className="text-rust-600 underline-offset-2 hover:underline">
+                {hl(linkLabel(row.link), "link")}
+              </a>
+            )}
+            {row.contactEmail && <CopyEmail email={row.contactEmail} />}
+          </span>
         </div>
       )}
     </div>
+  );
+}
+
+/** Copies the contact's address, and says so for a moment. */
+function CopyEmail({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(email);
+        setCopied(true);
+      }}
+      // A quick second click shouldn't count as the card's double-click.
+      onDoubleClick={(e) => e.stopPropagation()}
+      title={copied ? "Copied" : `Copy ${email}`}
+      aria-label={copied ? "Email copied" : `Copy ${email}`}
+      className={clsx(
+        "flex h-6 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium transition-colors duration-[120ms]",
+        copied ? "text-ok" : "text-n-400 hover:bg-n-100 hover:text-n-700",
+      )}
+    >
+      {copied ? (
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <rect x="5.5" y="5.5" width="8" height="8" rx="1.6" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M10.5 3.5v-.4A1.6 1.6 0 0 0 8.9 1.5H4.1A1.6 1.6 0 0 0 2.5 3.1v4.8a1.6 1.6 0 0 0 1.6 1.6h.4" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      )}
+      {copied ? "Copied" : "Email"}
+    </button>
   );
 }

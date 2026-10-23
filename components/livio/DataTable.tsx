@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { fmtDayDate } from "@/lib/dates";
-import { isTypingTarget } from "@/lib/livio/keys";
+import { isTypingTarget, NO_AUTOFILL } from "@/lib/livio/keys";
 import { Portal } from "@/lib/hooks/useModal";
 import { parseDateInput, type Range, type Sort } from "@/lib/livio/table";
 
@@ -328,7 +328,7 @@ function TextEditor({ initial, onDone }: { initial: string; onDone: (v: CellValu
         else if (e.key === "Escape") { e.preventDefault(); finish(undefined); }
         else if (e.key === "Tab") { e.preventDefault(); finish(value, e.shiftKey ? "left" : "right"); }
       }}
-      spellCheck={false}
+      {...NO_AUTOFILL}
       className={inputClass}
     />
   );
@@ -363,7 +363,7 @@ function DateEditor({ initial, direction, onDone }: {
           else if (e.key === "Escape") { e.preventDefault(); finish(false); }
           else if (e.key === "Tab") { e.preventDefault(); finish(true, e.shiftKey ? "left" : "right"); }
         }}
-        spellCheck={false}
+        {...NO_AUTOFILL}
         className={clsx(inputClass, "font-num placeholder:text-n-400")}
       />
       {/* What it'll be read as, before it's committed. */}
@@ -405,6 +405,7 @@ function SelectEditor({ options, value, onDone }: {
         autoFocus
         value={query}
         placeholder={value}
+        {...NO_AUTOFILL}
         onChange={(e) => { setQuery(e.target.value); setActive(0); }}
         onBlur={() => finish(undefined)}
         onKeyDown={(e) => {

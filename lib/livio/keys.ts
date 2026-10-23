@@ -9,3 +9,21 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return !["checkbox", "radio", "button", "submit", "reset", "range", "color"].includes(type);
 }
 
+
+/**
+ * For inputs that are commands or cell edits, never form fields. Chrome
+ * ignores autocomplete="off" when it guesses a field wants an email - and a
+ * placeholder mentioning "cold email" was enough - so this also gives it a
+ * name it can't match and tells password managers to stay out.
+ */
+export const NO_AUTOFILL = {
+  name: "livio-command",
+  autoComplete: "off",
+  autoCorrect: "off",
+  autoCapitalize: "off",
+  spellCheck: false,
+  "data-1p-ignore": "true",
+  "data-lpignore": "true",
+  "data-bwignore": "true",
+  "data-form-type": "other",
+} as const;

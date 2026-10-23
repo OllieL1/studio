@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { clsx } from "@/lib/clsx";
 import { backdropProps, ModalLock, Portal } from "@/lib/hooks/useModal";
+import { NO_AUTOFILL } from "@/lib/livio/keys";
 import { completions, parseCommand, type Field, type PageCommand, type ParsedCommand } from "@/lib/livio/table";
 
 /**
@@ -120,10 +121,9 @@ export function CommandBar({
                 value={text}
                 onChange={(e) => change(e.target.value)}
                 onKeyDown={onKey}
-                spellCheck={false}
-                autoComplete="off"
+                {...NO_AUTOFILL}
                 aria-label="Command"
-                placeholder="cold email, s google, ^ deadline, help…"
+                placeholder="Type a command, or help"
                 className="h-12 min-w-0 flex-1 bg-transparent font-num text-[14px] text-n-800 outline-none placeholder:text-n-400"
               />
             </div>
