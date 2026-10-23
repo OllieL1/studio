@@ -1,0 +1,117 @@
+/* The CV sheet - ported from ~/Documents/projects/cv/style.css, every rule
+   scoped under .cvs so its short class names (.stat, .chip, .key…) can't
+   reach the rest of Livio or Studio.
+
+   Type scale (1em = body text = 10pt at 100%):
+     2.45em name | 1.7em stat figures | 1.1em role/school titles
+     1em body (bullets, projects) | .9em secondary (skills, contact, tag) | .8em fine print
+   Spacing: --gap-s between bullets | --gap-m between entries | --gap-l between sections */
+
+.cvs-wrap { --s: 1; width: calc(210mm * var(--s)); height: calc(297mm * var(--s)); flex: none; position: relative; }
+
+.cvs {
+  --u: 13.333px;
+  --k: 4; /* laid out at 4x then scaled down: text baselines snap to whole px, so this makes the snap 4x finer */
+  --mm: calc(1mm * var(--k));
+  --px: calc(1px * var(--k));
+  --gap-s: .2em;
+  --gap-m: .85em;
+  --gap-l: 1.25em;
+  --ink: #0c0c10;
+  --paper: #fff;
+  --mute: #52565f;
+  --line: #d9dbe0;
+  --line-soft: #ececef;
+  font-size: calc(var(--u) * var(--k));
+  width: calc(210 * var(--mm)); height: calc(296.6 * var(--mm)); overflow: visible;
+  transform: scale(calc(var(--s) / var(--k))); transform-origin: top left;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-spartan), "League Spartan", "Helvetica Neue", Arial, sans-serif; line-height: 1.32; font-weight: 400;
+  box-shadow: 0 calc(12 * var(--px)) calc(40 * var(--px)) rgba(0,0,0,.22);
+  position: absolute; top: 0; left: 0;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.cvs * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cvs.over { outline: calc(3 * var(--px)) solid #ff5a36; }
+.cvs .inner { min-height: calc(296.6 * var(--mm)); display: flex; flex-direction: column; }
+.cvs [contenteditable]:hover { background: rgba(120,120,255,.10); }
+.cvs [contenteditable]:focus { outline: calc(1.5 * var(--px)) dashed rgba(90,90,255,.8); outline-offset: calc(2 * var(--px)); background: rgba(120,120,255,.08); }
+.cvs [contenteditable]:empty::before { content: attr(data-ph); opacity: .4; }
+
+/* header */
+.cvs .hdr { margin: calc(6 * var(--mm)) calc(6 * var(--mm)) 0; border-radius: calc(4.5 * var(--mm)); padding: 1em 2em .8em; color: #fff; position: relative; overflow: hidden; background: var(--ink); }
+.cvs .hdr-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 2em; }
+.cvs .who { min-width: 0; }
+.cvs .nm { font-weight: 800; font-size: 2.45em; line-height: 1; letter-spacing: .04em; text-transform: uppercase; margin: 0; white-space: nowrap; }
+.cvs .nm::after { content: ""; display: inline-block; width: .17em; height: .17em; border-radius: 50%; background: var(--accent); margin-left: .1em; }
+.cvs .tag { display: inline-block; margin-top: .65em; padding: .22em 1em; border-radius: 2em; background: var(--accent); color: var(--on-accent); font-weight: 500; font-size: .9em; letter-spacing: .02em; }
+.cvs .stack { display: grid; gap: .3em; flex: none; }
+.cvs .stack .ci { display: grid; grid-template-columns: 4.6em auto; align-items: baseline; column-gap: .8em; }
+.cvs .stack .ci small { margin-bottom: 0; }
+.cvs .stack .ci span { white-space: nowrap; }
+.cvs .contact { margin-top: .7em; padding-top: .55em; border-top: var(--px) solid rgba(255,255,255,.16); display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em 1.5em; }
+.cvs .ci { min-width: 0; line-height: 1.25; }
+.cvs .ci small { display: block; font-size: .72em; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: .2em; }
+.cvs .ci-link { color: inherit; text-decoration: none; }
+.cvs .ci span { font-size: .9em; font-weight: 500; color: #fff; }
+
+/* body */
+.cvs .bd { padding: 1.2em calc(12 * var(--mm)) 1.7em; flex: 1; display: flex; flex-direction: column; gap: var(--gap-l); counter-reset: sec; }
+.cvs .sec-h { display: flex; align-items: center; gap: .8em; margin: 0 0 .65em; }
+.cvs .sec-h h2 { margin: 0; font-weight: 800; font-size: .95em; letter-spacing: .05em; text-transform: uppercase; }
+.cvs .sec-h::before { counter-increment: sec; content: counter(sec, decimal-leading-zero); flex: none; display: inline-grid; place-items: center; box-sizing: border-box; min-width: 2.6em; height: 1.7em; padding: .14em .6em 0; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: .8em; line-height: 1; border-radius: 2em; }
+.cvs .sec-h::after { content: ""; flex: 1; height: var(--px); background: var(--line); }
+
+.cvs .lead { font-size: 1em; line-height: 1.3; font-weight: 600; margin: 0; }
+
+.cvs .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .7em; }
+.cvs .stat { background: #f4f5f7; border-radius: .9em; padding: .5em .9em .55em; position: relative; }
+.cvs .stat::after { content: ""; position: absolute; top: .75em; right: .8em; width: .45em; height: .45em; border-radius: 50%; background: var(--accent); }
+.cvs .stat b { font-weight: 800; font-size: 1.7em; line-height: 1; letter-spacing: -.04em; display: block; }
+.cvs .stat div { margin-top: .3em; font-size: .8em; color: var(--mute); line-height: 1.25; }
+
+.cvs .entry { margin-bottom: var(--gap-m); break-inside: avoid; position: relative; padding-left: 1.3em; border-left: calc(2 * var(--px)) solid var(--line); }
+.cvs .entry::before { content: ""; position: absolute; left: -.42em; top: .3em; width: .62em; height: .62em; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 .18em #fff; }
+.cvs .entry:last-child { margin-bottom: 0; }
+.cvs .eh { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
+.cvs .et { font-size: 1.1em; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.cvs .et .org { font-weight: 400; color: var(--mute); }
+.cvs .et .org::before { content: "  ·  "; white-space: pre; opacity: .6; }
+.cvs .dt { flex: none; font-size: .8em; color: var(--mute); background: #f1f2f5; padding: .15em .85em; border-radius: 2em; }
+.cvs ul.bl { list-style: none; margin: .35em 0 0; padding: 0; display: grid; gap: var(--gap-s); color: #33363f; }
+.cvs ul.bl li { position: relative; padding-left: 1.1em; }
+.cvs ul.bl li::before { content: "\2022"; position: absolute; left: 0; top: 0; color: var(--ink); opacity: .4; }
+
+.cvs .sk { margin: 0; display: grid; grid-template-columns: 7.6em 1fr; column-gap: 1em; align-items: center; }
+.cvs .sk dt, .cvs .sk dd { padding: .2em 0; border-top: var(--px) solid var(--line-soft); }
+.cvs .sk dt:first-of-type, .cvs .sk dt:first-of-type + dd { border-top: 0; padding-top: 0; }
+.cvs .sk dt:last-of-type, .cvs .sk dt:last-of-type + dd { padding-bottom: 0; }
+.cvs .sk dt { font-size: .9em; color: var(--mute); font-weight: 600; }
+.cvs .sk dd { margin: 0; display: flex; flex-wrap: wrap; gap: .3em; }
+.cvs .chip { background: #f4f5f7; padding: .02em .7em; border-radius: 2em; font-size: .9em; }
+
+.cvs .key { display: inline-block; width: 1.73em; height: 1.73em; font-size: .68em; vertical-align: middle; line-height: 0; }
+.cvs .key svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.cvs .et .key { margin-right: .5em; }
+.cvs .chip .key.sm { width: 1.5em; height: 1.5em; font-size: .72em; margin-left: .45em; }
+.cvs .chip .key.sm + .key.sm { margin-left: .12em; }
+
+.cvs .nl { display: grid; gap: var(--gap-s); margin: 0; padding: 0; list-style: none; color: #33363f; }
+.cvs .nl.cols2 { grid-template-columns: 1fr 1fr; column-gap: 1.5em; }
+.cvs .nl li { padding-left: 1.1em; position: relative; }
+.cvs .nl li::before { content: "\2022"; position: absolute; left: 0; top: 0; color: var(--ink); opacity: .4; }
+.cvs .nl b { font-weight: 700; color: var(--ink); }
+.cvs .pgline { position: absolute; left: 0; right: 0; top: calc(296.6 * var(--mm)); border-top: calc(2 * var(--px)) dashed #ff5a36; }
+
+/* ───────────── print: just the sheet, edge to edge ───────────── */
+@page { size: A4; margin: 0; }
+@media print {
+  html:has(.cvs), body:has(.cvs) { background: #fff !important; }
+  body:has(.cvs) .cv-chrome { display: none !important; }
+  body:has(.cvs) main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  .cv-stage { display: block !important; padding: 0 !important; overflow: visible !important; background: none !important; }
+  .cvs-wrap { --s: 1 !important; overflow: hidden; width: 210mm; height: 296.6mm; }
+  .cvs { box-shadow: none; outline: 0 !important; }
+  .cvs [contenteditable]:hover, .cvs [contenteditable]:focus { background: none; outline: 0; }
+  .cvs .pgline { display: none; }
+}

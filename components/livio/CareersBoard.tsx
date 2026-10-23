@@ -1,10 +1,10 @@
 "use client";
 
 import type { Route } from "next";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  createCareer, deleteCareer, listCareers, restoreCareer, updateCareer,
+  createCareer, deleteCareer, listCareers, restoreCareer, setCareerCv, updateCareer,
   type CareerPatch, type CareerRow,
 } from "@/app/careerActions";
 import {
@@ -22,6 +22,10 @@ import { Eyebrow, Pill } from "../ui";
 import { MarkdownField } from "../MarkdownField";
 import { CommandBar } from "./CommandBar";
 import { CardGrid } from "./CardGrid";
+import { CvPicker } from "./CvPicker";
+import { createVersionForCareer } from "@/app/cvActions";
+import { LIVIO_BASE } from "@/lib/apps";
+import Link from "next/link";
 import { DataTable, type CellValue, type Column } from "./DataTable";
 import { Drawer } from "./Drawer";
 import { FilterMenu } from "./FilterMenu";
@@ -39,11 +43,13 @@ const FIELDS: Field[] = [
   { key: "contact", label: "Contact", aliases: ["email", "person"] },
   { key: "link", label: "Link", aliases: ["url"] },
   { key: "notes", label: "Notes" },
+  { key: "cv", label: "CV", aliases: ["resume"] },
 ];
 
 const COMMANDS: PageCommand[] = [
   { name: "cold email", hint: "New cold email", arg: "company" },
   { name: "application", hint: "New application", arg: "company" },
+  { name: "cv", hint: "Tailor or pick a CV for the entry under the cursor" },
   { name: "grid", hint: "Cards in a grid - again for the table" },
   { name: "full", hint: "Every column at full width - again to fit" },
   { name: "fit", hint: "Every column on screen" },
@@ -81,6 +87,7 @@ const HELP: HelpSection[] = [
       [["?"], "This sheet"],
       [[":cold email"], "New cold email"],
       [[":application"], "New application"],
+      [[":cv"], "Tailor or pick its CV"],
     ],
   },
   {
@@ -132,6 +139,7 @@ function searchTexts(r: CareerRow): Record<string, string> {
     contact: contactText(r),
     link: r.link ?? "",
     notes: r.notesMd ?? "",
+    cv: r.cvName ?? "",
   };
 }
 
@@ -162,7 +170,7 @@ function applyLocally(r: CareerRow, patch: CareerPatch): CareerRow {
   return next;
 }
 
-export function CareersBoard({ initial }: { initial: CareerRow[] }) {
+export function CareersBoard({ initial, cvs }: { initial: CareerRow[]; cvs: { id: string; name: string }[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -182,6 +190,8 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
   const [focus, setFocus] = useState<{ id: string; column?: string; edit?: boolean; nonce: number } | null>(null);
   // A row just made stays in sight whatever the view hides, until the view changes.
   const [fresh, setFresh] = useState<string | null>(null);
+  const [cvFor, setCvFor] = useState<CareerRow | null>(null);
+  const cursorRow = useRef<CareerRow | null>(null);
 
   const setView = useCallback(
     (next: View) => {
@@ -204,7 +214,7 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
   }, [rows, view, query, fresh]);
 
   const stale = useMemo(() => rows.filter((r) => isStale(r, now)), [rows, now]);
-  const modal = command !== null || help || filtering || openId !== null;
+  const modal = command !== null || help || filtering || openId !== null || cvFor !== null;
 
   // `:` for commands, `/` to search, `?` for help - when nothing else has the keys.
   useEffect(() => {
@@ -272,6 +282,11 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
       case "run":
         if (cmd.name === "cold email") return void create("COLD_EMAIL", cmd.arg);
         if (cmd.name === "application") return void create("APPLICATION", cmd.arg);
+        if (cmd.name === "cv") {
+          const row = cursorRow.current;
+          if (!row) return "Put the cursor on an entry first.";
+          return void setTimeout(() => setCvFor(row));
+        }
         if (cmd.name === "grid" || cmd.name === "full" || cmd.name === "fit") {
           // Running the layout you're already in goes back to the default.
           const layout: Layout = view.layout === cmd.name ? "fit" : cmd.name;
@@ -393,7 +408,26 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
         )
         : null,
     },
+    {
+      key: "cv", label: "CV", width: 130, kind: "link",
+      editable: () => false,
+      text: (r) => r.cvName ?? "",
+      href: (r) => (r.cvVersionId ? `${LIVIO_BASE}/cv?v=${r.cvVersionId}` : null),
+      render: (r, hl) => r.cvVersionId
+        ? <Link href={`${LIVIO_BASE}/cv?v=${r.cvVersionId}` as Route} className="text-rust-600 underline-offset-2 hover:underline">{hl(r.cvName ?? "CV")}</Link>
+        : <span className="text-n-300">-</span>,
+    },
   ];
+
+  const chooseCv = async (row: CareerRow, choice: { kind: "new" } | { kind: "version"; id: string } | { kind: "none" }) => {
+    setCvFor(null);
+    if (choice.kind === "new") {
+      const id = await createVersionForCareer(row.id);
+      router.push(`${LIVIO_BASE}/cv?v=${id}` as Route);
+      return;
+    }
+    replaceRow(await setCareerCv(row.id, choice.kind === "version" ? choice.id : null));
+  };
 
   const highlight = (text: string, column: string): React.ReactNode => {
     const ranges = highlightRanges(text, column, query);
@@ -511,6 +545,7 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
           keysActive={!modal}
           focus={focus}
           empty={empty}
+          onCursor={(r) => { cursorRow.current = r; }}
         />
       ) : (
         <DataTable
@@ -528,6 +563,7 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
           focus={focus}
           empty={empty}
           layout={view.layout === "full" ? "full" : "fit"}
+          onCursor={(r) => { cursorRow.current = r; }}
         />
       )}
 
@@ -568,6 +604,17 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
           onSave={(patch) => save(open, patch)}
           onDelete={() => remove(open)}
           onClose={() => setOpenId(null)}
+          onCv={() => { setOpenId(null); setCvFor(open); }}
+        />
+      )}
+      {cvFor && (
+        <CvPicker
+          company={cvFor.company}
+          role={cvFor.role}
+          versions={cvs}
+          current={cvFor.cvVersionId}
+          onChoose={(c) => chooseCv(cvFor, c)}
+          onClose={() => setCvFor(null)}
         />
       )}
       {toast && (
@@ -600,9 +647,10 @@ function Chip({ children, onClear }: { children: React.ReactNode; onClear: () =>
 }
 
 /** One entry in full: the details at a glance, and the notes to write in. */
-function EntryPanel({ row, inGrid, onSave, onDelete, onClose }: {
+function EntryPanel({ row, inGrid, onSave, onDelete, onClose, onCv }: {
   row: CareerRow;
   inGrid: boolean;
+  onCv: () => void;
   onSave: (patch: CareerPatch) => Promise<void>;
   onDelete: () => void;
   onClose: () => void;
@@ -634,6 +682,16 @@ function EntryPanel({ row, inGrid, onSave, onDelete, onClose }: {
                 )}
               </>
             ) : null}
+          </Detail>
+          <Detail label="CV">
+            <span className="flex items-center gap-2">
+              {row.cvVersionId && (
+                <Link href={`${LIVIO_BASE}/cv?v=${row.cvVersionId}` as Route} className="text-rust-600 underline-offset-2 hover:underline">{row.cvName}</Link>
+              )}
+              <button type="button" onClick={onCv} className="text-[12px] text-n-500 underline-offset-2 hover:text-n-800 hover:underline">
+                {row.cvVersionId ? "change" : "Tailor one"}
+              </button>
+            </span>
           </Detail>
           <Detail label="Link">
             {row.link ? <a href={row.link} target="_blank" rel="noreferrer" className="break-all text-rust-600 underline-offset-2 hover:underline">{row.link}</a> : null}

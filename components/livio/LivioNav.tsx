@@ -14,6 +14,7 @@ const LINKS: { href: string; label: string }[] = [
   { href: `${LIVIO_BASE}/todo`, label: "Todo" },
   { href: `${LIVIO_BASE}/careers`, label: "Careers" },
   { href: `${LIVIO_BASE}/reading`, label: "Reading" },
+  { href: `${LIVIO_BASE}/cv`, label: "CV" },
 ];
 
 /** Studio's nav, pared down: Livio has no timer, courses or repos. */
@@ -23,7 +24,7 @@ export function LivioNav() {
   const prefsHref = `${LIVIO_BASE}/preferences`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-n-100 bg-n-25/85 backdrop-blur-md">
+    <header className="cv-chrome sticky top-0 z-40 border-b border-n-100 bg-n-25/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-1 px-4 sm:px-8">
         <Link href={LIVIO_BASE as Route} className="flex min-w-0 items-center gap-2.5">
           <Mark />

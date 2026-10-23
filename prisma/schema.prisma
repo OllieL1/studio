@@ -677,6 +677,9 @@ model CareerEntry {
   /// Applications only.
   deadline        DateTime?
   notesMd         String?
+  /// The tailored CV sent with it.
+  cvVersionId     String?
+  cvVersion       CvVersion? @relation(fields: [cvVersionId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -724,4 +727,25 @@ model ReadingItem {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+
+/// The master CV: everything you might ever put on one, as JSON in
+/// lib/cv/model.ts's CvDoc shape. Lives only here, never in the repository;
+/// a fresh database starts from the empty lib/cv/blank.ts.
+model CvMaster {
+  id        String   @id @default("singleton")
+  doc       String
+  updatedAt DateTime @updatedAt
+}
+
+/// A tailored CV: overrides on the master (lib/cv/model.ts), so it only
+/// stores what differs and picks up the master's later fixes.
+model CvVersion {
+  id        String        @id @default(cuid())
+  name      String
+  overrides String        @default("{}")
+  careers   CareerEntry[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }

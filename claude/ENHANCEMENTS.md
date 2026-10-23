@@ -15,7 +15,7 @@ Purpose: provide a more generalised life hub site. The pages will be detailed be
 - App deadline (if type app)
 We should display an alert for cold emails if it has been longer than 2 weeks. This should also flag on the home page. 
 - This page should be really easy to use. Properties and rows should be arrow navigateable, search lookup should be powerful, filtering and sort should be easy. No element should look out of place, it should all be carefully decided. 
-[] CV Page
+[x] CV Page
 - I have another project sitting in /Users/ollie/Documents/projects/cv
 - I want to fully build this into this site. It is a CV builder with defaults, tailored versions. We should entirely integrate this into the site so that the two projects are not separate. We should be able to tie a tailored CV to a career entry i.e. to a cold email or job app.
 [x] Todo - a generalised todo. 

@@ -27,6 +27,9 @@ export type CareerRow = {
   link: string | null;
   deadline: Date | null;
   notesMd: string | null;
+  cvVersionId: string | null;
+  /** The tailored CV's name, for the CV column. */
+  cvName: string | null;
   createdAt: Date;
 };
 
@@ -45,16 +48,21 @@ export type CareerPatch = Partial<{
 
 const blank = (s: string | undefined) => (s?.trim() ? s.trim() : null);
 
-function toRow(e: Awaited<ReturnType<typeof db.careerEntry.findUniqueOrThrow>>): CareerRow {
+/** Every read brings the linked CV's name along with it. */
+const withCv = { cvVersion: { select: { name: true } } } as const;
+
+function toRow(e: Awaited<ReturnType<typeof db.careerEntry.findUniqueOrThrow>> & { cvVersion?: { name: string } | null }): CareerRow {
+  const { cvVersion, ...rest } = e;
   return {
-    ...e,
+    ...rest,
     type: isCareerType(e.type) ? e.type : "COLD_EMAIL",
     status: isStatus(e.status) ? e.status : "TODO",
+    cvName: cvVersion?.name ?? null,
   };
 }
 
 export async function listCareers(): Promise<CareerRow[]> {
-  const rows = await db.careerEntry.findMany({ orderBy: { createdAt: "desc" } });
+  const rows = await db.careerEntry.findMany({ orderBy: { createdAt: "desc" }, include: withCv });
   return rows.map(toRow);
 }
 
@@ -62,7 +70,7 @@ export async function createCareer(type: string, company = ""): Promise<CareerRo
   if (!isCareerType(type)) throw new Error(`Unknown type ${type}`);
   const now = new Date();
   const { status, sentAt } = newEntryDefaults(type, startOfDay(now));
-  const row = await db.careerEntry.create({ data: { type, company: company.trim(), status, sentAt } });
+  const row = await db.careerEntry.create({ data: { type, company: company.trim(), status, sentAt }, include: withCv });
   return toRow(row);
 }
 
@@ -101,7 +109,7 @@ export async function updateCareer(id: string, patch: CareerPatch): Promise<Care
   if (patch.sentAt !== undefined) data.sentAt = patch.sentAt;
   if (patch.deadline !== undefined && type === "APPLICATION") data.deadline = patch.deadline;
 
-  const row = await db.careerEntry.update({ where: { id }, data });
+  const row = await db.careerEntry.update({ where: { id }, data, include: withCv });
   return toRow(row);
 }
 
@@ -111,8 +119,15 @@ export async function deleteCareer(id: string) {
 
 /** Undo for a delete: the row comes back exactly as it was, id and all. */
 export async function restoreCareer(row: CareerRow): Promise<CareerRow> {
-  const { id, type, company, role, contactName, contactEmail, status, statusChangedAt, sentAt, link, deadline, notesMd, createdAt } = row;
-  const data = { type, company, role, contactName, contactEmail, status, statusChangedAt, sentAt, link, deadline, notesMd, createdAt };
-  const restored = await db.careerEntry.upsert({ where: { id }, update: data, create: { id, ...data } });
+  const { id, type, company, role, contactName, contactEmail, status, statusChangedAt, sentAt, link, deadline, notesMd, cvVersionId, createdAt } = row;
+  // The CV may have been deleted in the meantime; the link quietly goes with it.
+  const cvOk = cvVersionId ? !!(await db.cvVersion.findUnique({ where: { id: cvVersionId }, select: { id: true } })) : false;
+  const data = { type, company, role, contactName, contactEmail, status, statusChangedAt, sentAt, link, deadline, notesMd, createdAt, cvVersionId: cvOk ? cvVersionId : null };
+  const restored = await db.careerEntry.upsert({ where: { id }, update: data, create: { id, ...data }, include: withCv });
   return toRow(restored);
+}
+
+/** Tie a tailored CV to this entry, or untie it. */
+export async function setCareerCv(id: string, cvVersionId: string | null): Promise<CareerRow> {
+  return toRow(await db.careerEntry.update({ where: { id }, data: { cvVersionId }, include: withCv }));
 }
