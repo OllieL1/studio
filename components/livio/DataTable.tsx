@@ -13,11 +13,15 @@ export type Column<R> = {
   key: string;
   label: string;
   width: number;
+  /** Keep exactly `width` in the fit layout - for short values like dates
+   *  that are useless cut short. The rest share whatever's left. */
+  fixed?: boolean;
   kind: "text" | "select" | "date" | "link";
   /** The text an edit starts from. */
   text: (row: R) => string;
-  /** What the cell shows. `hl` wraps search matches in a highlight. */
-  render?: (row: R, hl: (text: string) => React.ReactNode) => React.ReactNode;
+  /** What the cell shows. `hl` wraps search matches in a highlight; `full` is
+   *  true when there's room for all of it, so nothing need be shortened. */
+  render?: (row: R, hl: (text: string) => React.ReactNode, full: boolean) => React.ReactNode;
   options?: (row: R) => Option[];
   editable?: (row: R) => boolean;
   /** Which way a vague typed date leans: Sent is behind you, a deadline ahead. */
@@ -39,6 +43,11 @@ type Cursor = { row: number; col: number };
  * does too: click to put the cursor down, double-click to edit, click a
  * heading to sort.
  *
+ * Two layouts. "fit" never scrolls: fixed columns keep their width and the
+ * rest share what's left in proportion, cutting long text short (hover shows
+ * it all).
+ * "full" lets every column be as wide as its content and scrolls sideways.
+ *
  * It only draws and dispatches. Rows, sorting and saving belong to the page.
  */
 export function DataTable<R>({
@@ -55,6 +64,7 @@ export function DataTable<R>({
   keysActive,
   focus,
   empty,
+  layout = "fit",
 }: {
   rows: R[];
   columns: Column<R>[];
@@ -72,6 +82,7 @@ export function DataTable<R>({
   /** Put the cursor on this row - and optionally start editing - once it's there. */
   focus?: { id: string; column?: string; edit?: boolean; nonce: number } | null;
   empty?: React.ReactNode;
+  layout?: "fit" | "full";
 }) {
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [editing, setEditing] = useState(false);
@@ -80,6 +91,9 @@ export function DataTable<R>({
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
 
   const ids = useMemo(() => rows.map(rowId), [rows, rowId]);
+  const full = layout === "full";
+  const fixedWidth = columns.reduce((sum, c) => sum + (c.fixed ? c.width : 0), 0);
+  const flexWidth = columns.reduce((sum, c) => sum + (c.fixed ? 0 : c.width), 0) || 1;
 
   useLayoutEffect(() => {
     if (!cursor) return;
@@ -109,7 +123,8 @@ export function DataTable<R>({
     cursorId.current = ids[row] ?? null;
     setCursor({ row, col });
     const el = ids[row] ? rowRefs.current.get(ids[row]) : null;
-    el?.scrollIntoView({ block: "nearest" });
+    // The cell, not just the row: the full layout scrolls sideways.
+    (el?.children[col] ?? el)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   };
 
   const current = cursor ? rows[cursor.row] : undefined;
@@ -188,11 +203,19 @@ export function DataTable<R>({
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-n-100 bg-n-0">
-      <table className="w-full min-w-max table-fixed border-separate border-spacing-0 text-[13px]">
-        <colgroup>
-          {columns.map((c) => <col key={c.key} style={{ width: c.width }} />)}
-        </colgroup>
+    <div className={clsx("rounded-lg border border-n-100 bg-n-0", full ? "overflow-x-auto" : "overflow-hidden")}>
+      <table className={clsx("border-separate border-spacing-0 text-[13px]", full ? "w-max min-w-full table-auto" : "w-full table-fixed")}>
+        {!full && (
+          // Fixed columns in px; the others split the remainder by width.
+          <colgroup>
+            {columns.map((c) => (
+              <col
+                key={c.key}
+                style={{ width: c.fixed ? c.width : `calc((100% - ${fixedWidth}px) * ${c.width / flexWidth})` }}
+              />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr>
             {columns.map((c) => {
@@ -203,7 +226,7 @@ export function DataTable<R>({
                     type="button"
                     onClick={() => onSort?.(c.key)}
                     className={clsx(
-                      "flex w-full items-center gap-1 px-3 py-2 text-[10.5px] font-semibold uppercase tracking-[0.07em] transition-colors",
+                      "flex w-full items-center gap-1 whitespace-nowrap px-3 py-2 text-[10.5px] font-semibold uppercase tracking-[0.07em] transition-colors",
                       sorted ? "text-rust-600" : "text-n-400 hover:text-n-600",
                     )}
                   >
@@ -250,7 +273,13 @@ export function DataTable<R>({
                       {active && editing ? (
                         <Editor column={c} row={r} onDone={finish} />
                       ) : (
-                        <div className="truncate">{c.render ? c.render(r, hl(c.key)) : hl(c.key)(c.text(r))}</div>
+                        <div
+                          className={full ? "whitespace-nowrap" : "truncate"}
+                          // Cut short in the fit layout, so hovering shows it whole.
+                          title={!full ? c.text(r) || undefined : undefined}
+                        >
+                          {c.render ? c.render(r, hl(c.key), full) : hl(c.key)(c.text(r))}
+                        </div>
                       )}
                     </td>
                   );

@@ -223,19 +223,25 @@ export function sortRows<R>(rows: R[], sort: Sort | null, value: (row: R, field:
 
 /* ── The view, in the URL ───────────────────────────────────────────────── */
 
+/** fit: every column on screen, cut short if need be. full: every column as
+ *  wide as its content, scrolling sideways. grid: cards. */
+export type Layout = "fit" | "full" | "grid";
+const LAYOUTS: Layout[] = ["fit", "full", "grid"];
+
 export type View = {
   q: string;
   sort: Sort | null;
   /** Field → the values to keep. A field that isn't here isn't filtered. */
   filters: Record<string, string[]>;
   hideClosed: boolean;
+  layout: Layout;
 };
 
-export const EMPTY_VIEW: View = { q: "", sort: null, filters: {}, hideClosed: false };
+export const EMPTY_VIEW: View = { q: "", sort: null, filters: {}, hideClosed: false, layout: "fit" };
 
 type Params = Record<string, string | string[] | undefined>;
 
-/** ?q=goo&sort=-deadline&status=WAITING,INTERVIEW&hide=closed */
+/** ?q=goo&sort=-deadline&status=WAITING,INTERVIEW&hide=closed&layout=grid */
 export function viewFromParams(params: Params, filterKeys: string[]): View {
   const one = (k: string) => {
     const v = params[k];
@@ -252,6 +258,7 @@ export function viewFromParams(params: Params, filterKeys: string[]): View {
     sort: s ? { field: s.replace(/^-/, ""), dir: s.startsWith("-") ? "desc" : "asc" } : null,
     filters,
     hideClosed: one("hide") === "closed",
+    layout: LAYOUTS.find((l) => l === one("layout")) ?? "fit",
   };
 }
 
@@ -261,6 +268,7 @@ export function viewToSearch(view: View): string {
   if (view.sort) p.set("sort", `${view.sort.dir === "desc" ? "-" : ""}${view.sort.field}`);
   for (const [k, values] of Object.entries(view.filters)) if (values.length) p.set(k, values.join(","));
   if (view.hideClosed) p.set("hide", "closed");
+  if (view.layout !== "fit") p.set("layout", view.layout);
   const s = p.toString();
   return s ? `?${s}` : "";
 }

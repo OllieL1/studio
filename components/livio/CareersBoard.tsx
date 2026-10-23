@@ -15,12 +15,13 @@ import { fmtDate, fmtDayDate, urgencyOf } from "@/lib/dates";
 import { isTypingTarget } from "@/lib/livio/keys";
 import {
   highlightRanges, parseQuery, rowMatches, sortRows, viewFromParams, viewToSearch,
-  type Field, type PageCommand, type ParsedCommand, type View,
+  type Field, type Layout, type PageCommand, type ParsedCommand, type View,
 } from "@/lib/livio/table";
 import { clsx } from "@/lib/clsx";
 import { Eyebrow, Pill } from "../ui";
 import { MarkdownField } from "../MarkdownField";
 import { CommandBar } from "./CommandBar";
+import { CardGrid } from "./CardGrid";
 import { DataTable, type CellValue, type Column } from "./DataTable";
 import { Drawer } from "./Drawer";
 import { FilterMenu } from "./FilterMenu";
@@ -43,6 +44,9 @@ const FIELDS: Field[] = [
 const COMMANDS: PageCommand[] = [
   { name: "cold email", hint: "New cold email", arg: "company" },
   { name: "application", hint: "New application", arg: "company" },
+  { name: "grid", hint: "Cards in a grid - again for the table" },
+  { name: "full", hint: "Every column at full width - again to fit" },
+  { name: "fit", hint: "Every column on screen" },
   { name: "closed", hint: "Show or hide offered and rejected" },
   { name: "clear", hint: "Clear search, filters and sort" },
 ];
@@ -86,6 +90,9 @@ const HELP: HelpSection[] = [
       [[":f"], "Filter by type and status"],
       [[":^ deadline"], "Sort ascending"],
       [[":!^ sent"], "Sort descending"],
+      [[":grid"], "Cards instead of rows"],
+      [[":full"], "Full-width columns, nothing cut short"],
+      [[":fit"], "Every column on screen (the default)"],
       [[":closed"], "Hide offered and rejected"],
       [[":clear"], "Reset the view"],
     ],
@@ -265,8 +272,14 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
       case "run":
         if (cmd.name === "cold email") return void create("COLD_EMAIL", cmd.arg);
         if (cmd.name === "application") return void create("APPLICATION", cmd.arg);
+        if (cmd.name === "grid" || cmd.name === "full" || cmd.name === "fit") {
+          // Running the layout you're already in goes back to the default.
+          const layout: Layout = view.layout === cmd.name ? "fit" : cmd.name;
+          return setView({ ...view, layout });
+        }
         if (cmd.name === "closed") return setView({ ...view, hideClosed: !view.hideClosed });
-        if (cmd.name === "clear") return setView({ q: "", sort: null, filters: {}, hideClosed: false });
+        // The layout is how you like to look, not what you're looking for.
+        if (cmd.name === "clear") return setView({ q: "", sort: null, filters: {}, hideClosed: false, layout: view.layout });
     }
   };
 
@@ -290,13 +303,13 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
       render: (r, hl) => <span className="text-n-600">{r.role ? hl(r.role) : ""}</span>,
     },
     {
-      key: "type", label: "Type", width: 112, kind: "select",
+      key: "type", label: "Type", width: 108, fixed: true, kind: "select",
       text: (r) => TYPE_LABEL[r.type],
       options: () => CAREER_TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] })),
       render: (r, hl) => <span className="text-n-600">{hl(TYPE_LABEL[r.type])}</span>,
     },
     {
-      key: "status", label: "Status", width: 176, kind: "select",
+      key: "status", label: "Status", width: 160, fixed: true, kind: "select",
       text: (r) => STATUS_LABEL[r.status],
       options: (r) => statusesFor(r.type).map((s) => ({ value: s, label: STATUS_LABEL[s] })),
       render: (r, hl) => {
@@ -318,14 +331,14 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
       },
     },
     {
-      key: "sent", label: "Sent", width: 84, kind: "date", direction: "past",
+      key: "sent", label: "Sent", width: 80, fixed: true, kind: "date", direction: "past",
       text: (r) => (r.sentAt ? fmtDate(r.sentAt) : ""),
       render: (r, hl) => r.sentAt
         ? <span className="font-num text-n-600" title={fmtDayDate(r.sentAt)}>{hl(fmtDate(r.sentAt))}</span>
         : <span className="text-n-300">-</span>,
     },
     {
-      key: "deadline", label: "Deadline", width: 96, kind: "date", direction: "future",
+      key: "deadline", label: "Deadline", width: 96, fixed: true, kind: "date", direction: "future",
       editable: (r) => r.type === "APPLICATION",
       text: (r) => (r.deadline ? fmtDate(r.deadline) : ""),
       render: (r, hl) => {
@@ -345,8 +358,9 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
     {
       key: "contact", label: "Contact", width: 160, kind: "text",
       text: contactText,
-      render: (r, hl) => {
+      render: (r, hl, full) => {
         if (!r.contactName && !r.contactEmail) return null;
+        if (full) return <span className="text-n-700">{hl(contactText(r))}</span>;
         return (
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-n-700" title={r.contactEmail ?? undefined}>{hl(r.contactName ?? r.contactEmail ?? "")}</span>
@@ -371,18 +385,48 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
       key: "link", label: "Link", width: 140, kind: "link",
       text: (r) => r.link ?? "",
       href: (r) => r.link,
-      render: (r, hl) => r.link
+      render: (r, hl, full) => r.link
         ? (
           <a href={r.link} target="_blank" rel="noreferrer" title={r.link} className="text-rust-600 underline-offset-2 hover:underline">
-            {hl(linkLabel(r.link))}
+            {hl(full ? r.link : linkLabel(r.link))}
           </a>
         )
         : null,
     },
   ];
 
+  const highlight = (text: string, column: string): React.ReactNode => {
+    const ranges = highlightRanges(text, column, query);
+    if (!ranges.length) return text;
+    const parts: React.ReactNode[] = [];
+    let i = 0;
+    for (const [a, b] of ranges) {
+      if (a > i) parts.push(text.slice(i, a));
+      parts.push(<mark key={a} className="rounded-[2px] bg-rust-100 text-inherit">{text.slice(a, b)}</mark>);
+      i = b;
+    }
+    if (i < text.length) parts.push(text.slice(i));
+    return parts;
+  };
+
+  const empty = (
+    <div className="px-6 py-14 text-center">
+      {rows.length ? (
+        <p className="text-[13px] text-n-500">Nothing matches. <Kbd>:</Kbd> <span className="font-num">clear</span> resets the view.</p>
+      ) : (
+        <>
+          <p className="font-display text-[18px] font-semibold text-n-800">Nothing sent yet</p>
+          <p className="mt-1.5 text-[13px] text-n-500">
+            Press <Kbd>:</Kbd> and type <span className="font-num text-n-700">cold email</span> or{" "}
+            <span className="font-num text-n-700">application</span>.
+          </p>
+        </>
+      )}
+    </div>
+  );
+
   const open = rows.find((r) => r.id === openId) ?? null;
-  const viewing = view.q || view.sort || Object.values(view.filters).some((v) => v.length) || view.hideClosed;
+  const viewing = view.q || view.sort || Object.values(view.filters).some((v) => v.length) || view.hideClosed || view.layout !== "fit";
   const inPlay = rows.filter((r) => !isClosed(r.status) && r.status !== "TODO").length;
 
   return (
@@ -446,39 +490,46 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
             </Chip>
           )}
           {view.hideClosed && <Chip onClear={() => setView({ ...view, hideClosed: false })}>Hiding <b>offered and rejected</b></Chip>}
+          {view.layout !== "fit" && (
+            <Chip onClear={() => setView({ ...view, layout: "fit" })}>
+              Layout <b>{view.layout === "grid" ? "Grid" : "Full width"}</b>
+            </Chip>
+          )}
           <span className="ml-1 font-num text-[11.5px] text-n-400">{visible.length} shown</span>
         </div>
       )}
 
-      <DataTable
-        rows={visible}
-        columns={columns}
-        rowId={(r) => r.id}
-        onCommit={commit}
-        onOpen={(r) => setOpenId(r.id)}
-        onDelete={remove}
-        onSort={toggleSort}
-        sort={view.sort}
-        dim={(r) => isClosed(r.status)}
-        highlight={(text, column) => highlightRanges(text, column, query)}
-        keysActive={!modal}
-        focus={focus}
-        empty={
-          <div className="px-6 py-14 text-center">
-            {rows.length ? (
-              <p className="text-[13px] text-n-500">Nothing matches. <Kbd>:</Kbd> <span className="font-num">clear</span> resets the view.</p>
-            ) : (
-              <>
-                <p className="font-display text-[18px] font-semibold text-n-800">Nothing sent yet</p>
-                <p className="mt-1.5 text-[13px] text-n-500">
-                  Press <Kbd>:</Kbd> and type <span className="font-num text-n-700">cold email</span> or{" "}
-                  <span className="font-num text-n-700">application</span>.
-                </p>
-              </>
-            )}
-          </div>
-        }
-      />
+      {view.layout === "grid" ? (
+        <CardGrid
+          rows={visible}
+          rowId={(r) => r.id}
+          card={(r) => <EntryCard row={r} now={now} hl={(text, column) => highlight(text, column)} />}
+          onOpen={(r) => setOpenId(r.id)}
+          onDelete={remove}
+          href={(r) => r.link}
+          dim={(r) => isClosed(r.status)}
+          keysActive={!modal}
+          focus={focus}
+          empty={empty}
+        />
+      ) : (
+        <DataTable
+          rows={visible}
+          columns={columns}
+          rowId={(r) => r.id}
+          onCommit={commit}
+          onOpen={(r) => setOpenId(r.id)}
+          onDelete={remove}
+          onSort={toggleSort}
+          sort={view.sort}
+          dim={(r) => isClosed(r.status)}
+          highlight={(text, column) => highlightRanges(text, column, query)}
+          keysActive={!modal}
+          focus={focus}
+          empty={empty}
+          layout={view.layout === "full" ? "full" : "fit"}
+        />
+      )}
 
       {command !== null && (
         <CommandBar
@@ -510,7 +561,15 @@ export function CareersBoard({ initial }: { initial: CareerRow[] }) {
           onClose={() => setFiltering(false)}
         />
       )}
-      {open && <EntryPanel row={open} onSave={(patch) => save(open, patch)} onDelete={() => remove(open)} onClose={() => setOpenId(null)} />}
+      {open && (
+        <EntryPanel
+          row={open}
+          inGrid={view.layout === "grid"}
+          onSave={(patch) => save(open, patch)}
+          onDelete={() => remove(open)}
+          onClose={() => setOpenId(null)}
+        />
+      )}
       {toast && (
         <UndoToast
           message={`Deleted ${toast.row.company || "entry"}`}
@@ -541,8 +600,9 @@ function Chip({ children, onClear }: { children: React.ReactNode; onClear: () =>
 }
 
 /** One entry in full: the details at a glance, and the notes to write in. */
-function EntryPanel({ row, onSave, onDelete, onClose }: {
+function EntryPanel({ row, inGrid, onSave, onDelete, onClose }: {
   row: CareerRow;
+  inGrid: boolean;
   onSave: (patch: CareerPatch) => Promise<void>;
   onDelete: () => void;
   onClose: () => void;
@@ -590,7 +650,9 @@ function EntryPanel({ row, onSave, onDelete, onClose }: {
         />
       </div>
       <div className="flex items-center justify-between border-t border-n-100 px-6 py-3">
-        <span className="text-[11.5px] text-n-400">Edit the fields in the table - <Kbd>esc</Kbd> to go back</span>
+        <span className="text-[11.5px] text-n-400">
+          {inGrid ? <>Fields are edited in the table - <Kbd>:</Kbd> grid</> : <>Edit the fields in the table - <Kbd>esc</Kbd> to go back</>}
+        </span>
         <button
           type="button"
           onClick={onDelete}
@@ -609,5 +671,61 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
       <dt className="text-n-400">{label}</dt>
       <dd className="min-w-0 text-n-700">{children ?? <span className="text-n-300">-</span>}</dd>
     </>
+  );
+}
+
+/** One entry as a card: who, what, where it's got to, and when. */
+function EntryCard({ row, now, hl }: {
+  row: CareerRow;
+  now: Date;
+  hl: (text: string, column: string) => React.ReactNode;
+}) {
+  const days = isStale(row, now) ? quietDays(row, now) : null;
+  const deadline = row.type === "APPLICATION" && row.deadline ? row.deadline : null;
+  const u = deadline ? urgencyOf(deadline, isClosed(row.status) || row.status !== "TODO") : "none";
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-400">{hl(TYPE_LABEL[row.type], "type")}</p>
+          <h3 className="font-display mt-0.5 truncate text-[18px] leading-6 font-semibold text-n-900">
+            {row.company ? hl(row.company, "company") : <span className="text-n-300">Untitled</span>}
+          </h3>
+          {row.role && <p className="truncate text-[13px] text-n-600">{hl(row.role, "role")}</p>}
+        </div>
+        <Pill tone={STATUS_TONE[row.status]} className="mt-0.5 shrink-0">{hl(STATUS_LABEL[row.status], "status")}</Pill>
+      </div>
+
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-[12px] text-n-500">
+        {row.sentAt && <span>Sent <span className="font-num text-n-700">{hl(fmtDate(row.sentAt), "sent")}</span></span>}
+        {deadline && (
+          <span>
+            Due{" "}
+            <span className={clsx("font-num", u === "overdue" ? "font-semibold text-danger" : u === "soon" ? "font-semibold text-warn" : "text-n-700")}>
+              {hl(fmtDate(deadline), "deadline")}
+            </span>
+          </span>
+        )}
+        {days !== null && (
+          <span className="flex items-center gap-1 font-semibold text-warn" title={`No reply for ${days} days - time to chase`}>
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-warn" />
+            {days}d quiet
+          </span>
+        )}
+      </div>
+
+      {(row.contactName || row.contactEmail || row.link) && (
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-n-100 pt-3 text-[12px]">
+          <span className="min-w-0 truncate text-n-600">
+            {row.contactName || row.contactEmail ? hl(row.contactName ?? row.contactEmail ?? "", "contact") : null}
+          </span>
+          {row.link && (
+            <a href={row.link} target="_blank" rel="noreferrer" title={row.link} className="shrink-0 text-rust-600 underline-offset-2 hover:underline">
+              {hl(linkLabel(row.link), "link")}
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

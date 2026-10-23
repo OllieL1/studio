@@ -114,11 +114,13 @@ test("strings sort naturally and without regard to case", () => {
 });
 
 test("the view round-trips through the URL", () => {
-  const view = { q: "goo", sort: { field: "deadline", dir: "desc" as const }, filters: { status: ["WAITING", "INTERVIEW"] }, hideClosed: true };
+  const view = { q: "goo", sort: { field: "deadline", dir: "desc" as const }, filters: { status: ["WAITING", "INTERVIEW"] }, hideClosed: true, layout: "grid" as const };
   const search = viewToSearch(view);
-  assert.equal(search, "?q=goo&sort=-deadline&status=WAITING%2CINTERVIEW&hide=closed");
+  assert.equal(search, "?q=goo&sort=-deadline&status=WAITING%2CINTERVIEW&hide=closed&layout=grid");
   assert.deepEqual(viewFromParams(Object.fromEntries(new URLSearchParams(search)), ["status", "type"]), view);
-  assert.equal(viewToSearch({ q: "", sort: null, filters: {}, hideClosed: false }), "");
+  // The default layout stays out of the URL, and a bad one falls back to it.
+  assert.equal(viewToSearch({ q: "", sort: null, filters: {}, hideClosed: false, layout: "fit" }), "");
+  assert.equal(viewFromParams({ layout: "sideways" }, []).layout, "fit");
 });
 
 test("deadlines lean forward", () => {
