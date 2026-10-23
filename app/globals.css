@@ -37,6 +37,12 @@
   --color-danger-soft: #f6e8ec;
   --color-info: #5b7c9d;
   --color-info-soft: #e8eef4;
+  /* Text on the soft fills. Darker than the status colour in light mode,
+     lifted in dark, so a pill stays legible in both. */
+  --color-ok-ink: #3f5c38;
+  --color-warn-ink: #7a5f16;
+  --color-danger-ink: #7a3245;
+  --color-info-ink: #365a7a;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -134,6 +140,10 @@
   --color-danger-soft: #2f1b20;
   --color-info: #86a8c8;
   --color-info-soft: #1a232c;
+  --color-ok-ink: #a9c99e;
+  --color-warn-ink: #e0c27e;
+  --color-danger-ink: #e09cab;
+  --color-info-ink: #a3c0dc;
 
   --dot: #2f2a22;
   --scrim: rgb(0 0 0 / 0.55);

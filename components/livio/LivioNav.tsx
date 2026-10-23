@@ -11,6 +11,7 @@ import { AppSwitch } from "../AppSwitch";
 /** Livio's pages. Each joins this list as it's built. */
 const LINKS: { href: string; label: string }[] = [
   { href: LIVIO_BASE, label: "Home" },
+  { href: `${LIVIO_BASE}/careers`, label: "Careers" },
 ];
 
 /** Studio's nav, pared down: Livio has no timer, courses or repos. */
@@ -28,7 +29,7 @@ export function LivioNav() {
           {process.env.NODE_ENV === "development" && (
             <span
               title="Development server - this is a copy of your data, not the live copy on the USB stick"
-              className="hidden shrink-0 rounded-full bg-warn-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#7a5f16] min-[420px]:inline"
+              className="hidden shrink-0 rounded-full bg-warn-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-warn-ink min-[420px]:inline"
             >
               Dev copy
             </span>

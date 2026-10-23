@@ -5,7 +5,7 @@ Ths biggest change so far. I would like to build a partner app for Studio that g
 We will call this site Livio (Liv(ing) + IO)
 Purpose: provide a more generalised life hub site. The pages will be detailed below:
 [] Home - this is where the magic happens. A beautiful minimalist page pulling in key studio stats, most recent sessions, todays tasks and events, careers stuff, reminders etc. 
-[] Careers - job apps and cold emails management system. Has to be incredibly usable with the keyboard. Type : for a small modal menu to come up with commands like help (for keybinds), cold email (new cold email entry), application (new application entry), :s <search term>, :f ENTER should open a filtering menu, :^ <property> sort up, :!^ <property> sort down
+[x] Careers - job apps and cold emails management system. Has to be incredibly usable with the keyboard. Type : for a small modal menu to come up with commands like help (for keybinds), cold email (new cold email entry), application (new application entry), :s <search term>, :f ENTER should open a filtering menu, :^ <property> sort up, :!^ <property> sort down
 - Careers should be a table view with properties
 - Company
 - Cold email or job app

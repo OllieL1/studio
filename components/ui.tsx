@@ -95,10 +95,10 @@ export function Pill({
 }) {
   const tones: Record<string, string> = {
     neutral: "bg-n-50 text-n-600 border-n-200",
-    ok: "bg-ok-soft text-[#3f5c38] border-[#cfdcca]",
-    warn: "bg-warn-soft text-[#7a5f16] border-[#e6d5a6]",
-    danger: "bg-danger-soft text-[#7a3245] border-[#e6c6cf]",
-    info: "bg-info-soft text-[#365a7a] border-[#c6d5e2]",
+    ok: "bg-ok-soft text-ok-ink border-[#cfdcca]",
+    warn: "bg-warn-soft text-warn-ink border-[#e6d5a6]",
+    danger: "bg-danger-soft text-danger-ink border-[#e6c6cf]",
+    info: "bg-info-soft text-info-ink border-[#c6d5e2]",
     rust: "bg-rust-100 text-rust-700 border-rust-200",
   };
   return (

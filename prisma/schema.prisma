@@ -647,3 +647,32 @@ model PlanHidden {
   key       String   @id
   createdAt DateTime @default(now())
 }
+
+/// Livio careers: a cold email or a job application, one row each.
+/// Statuses are strings from lib/careers.ts; which ones are valid depends on
+/// the type, and the server keeps the two consistent.
+model CareerEntry {
+  id   String @id @default(cuid())
+  /// COLD_EMAIL | APPLICATION
+  type String
+
+  company      String  @default("")
+  role         String?
+  contactName  String?
+  contactEmail String?
+
+  status          String
+  /// Set when the status changes after creation. The stale-email clock runs
+  /// from here, or from sentAt if the status has never moved.
+  statusChangedAt DateTime?
+  sentAt          DateTime?
+  link            String?
+  /// Applications only.
+  deadline        DateTime?
+  notesMd         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
