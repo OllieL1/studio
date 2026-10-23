@@ -467,6 +467,95 @@ body::before {
   transition: width 420ms var(--ease-out-expo);
 }
 
+/* ── Ticking something off (components/Tick.tsx) ─────────────────────────
+   The same in Studio and Livio. Ticking: the box presses in, pops as it
+   fills, the tick draws itself, and a ring and six sparks burst out - about
+   half a second, all of it. Unticking is a plain quick reverse. The text it
+   belongs to (.tick-text) has a line sweep across it as it fades. */
+.tick {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.tick-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-n-300);
+  background: transparent;
+  transition: background-color 160ms var(--ease-out-soft), border-color 160ms var(--ease-out-soft), transform 120ms var(--ease-out-soft);
+}
+.tick:hover .tick-box { border-color: var(--tick, var(--color-ok)); }
+.tick:active .tick-box { transform: scale(0.84); }
+.tick[data-done="true"] .tick-box {
+  background: var(--tick, var(--color-ok));
+  border-color: var(--tick, var(--color-ok));
+}
+.tick[data-celebrate="true"] .tick-box { animation: tick-pop 380ms cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.tick-check { stroke-dasharray: 12; stroke-dashoffset: 0; }
+.tick[data-celebrate="true"] .tick-check { animation: tick-draw 240ms 90ms var(--ease-out-soft) both; }
+.tick-burst { position: absolute; inset: 0; pointer-events: none; }
+.tick-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1.5px solid var(--tick, var(--color-ok));
+  animation: tick-ring 520ms var(--ease-out-expo) both;
+}
+.tick-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3.5px;
+  height: 3.5px;
+  margin: -1.75px;
+  border-radius: 999px;
+  background: var(--tick, var(--color-ok));
+  transform: rotate(var(--a)) translateY(0);
+  animation: tick-spark 520ms var(--ease-out-expo) both;
+}
+@keyframes tick-pop {
+  0% { transform: scale(0.84); }
+  55% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+@keyframes tick-draw {
+  from { stroke-dashoffset: 12; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes tick-ring {
+  from { transform: scale(0.9); opacity: 0.55; }
+  to { transform: scale(2.3); opacity: 0; }
+}
+@keyframes tick-spark {
+  0% { transform: rotate(var(--a)) translateY(0) scale(1); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(calc(var(--r) * -1)) scale(0.4); opacity: 0; }
+}
+/* The words of the thing ticked: a line sweeps across them, then they go
+   quiet. The colour is on .tick-text (often a whole stretched row cell); the
+   line is on .tick-words inside it, which is only as wide as the words.
+   Unlayered, so it wins over a row's own text colour utility. */
+.tick-text { transition: color 320ms var(--ease-out-soft); }
+.tick-words {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  background-size: 0% 1.25px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-size 320ms 80ms var(--ease-out-soft);
+}
+/* Done by the row's own say (data-done), or - when the words sit right after
+   the tick - by the tick's, which answers the click before the server does. */
+.tick-text[data-done="true"],
+.tick[data-done="true"] ~ .tick-text { color: var(--color-n-400); }
+.tick-text[data-done="true"] .tick-words,
+.tick[data-done="true"] ~ .tick-text .tick-words { background-size: 100% 1.25px; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

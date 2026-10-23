@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleItem } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
+import { Tick, useShown } from "./Tick";
 
 /** The lecture's parts, ticked from the lecture page itself. */
 export function LectureChecklist({
@@ -21,42 +22,51 @@ export function LectureChecklist({
   return (
     <div className="space-y-0.5">
       {items.map((i) => (
-        <button
+        <Part
           key={i.id}
+          item={i}
           disabled={pending}
-          onClick={() =>
+          onToggle={() =>
             startTransition(async () => {
               await toggleItem(i.id);
               router.refresh();
             })
           }
-          className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors duration-[120ms] hover:bg-n-50"
-        >
-          <span
-            className={clsx(
-              "flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-[180ms]",
-              i.done
-                ? i.isRevision ? "border-rust-500 bg-rust-500" : "border-ok bg-ok"
-                : i.isRevision ? "border-rust-400 border-dashed" : "border-n-300",
-            )}
-          >
-            {i.done && (
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-                <path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
-          <span
-            className={clsx(
-              "text-[12.5px]",
-              i.done ? "text-n-400 line-through decoration-n-300" : "text-n-600",
-              i.isRevision && !i.done && "font-semibold text-rust-700",
-            )}
-          >
-            {i.label}
-          </span>
-        </button>
+        />
       ))}
+    </div>
+  );
+}
+
+function Part({ item, disabled, onToggle }: {
+  item: { id: string; label: string; done: boolean; isRevision: boolean };
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  const [shown, setShown] = useShown(item.done);
+  const id = `part-${item.id}`;
+  return (
+    <div className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 transition-colors duration-[120ms] hover:bg-n-50">
+      <Tick
+        id={id}
+        size="sm"
+        done={shown}
+        tone={item.isRevision ? "rust" : "ok"}
+        dashed={item.isRevision}
+        disabled={disabled}
+        label={shown ? `Untick ${item.label}` : `Tick ${item.label}`}
+        onToggle={() => {
+          setShown(!shown);
+          onToggle();
+        }}
+      />
+      <label
+        htmlFor={id}
+        data-done={shown}
+        className={clsx("tick-text flex-1 cursor-pointer text-[12.5px] text-n-600", item.isRevision && !shown && "font-semibold text-rust-700")}
+      >
+        <span className="tick-words">{item.label}</span>
+      </label>
     </div>
   );
 }

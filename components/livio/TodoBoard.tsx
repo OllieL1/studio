@@ -21,6 +21,7 @@ import { CommandBar } from "./CommandBar";
 import { HelpSheet, type HelpSection } from "./HelpSheet";
 import { Kbd } from "./Kbd";
 import { UndoToast } from "./UndoToast";
+import { afterTick, Tick } from "../Tick";
 
 const FIELDS: Field[] = [{ key: "title", label: "Title" }];
 
@@ -158,9 +159,22 @@ export function TodoBoard({
     } else putTodo(res.row);
   };
 
+  // Ticked but not yet moved to Done: shown ticked in place while the tick
+  // plays, then it goes.
+  const [ticking, setTicking] = useState<Set<string>>(new Set());
   const toggle = async (t: TodoRow) => {
+    const saved = toggleTodo(t.id);
+    if (!t.doneAt) {
+      setTicking((s) => new Set(s).add(t.id));
+      await afterTick();
+    }
     setTodos((ts) => ts.map((x) => (x.id === t.id ? { ...x, doneAt: x.doneAt ? null : new Date() } : x)));
-    putTodo(await toggleTodo(t.id));
+    setTicking((s) => {
+      const next = new Set(s);
+      next.delete(t.id);
+      return next;
+    });
+    putTodo(await saved);
   };
 
   const remove = async (t: TodoRow) => {
@@ -489,6 +503,7 @@ export function TodoBoard({
                 t={t}
                 now={now}
                 active={cursor === `todo:${t.id}`}
+                ticking={ticking.has(t.id)}
                 editing={editing?.key === `todo:${t.id}` ? editing.field : null}
                 picking={picking === `todo:${t.id}`}
                 courses={courses}
@@ -537,6 +552,7 @@ export function TodoBoard({
                   t={t}
                   now={now}
                   active={cursor === `todo:${t.id}`}
+                  ticking={ticking.has(t.id)}
                   editing={editing?.key === `todo:${t.id}` ? editing.field : null}
                   picking={picking === `todo:${t.id}`}
                   courses={courses}
@@ -570,11 +586,12 @@ export function TodoBoard({
 }
 
 function TodoItem({
-  t, now, active, editing, picking, courses, hl, rowRef, onPoint, onToggle, onEdited, onPicked,
+  t, now, active, ticking, editing, picking, courses, hl, rowRef, onPoint, onToggle, onEdited, onPicked,
 }: {
   t: TodoRow;
   now: Date;
   active: boolean;
+  ticking: boolean;
   editing: "title" | "due" | null;
   picking: boolean;
   courses: TodoCourse[];
@@ -585,7 +602,7 @@ function TodoItem({
   onEdited: (patch: TodoPatch | null) => void;
   onPicked: (courseId: string | null | undefined) => void;
 }) {
-  const done = !!t.doneAt;
+  const done = !!t.doneAt || ticking;
   return (
     <li
       ref={rowRef}
@@ -595,25 +612,15 @@ function TodoItem({
         active && "bg-n-50",
       )}
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={done ? `Mark “${t.title}” not done` : `Mark “${t.title}” done`}
-        className={clsx(
-          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-[120ms]",
-          done ? "border-rust-500 bg-rust-500 text-white" : "border-n-300 hover:border-rust-400",
-        )}
-      >
-        {done && (
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-            <path d="M2 5.2l2 2L8 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </button>
-      <span className={clsx("min-w-0 flex-1 truncate text-[13.5px]", done ? "text-n-400 line-through decoration-n-300" : "text-n-800")}>
+      <Tick
+        done={done}
+        onToggle={onToggle}
+        label={done ? `Mark “${t.title}” not done` : `Mark “${t.title}” done`}
+      />
+      <span data-done={done} className="tick-text min-w-0 flex-1 truncate text-[13.5px] text-n-800">
         {editing === "title" ? (
           <InlineInput initial={t.title} onDone={(v) => onEdited(v !== undefined ? { title: v } : null)} />
-        ) : hl(t.title)}
+        ) : <span className="tick-words">{hl(t.title)}</span>}
       </span>
       {t.priority > 0 && !done && <Priority />}
       {t.notionPageId && (

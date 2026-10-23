@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addItem, deleteItem, renameItem, toggleItem, toggleTask } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
 import { Card, Eyebrow } from "./ui";
+import { Tick } from "./Tick";
 
 type Item = { id: string; label: string; done: boolean };
 
@@ -78,25 +79,14 @@ export function SubtaskPanel({
             key={item.id}
             className="group flex items-center gap-1 rounded-md transition-colors duration-[120ms] hover:bg-n-50"
           >
-            <button
-              onClick={() => run(() => toggleItem(item.id))}
-              disabled={pending}
-              aria-label={item.done ? `Untick ${item.label}` : `Tick ${item.label}`}
-              className="flex h-8 w-8 shrink-0 items-center justify-center"
-            >
-              <span
-                className={clsx(
-                  "flex h-[16px] w-[16px] items-center justify-center rounded-[4px] border transition-colors duration-[180ms]",
-                  item.done ? "border-ok bg-ok" : "border-n-300",
-                )}
-              >
-                {item.done && (
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-                    <path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </span>
-            </button>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+              <Tick
+                done={item.done}
+                disabled={pending}
+                label={item.done ? `Untick ${item.label}` : `Tick ${item.label}`}
+                onToggle={() => run(() => toggleItem(item.id))}
+              />
+            </span>
 
             {editing === item.id ? (
               <input
@@ -114,12 +104,10 @@ export function SubtaskPanel({
               <span
                 onDoubleClick={() => { setEditing(item.id); setEditValue(item.label); }}
                 title="Double-click to rename"
-                className={clsx(
-                  "min-w-0 flex-1 cursor-text truncate py-1.5 text-[13.5px]",
-                  item.done ? "text-n-400 line-through decoration-n-300" : "text-n-700",
-                )}
+                data-done={item.done}
+                className="tick-text min-w-0 flex-1 cursor-text truncate py-1.5 text-[13.5px] text-n-700"
               >
-                {item.label}
+                <span className="tick-words">{item.label}</span>
               </span>
             )}
 

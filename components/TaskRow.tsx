@@ -9,6 +9,7 @@ import { fmtRelative, fmtTime, urgencyOf } from "@/lib/dates";
 import { TASK_KIND_LABEL, canAddSubtasks } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
 import { Pill } from "./ui";
+import { Tick, useShown } from "./Tick";
 import { CalendarButton } from "./CalendarButton";
 import { cssColour } from "@/lib/palette";
 
@@ -61,6 +62,7 @@ export function TaskRow({
   const doneCount = task.items.filter((i) => i.doneAt).length;
   const total = task.items.length;
   const done = total > 0 ? doneCount === total : !!task.doneAt;
+  const [shown, setShown] = useShown(done);
   const partial = total > 0 && doneCount > 0 && doneCount < total;
   const urgency = urgencyOf(due, done);
   // Coursework and friends can be broken down even before they have any
@@ -82,8 +84,9 @@ export function TaskRow({
   return (
     <div
       className={clsx(
-        "group relative border-b border-n-100 last:border-b-0 transition-colors duration-[120ms]",
-        done && "opacity-55",
+        // The fade waits a beat, so the tick's burst is seen at full strength.
+        "group relative border-b border-n-100 last:border-b-0 transition-[opacity,background-color] duration-[400ms] delay-200",
+        shown && "opacity-55",
       )}
     >
       {task.course && (
@@ -95,37 +98,20 @@ export function TaskRow({
       )}
 
       <div className="flex items-start gap-3 py-2.5 pl-4 pr-3 hover:bg-n-25">
-        <button
-          onClick={() =>
+        <Tick
+          done={shown}
+          partial={partial}
+          disabled={pending}
+          className="mt-0.5"
+          label={shown ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`}
+          onToggle={() => {
+            setShown(!shown);
             startTransition(async () => {
               await toggleTask(task.id);
               router.refresh();
-            })
-          }
-          disabled={pending}
-          aria-label={done ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`}
-          className={clsx(
-            "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-all duration-[180ms]",
-            done
-              ? "border-ok bg-ok"
-              : partial
-                ? "border-rust-400 bg-rust-50"
-                : "border-n-300 hover:border-n-400",
-          )}
-        >
-          {done && (
-            <svg width="11" height="11" viewBox="0 0 10 10" fill="none" aria-hidden>
-              <path
-                d="M1.5 5.2 4 7.5 8.5 2.5"
-                stroke="white" strokeWidth="1.9"
-                strokeLinecap="round" strokeLinejoin="round"
-                strokeDasharray="12" strokeDashoffset="12"
-                style={{ animation: "draw-check 180ms var(--ease-out-soft) forwards" }}
-              />
-            </svg>
-          )}
-          {partial && <span className="h-[7px] w-[7px] rounded-[2px] bg-rust-500" />}
-        </button>
+            });
+          }}
+        />
 
         <div
           onClick={() => expandable && setOpen((v) => !v)}
@@ -135,12 +121,10 @@ export function TaskRow({
             <Link
               href={`/tasks/${task.id}`}
               onClick={(e) => e.stopPropagation()}
-              className={clsx(
-                "text-[14px] font-medium text-n-800 decoration-rust-300 underline-offset-2 hover:text-rust-700 hover:underline",
-                done && "line-through decoration-n-400",
-              )}
+              data-done={shown}
+              className="tick-text text-[14px] font-medium text-n-800 decoration-rust-300 underline-offset-2 hover:text-rust-700 hover:underline"
             >
-              {task.title}
+              <span className="tick-words">{task.title}</span>
             </Link>
             {task.priority > 0 && !done && (
               <Pill tone="rust">Priority</Pill>
@@ -253,37 +237,25 @@ export function TaskRow({
               key={item.id}
               className="flex items-center gap-1 rounded-md transition-colors duration-[120ms] hover:bg-n-50"
             >
-              <button
-                onClick={() =>
-                  startTransition(async () => {
-                    await toggleItem(item.id);
-                    router.refresh();
-                  })
-                }
-                disabled={pending}
-                className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-1.5 text-left"
-              >
-                <span
-                  className={clsx(
-                    "flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-[180ms]",
-                    item.doneAt ? "border-ok bg-ok" : "border-n-300",
-                  )}
-                >
-                  {item.doneAt && (
-                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-                      <path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                <span
-                  className={clsx(
-                    "truncate text-[13px] text-n-600",
-                    item.doneAt && "text-n-400 line-through decoration-n-300",
-                  )}
-                >
-                  {item.label}
-                </span>
-              </button>
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-1.5">
+                <Tick
+                  id={`item-${item.id}`}
+                  size="sm"
+                  done={!!item.doneAt}
+                  disabled={pending}
+                  label={item.doneAt ? `Untick ${item.label}` : `Tick ${item.label}`}
+                  onToggle={() =>
+                    startTransition(async () => {
+                      await toggleItem(item.id);
+                      router.refresh();
+                    })
+                  }
+                />
+                {/* A label, so the words tick it too - as the whole row used to. */}
+                <label htmlFor={`item-${item.id}`} data-done={!!item.doneAt} className="tick-text cursor-pointer truncate text-[13px] text-n-600">
+                  <span className="tick-words">{item.label}</span>
+                </label>
+              </div>
 
               <button
                 onClick={() =>

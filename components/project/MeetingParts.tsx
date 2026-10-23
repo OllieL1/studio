@@ -9,6 +9,7 @@ import { toggleTask } from "@/app/actions";
 import { clsx } from "@/lib/clsx";
 import { fmtDayDate } from "@/lib/dates";
 import { MarkdownField } from "../MarkdownField";
+import { Tick } from "../Tick";
 
 type PrepTask = { id: string; title: string; done: boolean; backlog: boolean };
 type Option = { id: string; title: string; backlog: boolean };
@@ -78,20 +79,15 @@ export function PrepList({
       <div className="space-y-0.5">
         {prep.map((t) => (
           <div key={t.id} className="group flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-n-50">
-            <button
-              onClick={() => run(() => toggleTask(t.id))}
+            <Tick
+              size="sm"
+              done={t.done}
               disabled={pending}
-              aria-label={t.done ? `Untick ${t.title}` : `Tick ${t.title}`}
-              className={clsx("flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border", t.done ? "border-ok bg-ok" : "border-n-300")}
-            >
-              {t.done && (
-                <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-                  <path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
-            <Link href={`/tasks/${t.id}` as Route} className={clsx("min-w-0 flex-1 truncate text-[13px] hover:underline", t.done ? "text-n-400 line-through" : t.backlog ? "text-n-500" : "text-n-700")}>
-              {t.title}
+              label={t.done ? `Untick ${t.title}` : `Tick ${t.title}`}
+              onToggle={() => run(() => toggleTask(t.id))}
+            />
+            <Link href={`/tasks/${t.id}` as Route} data-done={t.done} className={clsx("tick-text min-w-0 flex-1 truncate text-[13px] hover:underline", t.backlog ? "text-n-500" : "text-n-700")}>
+              <span className="tick-words">{t.title}</span>
             </Link>
             {t.backlog && !t.done && (
               <span className="shrink-0 rounded-[4px] bg-n-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-n-500">Backlog</span>
