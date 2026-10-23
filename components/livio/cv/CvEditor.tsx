@@ -205,7 +205,7 @@ export function CvEditor({ initialMaster, versions, current }: {
         </Panel>
 
         <Panel title="Content" hint="Click any text on the page to edit it. Here: what's in, in what order.">
-          <Group title="Name & contact" open>
+          <Group title="Name & contact">
             <Field label="Name" value={doc.name} overridden={isOverridden(state.overrides, "cv", "name")}
               onChange={(v) => onText("cv", "name", v)} onReset={() => update((x) => inherit(x, "cv", "name"))} />
             <Field label="Headline" value={doc.headline} overridden={isOverridden(state.overrides, "cv", "headline")}
@@ -249,6 +249,11 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
   const [naming, setNaming] = useState<"new" | "copy" | "rename" | null>(null);
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState<"delete" | "reset" | null>(null);
+  // Delete and reset ask twice: the first click arms them for a few seconds.
+  const arm = (what: "delete" | "reset") => {
+    setConfirm(what);
+    setTimeout(() => setConfirm((c) => (c === what ? null : c)), 3000);
+  };
   const [message, setMessage] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const base = `${LIVIO_BASE}/cv`;
@@ -266,8 +271,61 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
     await go(`${base}?v=${id}`);
   };
 
+  const changed = current && countOverrides(state.overrides ?? NO_OVERRIDES) > 0;
+  const actions = (
+    <>
+      <IconButton label="New version" onClick={() => { setName(""); setNaming("new"); }}>
+        <path d="M8 3v10M3 8h10" />
+      </IconButton>
+      {current && (
+        <IconButton label="Duplicate this version" onClick={() => { setName(`${current.name} copy`); setNaming("copy"); }}>
+          <rect x="5.5" y="5.5" width="8" height="8" rx="1.6" />
+          <path d="M10.5 3.5v-.4A1.6 1.6 0 0 0 8.9 1.5H4.1A1.6 1.6 0 0 0 2.5 3.1v4.8a1.6 1.6 0 0 0 1.6 1.6h.4" />
+        </IconButton>
+      )}
+      {current && (
+        <IconButton label="Rename this version" onClick={() => { setName(current.name); setNaming("rename"); }}>
+          <path d="M10.5 2.5l3 3L6 13H3v-3z" />
+        </IconButton>
+      )}
+      {changed && (
+        <IconButton
+          label={confirm === "reset" ? "Click again to undo every change" : "Reset to the master"}
+          danger={confirm === "reset"}
+          onClick={() => (confirm === "reset" ? (onReset(), setConfirm(null)) : arm("reset"))}
+        >
+          <path d="M3 8a5 5 0 1 0 1.5-3.5" /><path d="M3 2.5v3h3" />
+        </IconButton>
+      )}
+      {current && (
+        <IconButton
+          label={confirm === "delete" ? "Click again to delete this version" : "Delete this version"}
+          danger={confirm === "delete"}
+          onClick={async () => {
+            if (confirm !== "delete") return arm("delete");
+            await deleteVersion(current.id);
+            setConfirm(null);
+            await go(base);
+          }}
+        >
+          <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" />
+        </IconButton>
+      )}
+      <span aria-hidden className="mx-0.5 h-4 w-px bg-n-200" />
+      <IconButton label="Import JSON" onClick={() => file.current?.click()}>
+        <path d="M8 10V2.5M5 5.5l3-3 3 3M3 10.5v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2" />
+      </IconButton>
+      <IconButton
+        label="Download JSON"
+        onClick={() => download(new Blob([JSON.stringify(toExport(current?.name ?? "Master", doc), null, 2)], { type: "application/json" }), `cv-${slug(current?.name ?? "master")}.json`)}
+      >
+        <path d="M8 2.5V10M5 7l3 3 3-3M3 10.5v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2" />
+      </IconButton>
+    </>
+  );
+
   return (
-    <Panel title="Versions">
+    <Panel title="Versions" actions={actions}>
       <ul className="-mx-1 space-y-0.5">
         <VersionRow active={!current} name="Master" note="the whole CV" onClick={() => go(base)} />
         {versions.map((v) => (
@@ -281,7 +339,7 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
         ))}
       </ul>
 
-      {naming ? (
+      {naming && (
         <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="mt-2 flex gap-1.5">
           <input
             autoFocus
@@ -296,22 +354,6 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
             {naming === "rename" ? "Rename" : "Create"}
           </button>
         </form>
-      ) : (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <Small onClick={() => { setName(""); setNaming("new"); }}>New version</Small>
-          {current && <Small onClick={() => { setName(`${current.name} copy`); setNaming("copy"); }}>Duplicate</Small>}
-          {current && <Small onClick={() => { setName(current.name); setNaming("rename"); }}>Rename</Small>}
-          {current && (confirm === "delete" ? (
-            <Small danger onClick={async () => { await deleteVersion(current.id); setConfirm(null); await go(base); }}>Really delete?</Small>
-          ) : (
-            <Small onClick={() => setConfirm("delete")}>Delete</Small>
-          ))}
-          {current && countOverrides(state.overrides ?? NO_OVERRIDES) > 0 && (confirm === "reset" ? (
-            <Small danger onClick={() => { onReset(); setConfirm(null); }}>Undo every change?</Small>
-          ) : (
-            <Small onClick={() => setConfirm("reset")}>Reset to master</Small>
-          ))}
-        </div>
       )}
 
       {version && version.careers.length > 0 && (
@@ -328,34 +370,25 @@ function Versions({ versions, current, version, go, state, doc, onReset }: {
         </p>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-n-100 pt-3">
-        <Small onClick={() => file.current?.click()}>Import from the old builder</Small>
-        <Small onClick={() => download(new Blob([JSON.stringify(toExport(current?.name ?? "Master", doc), null, 2)], { type: "application/json" }), `cv-${slug(current?.name ?? "master")}.json`)}>
-          Download JSON
-        </Small>
-        <input
-          ref={file}
-          type="file"
-          accept="application/json"
-          multiple
-          hidden
-          onChange={async (e) => {
-            const files = Array.from(e.target.files ?? []);
-            e.target.value = "";
-            const parsed = await Promise.all(files.map(async (f) => {
-              try { return JSON.parse(await f.text()); } catch { return null; }
-            }));
-            const res = await importVersions(parsed.filter(Boolean));
-            const bad = res.failed + parsed.filter((p) => !p).length;
-            setMessage(`${res.imported.length} imported${bad ? ` · ${bad} weren't CV files` : ""}`);
-            if (res.imported[0]) await go(`${base}?v=${res.imported[0]}`);
-          }}
-        />
-      </div>
+      <input
+        ref={file}
+        type="file"
+        accept="application/json"
+        multiple
+        hidden
+        onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          const parsed = await Promise.all(files.map(async (f) => {
+            try { return JSON.parse(await f.text()); } catch { return null; }
+          }));
+          const res = await importVersions(parsed.filter(Boolean));
+          const bad = res.failed + parsed.filter((p) => !p).length;
+          setMessage(`${res.imported.length} imported${bad ? ` · ${bad} weren't CV files` : ""}`);
+          if (res.imported[0]) await go(`${base}?v=${res.imported[0]}`);
+        }}
+      />
       {message && <p className="mt-2 text-[11.5px] text-n-500">{message}</p>}
-      <p className="mt-2 text-[11px] leading-4 text-n-400">
-        In the old builder: pick a version, choose Download JSON, repeat - then import them all here at once.
-      </p>
     </Panel>
   );
 }
@@ -483,10 +516,13 @@ TEMPLATES.bullet = () => ({ id: newId(), t: "New bullet" });
 
 /* ── Small pieces ───────────────────────────────────────────────────────── */
 
-function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Panel({ title, hint, actions, children }: { title: string; hint?: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border border-n-100 bg-n-0 p-4">
-      <Eyebrow className="mb-2.5">{title}</Eyebrow>
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <Eyebrow>{title}</Eyebrow>
+        {actions && <div className="-my-1 -mr-1 flex items-center gap-0.5">{actions}</div>}
+      </div>
       {hint && <p className="-mt-1 mb-2.5 text-[11.5px] leading-4 text-n-400">{hint}</p>}
       <div className="space-y-2">{children}</div>
     </section>
@@ -598,17 +634,22 @@ function Remove({ onClick }: { onClick: () => void }) {
   );
 }
 
-function Small({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+/** A square icon button; its label is its tooltip and its name. */
+function IconButton({ label, onClick, danger, children }: { label: string; onClick: () => void; danger?: boolean; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      title={label}
+      aria-label={label}
       className={clsx(
-        "rounded-md border px-2 py-1 text-[11.5px] font-medium transition-colors",
-        danger ? "border-danger bg-danger-soft text-danger" : "border-n-200 text-n-600 hover:bg-n-50 hover:text-n-800",
+        "flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-[120ms]",
+        danger ? "bg-danger-soft text-danger" : "text-n-500 hover:bg-n-100 hover:text-n-800",
       )}
     >
-      {children}
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        {children}
+      </svg>
     </button>
   );
 }
