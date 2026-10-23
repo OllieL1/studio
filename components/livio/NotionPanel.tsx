@@ -6,8 +6,8 @@ import { connectNotion, disconnectNotion } from "@/app/livioActions";
 import { Card, Eyebrow } from "../ui";
 
 /**
- * Livio's Notion connection: an internal-integration secret and the To-do
- * database link. Nothing's saved until Notion confirms both, so a bad paste
+ * Livio's Notion connection: a personal access token and the To-do database
+ * link. Nothing's saved until Notion confirms both, so a bad paste
  * is explained here rather than failing quietly on the first pull.
  */
 export function NotionPanel({ connected, title }: { connected: boolean; title: string | null }) {
@@ -72,18 +72,29 @@ export function NotionPanel({ connected, title }: { connected: boolean; title: s
         <form onSubmit={connect} className="mt-5 space-y-3 border-t border-n-100 pt-5">
           <ol className="list-decimal space-y-1 pl-4 text-[12.5px] leading-5 text-n-600">
             <li>
-              Create an internal integration at{" "}
-              <a href="https://www.notion.so/my-integrations" target="_blank" rel="noreferrer" className="font-medium text-rust-600 underline-offset-2 hover:underline">
-                notion.so/my-integrations
-              </a>{" "}
-              and copy its secret.
+              In Notion’s{" "}
+              <a href="https://www.notion.so/developers" target="_blank" rel="noreferrer" className="font-medium text-rust-600 underline-offset-2 hover:underline">
+                Developer portal
+              </a>
+              , open <strong className="font-semibold text-n-700">Personal access tokens</strong> and choose{" "}
+              <strong className="font-semibold text-n-700">New token</strong>.
             </li>
-            <li>Open your To-do database, choose ••• → Connections, and add the integration.</li>
-            <li>Copy the database’s link and paste both below.</li>
+            <li>
+              Name it “Livio”, tick the <strong className="font-semibold text-n-700">Notion API</strong> capability, create it,
+              and copy the token straight away - Notion only shows it once.
+            </li>
+            <li>Copy your To-do database’s link, and paste both below.</li>
           </ol>
+          <p className="text-[11.5px] leading-5 text-n-400">
+            A personal token acts as you, so it already sees the database. Using an internal connection from{" "}
+            <a href="https://app.notion.com/developers/connections" target="_blank" rel="noreferrer" className="font-medium text-rust-600 underline-offset-2 hover:underline">
+              Connections
+            </a>{" "}
+            instead? Add it to the database first: ••• → Connections.
+          </p>
 
           <label className="block">
-            <span className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-n-500">Integration secret</span>
+            <span className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-n-500">Token</span>
             <input
               type="password"
               value={secret}

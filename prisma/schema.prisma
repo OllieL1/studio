@@ -285,9 +285,9 @@ model GoogleAuth {
   updatedAt    DateTime @updatedAt
 }
 
-/// Livio's Notion connection: an internal-integration secret and the To-do
-/// database it was shared with. Pasted in Livio's preferences - no OAuth, so
-/// it works from the stick without a redirect URI.
+/// Livio's Notion connection: a personal access token (or an internal
+/// connection's token) and the To-do database it reads. Pasted in Livio's
+/// preferences - no OAuth, so it works from the stick without a redirect URI.
 model NotionAuth {
   id           String    @id @default("singleton")
   token        String

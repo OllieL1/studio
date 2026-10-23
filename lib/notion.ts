@@ -2,9 +2,11 @@
  * Notion, for Livio's todo inbox.
  *
  * Tasks jotted into a Notion database on the phone get pulled into Livio the
- * next time it opens. The connection is an internal integration: a secret
- * from notion.so/my-integrations, with the To-do database shared to it. No
- * OAuth, so there's no redirect URI to keep in step with the port.
+ * next time it opens. The connection is a personal access token from Notion's
+ * Developer portal (notion.so/developers), which acts as you and so sees the
+ * database already; an internal connection's token works too, once the
+ * database is shared with it. No OAuth, so there's no redirect URI to keep in
+ * step with the port. (notion.so/my-integrations went away in 2026.)
  *
  * Speaks API version 2025-09-03, where a database is a container of data
  * sources and it's the data source that gets queried and has a schema.
@@ -105,9 +107,9 @@ export async function describeDatabase(token: string, databaseId: string): Promi
 /** Notion's own errors are written for developers; say what to do instead. */
 export function explainNotionError(e: unknown): string {
   if (e instanceof NotionError) {
-    if (e.status === 401) return "Notion didn't accept that secret. Copy it again from notion.so/my-integrations.";
+    if (e.status === 401) return "Notion didn't accept that token. Make a new one in the Developer portal - Notion only shows it once.";
     if (e.status === 404) {
-      return "Notion can't see that database. Open it, choose ••• → Connections, and add your integration.";
+      return "Notion can't see that database. Check the link - or, for an internal connection, add it to the database: ••• → Connections.";
     }
     return e.message;
   }

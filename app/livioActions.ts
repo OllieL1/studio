@@ -20,7 +20,7 @@ export type NotionConnectResult =
  */
 export async function connectNotion(secret: string, database: string): Promise<NotionConnectResult> {
   const token = secret.trim();
-  if (!token) return { ok: false, error: "Paste the integration secret first." };
+  if (!token) return { ok: false, error: "Paste the token first." };
   const databaseId = parseDatabaseId(database);
   if (!databaseId) return { ok: false, error: "That doesn't look like a Notion database link." };
 
