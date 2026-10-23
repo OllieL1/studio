@@ -1,14 +1,16 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import type { CalendarItem } from "@/lib/calendar";
 import type { PlanBlockView } from "@/lib/planData";
-import { isSameDay, parseLocalDate, toISODate } from "@/lib/dates";
+import { addDays, isSameDay, parseLocalDate, startOfWeek, toISODate } from "@/lib/dates";
 import { TASK_KIND_LABEL } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
-import { fmtLength, fmtMinutes } from "@/lib/plan";
-import { blockKey, buildDays, dayJump, GAP_WORTH_SHOWING, navKeys, sleepItems, timeLabel, type PlanDay, type Row, type Sleep } from "@/lib/planView";
+import { fmtLength, fmtMinutes, rangeHref } from "@/lib/plan";
+import { blockKey, buildDays, dayJump, GAP_WORTH_SHOWING, navKeys, nowKey, sleepItems, timeLabel, type PlanDay, type Row, type Sleep } from "@/lib/planView";
 import { createBlock, deleteBlock, restoreBlock, setHidden, setSleep, syncRange, updateBlock, type BlockInput } from "@/app/planActions";
 import { WeekGrid } from "../calendar/WeekGrid";
 import { Composer, Key, TimeField, type ComposerCourse, type ComposerResult } from "./Composer";
@@ -58,6 +60,7 @@ export function PlanEditor({
   calendar: { id: string; name: string | null } | null;
   sleep: Sleep;
 }) {
+  const router = useRouter();
   const from = useMemo(() => parseLocalDate(fromISO), [fromISO]);
   const [, startTransition] = useTransition();
 
@@ -110,7 +113,12 @@ export function PlanEditor({
   // Start on today's first entry when today is in range, else the first day's.
   useEffect(() => {
     const today = days.find((d) => isSameDay(d.date, new Date())) ?? days[0];
-    setCursor(today?.rows[0].key ?? null);
+    let wantsNow = false;
+    try {
+      wantsNow = sessionStorage.getItem("plan:now") === "1";
+      sessionStorage.removeItem("plan:now");
+    } catch {}
+    setCursor((wantsNow ? nowKey(days, new Date()) : null) ?? today?.rows[0].key ?? null);
     // Only when the range changes, not on every edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromISO, dayCount]);
@@ -280,14 +288,30 @@ export function PlanEditor({
       switch (e.key) {
         case "ArrowDown": case "j": return go(keys[Math.min(keys.length - 1, i + 1)] ?? keys[0]);
         case "ArrowUp": case "k": return go(keys[Math.max(0, i - 1)] ?? keys[0]);
-        case "ArrowRight": return go(dayJump(days, current, 1));
-        case "ArrowLeft": return go(dayJump(days, current, -1));
+        case "ArrowRight": case "ArrowLeft": {
+          const dir = e.key === "ArrowRight" ? 1 : -1;
+          if (!e.shiftKey) return go(dayJump(days, current, dir));
+          e.preventDefault();
+          return router.push(rangeHref(addDays(from, dir * dayCount), dayCount) as Route);
+        }
         case "Home": return go(keys[0]);
         case "End": return go(keys[keys.length - 1]);
-        case "t": {
+        case "t": case "T": {
           const today = days.find((d) => isSameDay(d.date, new Date()));
-          return go(today?.rows[0].key);
+          if (today) return go(today.rows[0].key);
+          e.preventDefault();
+          return router.push(rangeHref(dayCount === 7 ? startOfWeek(new Date()) : new Date(), dayCount) as Route);
         }
+        case "n": case "N": {
+          e.preventDefault();
+          const key = nowKey(days, new Date());
+          if (key) return go(key);
+          try { sessionStorage.setItem("plan:now", "1"); } catch {}
+          return router.push(rangeHref(dayCount === 7 ? startOfWeek(new Date()) : new Date(), dayCount) as Route);
+        }
+        case "g": case "G":
+          e.preventDefault();
+          return syncRef.current();
         case "Enter":
           if (!current) return;
           e.preventDefault();
@@ -307,7 +331,7 @@ export function PlanEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [keys, days, current, draft, undo, openComposer, editRow, remove, runUndo, togglePreview]);
+  }, [keys, days, current, draft, undo, openComposer, editRow, remove, runUndo, togglePreview, router, from, dayCount]);
 
   /* ── Render ──────────────────────────────────────────────────────────── */
 
@@ -334,6 +358,7 @@ export function PlanEditor({
 
   const [syncing, startSync] = useTransition();
   const [syncResult, setSyncResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const syncRef = useRef<() => void>(() => {});
   const sync = () => {
     setSyncResult(null);
     startSync(async () => {
@@ -346,6 +371,10 @@ export function PlanEditor({
       ].filter(Boolean);
       setSyncResult({ ok: true, text: parts.length ? `Synced - ${parts.join(", ")}.` : "Already in sync." });
     });
+  };
+
+  syncRef.current = () => {
+    if (googleConnected && calendar && !syncing && pending.new + pending.changed + pending.removed > 0) sync();
   };
 
   return (
@@ -794,6 +823,7 @@ function Sidebar({
           <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5">
             <dt><Key>↑</Key> <Key>↓</Key></dt><dd>Move</dd>
             <dt><Key>←</Key> <Key>→</Key></dt><dd>Previous / next day</dd>
+            <dt><Key>⇧←</Key> <Key>⇧→</Key></dt><dd>Previous / next week</dd>
             <dt><Key>↵</Key></dt><dd>Add below</dd>
             <dt><Key>⇧↵</Key></dt><dd>Add above</dd>
             <dt><Key>E</Key></dt><dd>Edit a block</dd>
@@ -801,6 +831,8 @@ function Sidebar({
             <dt><Key>{mod}Z</Key></dt><dd>Undo</dd>
             <dt><Key>P</Key></dt><dd>Calendar view</dd>
             <dt><Key>T</Key></dt><dd>Today</dd>
+            <dt><Key>N</Key></dt><dd>Jump to now</dd>
+            <dt><Key>G</Key></dt><dd>Sync to Google</dd>
           </dl>
           <p className="mt-3 border-t border-n-100 pt-2.5 text-[11.5px] leading-[17px] text-n-500">
             Type a time as <span className="font-num text-n-700">9-11</span>, <span className="font-num text-n-700">20-21</span> or a length like <span className="font-num text-n-700">2h</span>. With no time, it follows the entry above. 1-7 mean afternoon.
@@ -822,9 +854,9 @@ function SleepCard({ sleep, onChange }: { sleep: Sleep; onChange: (s: Sleep) => 
           aria-checked={sleep.on}
           aria-label="Show sleep on the schedule"
           onClick={() => onChange({ ...sleep, on: !sleep.on })}
-          className={clsx("relative h-[18px] w-[30px] rounded-full transition-colors duration-[180ms]", sleep.on ? "bg-rust-500" : "bg-n-200")}
+          className={clsx("relative h-[18px] w-[30px] rounded-full transition-colors duration-[180ms]", sleep.on ? "bg-rust-500" : "bg-n-300")}
         >
-          <span className={clsx("absolute top-[2px] h-[14px] w-[14px] rounded-full bg-n-0 transition-transform duration-[180ms]", sleep.on ? "translate-x-[14px]" : "translate-x-[2px]")} />
+          <span className={clsx("absolute left-0 top-[2px] h-[14px] w-[14px] rounded-full bg-n-0 shadow-[0_1px_2px_rgb(26_23_20/0.3)] transition-transform duration-[180ms]", sleep.on ? "translate-x-[14px]" : "translate-x-[2px]")} />
         </button>
       </div>
       <div className={clsx("mt-2.5 flex items-center gap-1.5 transition-opacity duration-[120ms]", !sleep.on && "pointer-events-none opacity-40")}>

@@ -154,5 +154,22 @@ export function sleepItems(from: Date, days: number, sleep: Sleep): CalendarItem
   return out;
 }
 
+/**
+ * The row on today closest to `now`: the one in progress, else the nearest
+ * start or end. Sleep and hidden events don't count. Null if today isn't shown.
+ */
+export function nowKey(days: PlanDay[], now: Date): string | null {
+  const day = days.find((d) => d.iso === toISODate(now));
+  if (!day) return null;
+  const mins = now.getHours() * 60 + now.getMinutes();
+  let best: { key: string; dist: number } | null = null;
+  for (const r of day.rows) {
+    if (r.type === "empty" || (r.type === "fixed" && (r.hidden || r.item.source === "sleep"))) continue;
+    const dist = mins >= r.start && mins < r.end ? 0 : Math.min(Math.abs(mins - r.start), Math.abs(mins - r.end));
+    if (!best || dist < best.dist) best = { key: r.key, dist };
+  }
+  return best?.key ?? day.rows[0].key;
+}
+
 /** Minutes of free time between two rows worth pointing out. */
 export const GAP_WORTH_SHOWING = 60;

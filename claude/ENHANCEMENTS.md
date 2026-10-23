@@ -1,5 +1,13 @@
 # Enhancement List - Check Off as we go
 
+21/10
+I'd like to make some fixes to the weekly schedule page
+[x] n should jump to now (i.e. the event closest to the current time)
+[x] shift arrow (left or right) should shift weeks
+[x] T should work on other weeks and bring you back to today, currently it only works if you are already in the correct week.
+[x] the sleep toggle button styling is broken, you cant see it properly
+[x] please add a google calendar syncing shortcut key
+
 20/10
 [x] Please can we improve the focus by artist list in the stats page.
 - Artists should only appear in this list for sessions they either played for at least 25% of the session or a minimum of 20 minutes in the session. This gives more usefulness for the stat as it ties the artist more to the session rather than just being a random artist in a playlist that plays twice. Keeping the 2+ sessions make sense. You dont need to display on the UI what the rules behind who appears is, only the stats. 
