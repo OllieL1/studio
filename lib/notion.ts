@@ -113,3 +113,86 @@ export function explainNotionError(e: unknown): string {
   }
   return "Couldn't reach Notion. Check the connection and try again.";
 }
+
+/* ── Pulling and writing back ───────────────────────────────────────────── */
+
+type PropertyValue =
+  | { type: "title"; title: RichText }
+  | { type: "status"; status: { name: string } | null }
+  | { type: "select"; select: { name: string } | null }
+  | { type: "date"; date: { start: string } | null }
+  | { type: "checkbox"; checkbox: boolean }
+  | { type: string };
+
+export type NotionPage = { id: string; properties: Record<string, PropertyValue> };
+
+export type PulledTask = {
+  pageId: string;
+  title: string;
+  /** A date-only deadline lands at 23:59 that day, the way Studio stores
+   *  "sometime that day"; a deadline with a time keeps it. */
+  dueAt: Date | null;
+  status: string | null;
+  statusType: "status" | "select";
+};
+
+/** Midnight-free: "2026-11-03" is the end of that day, local time. */
+export function notionDate(start: string): Date {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
+  if (day) return new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]), 23, 59);
+  return new Date(start);
+}
+
+export function pageToTask(page: NotionPage): PulledTask {
+  const p = page.properties;
+  const title = p.Task && "title" in p.Task ? p.Task.title.map((t) => t.plain_text).join("").trim() : "";
+  const date = p.Deadline && "date" in p.Deadline ? p.Deadline.date : null;
+  const s = p.Status;
+  const status = s && "status" in s ? s.status?.name ?? null : s && "select" in s ? s.select?.name ?? null : null;
+  return {
+    pageId: page.id,
+    title: title || "Untitled",
+    dueAt: date?.start ? notionDate(date.start) : null,
+    status,
+    statusType: s?.type === "select" ? "select" : "status",
+  };
+}
+
+/** Every page not yet ticked Synced, across as many pages of results as it takes. */
+export async function queryUnsynced(token: string, dataSourceId: string): Promise<PulledTask[]> {
+  const out: PulledTask[] = [];
+  let cursor: string | undefined;
+  do {
+    const res = await notion<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }>(
+      token,
+      `/data_sources/${dataSourceId}/query`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          filter: { property: "Synced", checkbox: { equals: false } },
+          page_size: 100,
+          ...(cursor ? { start_cursor: cursor } : {}),
+        }),
+      },
+    );
+    out.push(...res.results.map(pageToTask));
+    cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
+  } while (cursor);
+  return out;
+}
+
+export async function setSynced(token: string, pageId: string, synced: boolean): Promise<void> {
+  await notion(token, `/pages/${pageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ properties: { Synced: { checkbox: synced } } }),
+  });
+}
+
+/** Done when ticked off in Livio or Studio; Not Started when unticked. */
+export async function setStatus(token: string, pageId: string, statusType: string, name: string): Promise<void> {
+  const value = statusType === "select" ? { select: { name } } : { status: { name } };
+  await notion(token, `/pages/${pageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ properties: { Status: value } }),
+  });
+}

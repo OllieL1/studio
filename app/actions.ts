@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notionDoneSync } from "@/lib/notionSync";
 import { db } from "@/lib/db";
 import { DEFAULT_ITEMS, isStudyLocation } from "@/lib/types";
 import { normaliseWeights } from "@/lib/progress";
@@ -29,11 +31,16 @@ function refresh() {
 
 export async function toggleItem(itemId: string) {
   await toggleTaskItem(db, itemId);
+  const item = await db.taskItem.findUnique({ where: { id: itemId }, select: { taskId: true } });
+  // A Livio todo that came from Notion says Done there too - after the
+  // response, so ticking never waits on Notion.
+  if (item) after(() => notionDoneSync(item.taskId));
   refresh();
 }
 
 export async function toggleTask(taskId: string) {
   await setTaskDone(db, taskId);
+  after(() => notionDoneSync(taskId));
   refresh();
 }
 
@@ -621,7 +628,7 @@ export async function pushToCalendar(taskId: string) {
         task.notes,
         task.gradeWeight != null ? `Worth ${task.gradeWeight}% of the course.` : null,
         task.course ? `${task.course.name} (${task.course.code})` : null,
-        `Added from Studio.`,
+        task.courseId ? "Added from Studio." : "Added from Livio.",
       ].filter(Boolean).join("\n\n"),
       start,
       end,

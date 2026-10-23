@@ -131,6 +131,10 @@ model Task {
   /// a second push updates the event rather than duplicating it.
   calendarEventId String?
 
+  /// The Notion page this came from, for Livio todos jotted down on the
+  /// phone. Ticking the task off writes Done back to that page.
+  notionPageId String? @unique
+
   /// Planned start, for tasks drawn as bars on the project timeline. Tasks
   /// without one are drawn as a point on their due date.
   startsAt DateTime?
@@ -292,6 +296,9 @@ model NotionAuth {
   dataSourceId String
   /// The database's title, shown so it's obvious which one is connected.
   title        String?
+  /// "status" or "select" - how the Status column is written back. Read off
+  /// the pages on every pull, so a changed column type is picked up.
+  statusType   String    @default("status")
   lastPulledAt DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -675,4 +682,18 @@ model CareerEntry {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+/// A task pulled from Notion and waiting in Livio's todo inbox. Its fields
+/// can be filled in here (course, deadline, priority, calendar) before it's
+/// entered, which turns it into a Task and ticks Synced in Notion.
+model NotionInboxItem {
+  id         String    @id @default(cuid())
+  pageId     String    @unique
+  title      String
+  dueAt      DateTime?
+  courseId   String?
+  priority   Boolean   @default(false)
+  toCalendar Boolean   @default(false)
+  pulledAt   DateTime  @default(now())
 }

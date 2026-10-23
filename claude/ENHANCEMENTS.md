@@ -18,7 +18,7 @@ We should display an alert for cold emails if it has been longer than 2 weeks. T
 [] CV Page
 - I have another project sitting in /Users/ollie/Documents/projects/cv
 - I want to fully build this into this site. It is a CV builder with defaults, tailored versions. We should entirely integrate this into the site so that the two projects are not separate. We should be able to tie a tailored CV to a career entry i.e. to a cold email or job app.
-[] Todo - a generalised todo. 
+[x] Todo - a generalised todo. 
 - Todos from here should be able to be pulled into Studio if assigned a course but they dont have to be assigned a course
 - Todos should also pull from a Notion database. This will allow me on my phone to create todos that when I next log into my computer and launch this app, it pulls the latest tasks. The database in notion is called To-do and has 4 properties: Task (text), Status (Not Started, In Progress, Done), Deadline (Date), Synced (Boolean). When we pull these in, it should display them at the top allowing us to give them the proper relevant properties if needby. They can then be marked as entered and then they join the rest of the entries. Then we can write back to Notion and update the synced property. 
 - We should be able to sync these tasks to google calendar. 

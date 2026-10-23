@@ -4,6 +4,8 @@ import { fontVariables } from "../fonts";
 import { getPreferences } from "@/lib/preferences";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LivioNav } from "@/components/livio/LivioNav";
+import { NotionAutoPull } from "@/components/livio/NotionAutoPull";
+import { db } from "@/lib/db";
 
 /**
  * Livio's root layout - its own site, served by the same process as Studio.
@@ -27,7 +29,10 @@ export const metadata: Metadata = {
 };
 
 export default async function LivioLayout({ children }: { children: React.ReactNode }) {
-  const prefs = await getPreferences();
+  const [prefs, notion] = await Promise.all([
+    getPreferences(),
+    db.notionAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }),
+  ]);
 
   return (
     <html
@@ -42,6 +47,7 @@ export default async function LivioLayout({ children }: { children: React.ReactN
           <div className="relative z-10 flex min-h-screen flex-col">
             <LivioNav />
             <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-24 pt-8 sm:px-8">{children}</main>
+            {notion && <NotionAutoPull />}
           </div>
         </ThemeProvider>
       </body>

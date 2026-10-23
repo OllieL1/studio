@@ -11,6 +11,7 @@ import { AppSwitch } from "../AppSwitch";
 /** Livio's pages. Each joins this list as it's built. */
 const LINKS: { href: string; label: string }[] = [
   { href: LIVIO_BASE, label: "Home" },
+  { href: `${LIVIO_BASE}/todo`, label: "Todo" },
   { href: `${LIVIO_BASE}/careers`, label: "Careers" },
 ];
 

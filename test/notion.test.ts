@@ -1,6 +1,6 @@
 /** The Notion connection's pure parts (lib/notion.ts). */
 import assert from "node:assert/strict";
-import { parseDatabaseId, schemaProblems } from "../lib/notion";
+import { notionDate, pageToTask, parseDatabaseId, schemaProblems, type NotionPage } from "../lib/notion";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -40,6 +40,44 @@ test("missing and mistyped columns are each named", () => {
   assert.equal(problems.length, 2);
   assert.match(problems[0], /Status/);
   assert.match(problems[1], /Deadline.*rich_text/);
+});
+
+const page = (props: NotionPage["properties"]): NotionPage => ({ id: "p1", properties: props });
+
+test("a page maps to its title, deadline and status", () => {
+  const t = pageToTask(page({
+    Task: { type: "title", title: [{ plain_text: "Book " }, { plain_text: "dentist" }] },
+    Status: { type: "status", status: { name: "In Progress" } },
+    Deadline: { type: "date", date: { start: "2026-11-03" } },
+    Synced: { type: "checkbox", checkbox: false },
+  }));
+  assert.equal(t.title, "Book dentist");
+  assert.equal(t.status, "In Progress");
+  assert.equal(t.statusType, "status");
+  assert.equal(t.dueAt?.getDate(), 3);
+});
+
+test("a select Status is read, and remembered as a select", () => {
+  const t = pageToTask(page({ Task: { type: "title", title: [] }, Status: { type: "select", select: { name: "Done" } } }));
+  assert.equal(t.status, "Done");
+  assert.equal(t.statusType, "select");
+  assert.equal(t.title, "Untitled");
+});
+
+test("blank deadlines and statuses come through as null", () => {
+  const t = pageToTask(page({
+    Task: { type: "title", title: [{ plain_text: "x" }] },
+    Status: { type: "status", status: null },
+    Deadline: { type: "date", date: null },
+  }));
+  assert.equal(t.dueAt, null);
+  assert.equal(t.status, null);
+});
+
+test("a date-only deadline is the end of that day; a timed one keeps its time", () => {
+  const d = notionDate("2026-11-03");
+  assert.deepEqual([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()], [2026, 10, 3, 23, 59]);
+  assert.equal(notionDate("2026-11-03T17:00:00.000Z").toISOString(), "2026-11-03T17:00:00.000Z");
 });
 
 let failed = 0;
