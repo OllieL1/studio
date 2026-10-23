@@ -39,6 +39,7 @@ export async function getProject() {
       },
     }),
     db.paper.findMany({
+      where: { courseId: course.id },
       orderBy: { createdAt: "desc" },
       include: { tagLinks: { include: { tag: { select: { name: true } } } } },
     }),

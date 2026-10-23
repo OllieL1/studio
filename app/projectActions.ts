@@ -245,8 +245,8 @@ export async function draftAgendaFor(meetingId: string): Promise<string> {
       select: { title: true },
       orderBy: { doneAt: "asc" },
     }),
-    db.paper.findMany({ where: { readAt: { gte: from, lt: m.startAt } }, select: { title: true, authors: true } }),
-    db.paper.count({ where: { createdAt: { gte: from, lt: m.startAt } } }),
+    db.paper.findMany({ where: { courseId: m.courseId, readAt: { gte: from, lt: m.startAt } }, select: { title: true, authors: true } }),
+    db.paper.count({ where: { courseId: m.courseId, createdAt: { gte: from, lt: m.startAt } } }),
     db.task.findMany({
       where: { fromMeetingId: { not: null }, fromMeeting: { startAt: { lt: m.startAt } } },
       include: { items: true, fromMeeting: true },
@@ -288,21 +288,28 @@ export type PaperInput = Omit<PaperMeta, "authors"> & {
   notes: string | null;
 };
 
-export async function createPaper(input: PaperInput) {
+/** `courseId` is the course whose library this joins; omitted, it's the project's. */
+export async function createPaper(input: PaperInput, courseId?: string) {
   const title = input.title.trim();
   if (!title) return { ok: false as const, error: "A paper needs a title." };
+  const course = courseId ? await db.course.findUnique({ where: { id: courseId } }) : await projectCourse();
+  // Libraries are per course: the same paper can sit in two of them.
+  const where = { courseId: course?.id ?? null };
   if (input.doi) {
-    const dup = await db.paper.findFirst({ where: { doi: input.doi } });
+    const dup = await db.paper.findFirst({ where: { ...where, doi: input.doi } });
     if (dup) return { ok: false as const, error: `Already in your library: "${dup.title}".` };
   }
   if (input.arxivId) {
-    const dup = await db.paper.findFirst({ where: { arxivId: input.arxivId } });
+    const dup = await db.paper.findFirst({ where: { ...where, arxivId: input.arxivId } });
+    if (dup) return { ok: false as const, error: `Already in your library: "${dup.title}".` };
+  }
+  if (!input.doi && !input.arxivId && input.url) {
+    const dup = await db.paper.findFirst({ where: { ...where, url: input.url.trim() } });
     if (dup) return { ok: false as const, error: `Already in your library: "${dup.title}".` };
   }
   const taken = new Set((await db.paper.findMany({ select: { citeKey: true } })).map((p) => p.citeKey));
   const citeKey = makeCiteKey({ authors: input.authors, year: input.year, title }, taken);
   const status = (PAPER_STATUSES as readonly string[]).includes(input.status) ? input.status : "to-read";
-  const course = await projectCourse();
   const p = await db.paper.create({
     data: {
       title,

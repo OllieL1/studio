@@ -61,6 +61,9 @@ model Course {
   hoursTarget Int?
   /// The dissertation project, which gets the /project workspace.
   isProject   Boolean @default(false)
+  /// Gets a literature library (papers, notes, BibTeX/PDF export) on its
+  /// course page - for courses with a literature review to write.
+  hasLiterature Boolean @default(false)
   /// Credits the course is worth. Overall progress is weighted by these.
   credits     Int     @default(10)
 

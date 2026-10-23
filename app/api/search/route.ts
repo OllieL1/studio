@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Papers: title/authors/tags rank above a match buried in the notes.
-  for (const p of await db.paper.findMany({ include: { tagLinks: { include: { tag: { select: { name: true } } } } } })) {
+  for (const p of await db.paper.findMany({ include: { course: { select: { id: true, isProject: true } }, tagLinks: { include: { tag: { select: { name: true } } } } } })) {
     const tags = p.tagLinks.map((t) => t.tag.name).join(" ");
     const head = score(`${p.title} ${p.authors} ${tags} ${p.venue ?? ""}`.toLowerCase(), lower);
     const inNotes = !head && p.notes?.toLowerCase().includes(lower);
@@ -113,7 +113,10 @@ export async function GET(req: NextRequest) {
     hits.push({
       id: p.id, type: "paper", title: p.title,
       subtitle: [p.authors.split(";")[0]?.split(",")[0], p.year].filter(Boolean).join(" · ") || null,
-      href: `/project?tab=research&paper=${encodeURIComponent(p.citeKey)}`, colour: null,
+      href: p.course && !p.course.isProject
+        ? `/courses/${p.course.id}?paper=${encodeURIComponent(p.citeKey)}#literature`
+        : `/project?tab=research&paper=${encodeURIComponent(p.citeKey)}`,
+      colour: null,
       excerpt: inNotes ? excerptAround(p.notes!, p.notes!.toLowerCase().indexOf(lower), lower.length) : null,
       score: head ? head + 1 : 1,
     });

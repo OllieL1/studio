@@ -11,16 +11,20 @@ import { WeightEditor } from "@/components/WeightEditor";
 import { MoodleLink } from "@/components/MoodleLink";
 import { RevisionToggle } from "@/components/RevisionToggle";
 import { CourseTabs } from "@/components/CourseTabs";
+import { PaperLibrary } from "@/components/project/PaperLibrary";
 import { cssColour } from "@/lib/palette";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoursePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ paper?: string }>;
 }) {
   const { id } = await params;
+  const { paper: focusCiteKey } = await searchParams;
 
   const course = await db.course.findUnique({
     where: { id },
@@ -35,6 +39,11 @@ export default async function CoursePage({
   if (!course) notFound();
   // The project has its own workspace; its course page would be a thinner copy.
   if (course.isProject) redirect("/project");
+
+  // A course with a literature review keeps its own paper library here.
+  const papers = course.hasLiterature
+    ? await db.paper.findMany({ where: { courseId: course.id }, orderBy: { createdAt: "desc" } })
+    : [];
 
   const deps = await db.taskDependency.findMany({
     where: { dependent: { courseId: course.id } },
@@ -250,6 +259,23 @@ export default async function CoursePage({
         unscheduled={unscheduled}
         other={other}
       />
+
+      {/* ── Literature ─────────────────────────────────────────────────── */}
+      {course.hasLiterature && (
+        <section id="literature" className="animate-fade-up scroll-mt-6" style={{ animationDelay: "160ms" }}>
+          <SectionHeading title="Literature" sub={`Papers for the ${course.shortName} literature review - notes, BibTeX and PDF export.`} />
+          <PaperLibrary
+            courseId={course.id}
+            forWhat={`your ${course.shortName} review`}
+            focusCiteKey={focusCiteKey}
+            papers={papers.map((p) => ({
+              id: p.id, title: p.title, authors: p.authors, year: p.year, venue: p.venue, url: p.url,
+              doi: p.doi, arxivId: p.arxivId, kind: p.kind, status: p.status, notes: p.notes, citeKey: p.citeKey,
+              tags: [],
+            }))}
+          />
+        </section>
+      )}
     </div>
   );
 }

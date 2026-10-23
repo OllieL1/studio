@@ -36,18 +36,29 @@ const STATUS_TONE: Record<string, string> = {
  * The research library. Paste a DOI or arXiv link and the details fill in;
  * filter by status, tag or text; tick papers and export them - with their
  * notes - to PDF, or to BibTeX for the dissertation.
+ *
+ * It serves the project and any course with a literature review: `courseId`
+ * says whose library it is, and leaving `tags` out drops tagging altogether.
  */
 export function PaperLibrary({
   papers,
   tags: knownTags,
   focusCiteKey,
+  courseId,
+  forWhat = "your project",
 }: {
   papers: LibraryPaper[];
-  /** Every tag in the project, so a note's tag can be reused on a paper. */
-  tags: string[];
+  /** Every tag in the project, so a note's tag can be reused on a paper. Omit for a library without tagging. */
+  tags?: string[];
+  /** The course this library belongs to; omitted, it's the project's. */
+  courseId?: string;
+  /** Finishes "How it relates to ..." in the notes placeholder. */
+  forWhat?: string;
   /** From `?paper=<citeKey>` - what a @r chip in a note links to. */
   focusCiteKey?: string;
 }) {
+  const tagging = knownTags !== undefined;
+  const courseQuery = courseId ? `&course=${courseId}` : "";
   const [status, setStatus] = useState<string>("all");
   const [tag, setTag] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -73,7 +84,7 @@ export function PaperLibrary({
 
   return (
     <div className="space-y-4">
-      <AddPaper allTags={knownTags} />
+      <AddPaper allTags={knownTags} courseId={courseId} forWhat={forWhat} />
 
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -98,7 +109,7 @@ export function PaperLibrary({
             className="ml-auto h-8 w-56 rounded-sm border border-n-200 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
           />
         </div>
-        {usedTags.length > 0 && (
+        {tagging && usedTags.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-n-100 pt-2">
             <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-400">Tags</span>
             {usedTags.map((t) => (
@@ -138,7 +149,7 @@ export function PaperLibrary({
             <button onClick={() => setSelected(new Set())} className="text-[12px] font-medium text-n-500 hover:text-n-800">Clear</button>
             <span className="ml-auto flex items-center gap-2">
               <a
-                href={`/api/project/papers/pdf?ids=${ids}`}
+                href={`/api/project/papers/pdf?ids=${ids}${courseQuery}`}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-600"
@@ -146,8 +157,8 @@ export function PaperLibrary({
                 Export PDF
               </a>
               <a
-                href={`/api/project/bibtex?ids=${ids}`}
-                download="studio-references.bib"
+                href={`/api/project/bibtex?ids=${ids}${courseQuery}`}
+                download
                 className="rounded-md border border-n-200 bg-n-0 px-3 py-1.5 text-[12.5px] font-semibold text-n-700 hover:bg-n-50"
               >
                 Export BibTeX
@@ -161,7 +172,7 @@ export function PaperLibrary({
         <Card>
           <EmptyState
             title={papers.length === 0 ? "No papers yet." : "Nothing matches."}
-            body={papers.length === 0 ? "Paste a paper's link above - arXiv, ACM, IEEE with a DOI, Springer - and its details fill in." : "Try another filter."}
+            body={papers.length === 0 ? "Paste a DOI, an arXiv link or any web address above - a paper, a blog post, an article - and its details fill in." : "Try another filter."}
           />
         </Card>
       ) : (
@@ -175,6 +186,7 @@ export function PaperLibrary({
               expanded={open === p.id}
               onExpand={() => setOpen(open === p.id ? null : p.id)}
               allTags={knownTags}
+              forWhat={forWhat}
               focus={p.citeKey === focusCiteKey}
             />
           ))}
@@ -185,10 +197,10 @@ export function PaperLibrary({
 }
 
 function PaperRow({
-  paper: p, selected, onToggle, expanded, onExpand, allTags, focus,
+  paper: p, selected, onToggle, expanded, onExpand, allTags, forWhat, focus,
 }: {
   paper: LibraryPaper; selected: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void;
-  allTags: string[]; focus: boolean;
+  allTags?: string[]; forWhat: string; focus: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -214,6 +226,7 @@ function PaperRow({
             {shortAuthors(p.authors)}
             {p.year && ` · ${p.year}`}
             {p.venue && <span className="text-n-400"> · {p.venue}</span>}
+            {p.kind === "web" && <span className="ml-1.5 rounded bg-n-100 px-1.5 py-px text-[10.5px] font-semibold uppercase tracking-[0.05em] text-n-500">Web</span>}
           </p>
           {(p.tags.length > 0 || p.notes) && (
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[11.5px]">
@@ -238,29 +251,31 @@ function PaperRow({
       {expanded && (
         <div className="animate-fade-in space-y-3 px-3 pb-4 pl-9">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
-            {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="font-medium text-rust-600 hover:underline">Open paper ↗</a>}
+            {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="font-medium text-rust-600 hover:underline">{p.kind === "web" ? "Open page ↗" : "Open paper ↗"}</a>}
             {p.doi && <span className="font-num text-n-400">doi:{p.doi}</span>}
             {p.arxivId && <span className="font-num text-n-400">arXiv:{p.arxivId}</span>}
             <span className="font-num text-n-400">cite: {p.citeKey}</span>
           </div>
-          <div className="max-w-md">
-            <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-500">Tags</span>
-            <TagPicker
-              selected={tags}
-              all={allTags}
-              compact
-              onChange={(next) => {
-                setTags(next);
-                startTransition(async () => { await setPaperTags(p.id, next); router.refresh(); });
-              }}
-            />
-          </div>
+          {allTags && (
+            <div className="max-w-md">
+              <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-500">Tags</span>
+              <TagPicker
+                selected={tags}
+                all={allTags}
+                compact
+                onChange={(next) => {
+                  setTags(next);
+                  startTransition(async () => { await setPaperTags(p.id, next); router.refresh(); });
+                }}
+              />
+            </div>
+          )}
           <div>
             <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-n-500">Notes</span>
             <MarkdownField
               initial={p.notes ?? ""}
               save={async (md) => updatePaper(p.id, { notes: md })}
-              placeholder="Key ideas, method, how it relates to your project, quotes worth keeping…"
+              placeholder={`Key ideas, method, how it relates to ${forWhat}, quotes worth keeping…`}
               minHeight={140}
             />
           </div>
@@ -281,7 +296,7 @@ function PaperRow({
 type Draft = { title: string; authors: string; year: string; venue: string; url: string; doi: string | null; arxivId: string | null; kind: PaperMeta["kind"]; status: string; tags: string[]; notes: string };
 const EMPTY: Draft = { title: "", authors: "", year: "", venue: "", url: "", doi: null, arxivId: null, kind: "article", status: "to-read", tags: [], notes: "" };
 
-function AddPaper({ allTags }: { allTags: string[] }) {
+function AddPaper({ allTags, courseId, forWhat }: { allTags?: string[]; courseId?: string; forWhat: string }) {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -300,7 +315,9 @@ function AddPaper({ allTags }: { allTags: string[] }) {
         setDraft({ ...EMPTY, title: m.title, authors: m.authors.join("; "), year: m.year ? String(m.year) : "", venue: m.venue ?? "", url: m.url ?? "", doi: m.doi, arxivId: m.arxivId, kind: m.kind });
       } else {
         setError(res.error);
-        setDraft({ ...EMPTY, url: /^https?:\/\//.test(input.trim()) ? input.trim() : "" });
+        // Keep the link at least, and treat it as a web page to be filled in by hand.
+        const link = /^https?:\/\//.test(input.trim()) ? input.trim() : "";
+        setDraft({ ...EMPTY, url: link, kind: link ? "web" : EMPTY.kind });
       }
     });
   };
@@ -320,9 +337,9 @@ function AddPaper({ allTags }: { allTags: string[] }) {
         kind: draft.kind,
         status: draft.status,
         notes: draft.notes || null,
-      });
+      }, courseId);
       if (!res.ok) { setError(res.error); return; }
-      if (draft.tags.length) await setPaperTags(res.id, draft.tags);
+      if (allTags && draft.tags.length) await setPaperTags(res.id, draft.tags);
       setDraft(null);
       setInput("");
       router.refresh();
@@ -337,8 +354,8 @@ function AddPaper({ allTags }: { allTags: string[] }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && lookup()}
-          placeholder="Paste a paper link or DOI - arXiv, ACM, Springer, doi.org…"
-          aria-label="Paper link"
+          placeholder="Paste a DOI, an arXiv link, or any web address - a paper, blog post or article…"
+          aria-label="Paper or web link"
           className="h-8 min-w-0 flex-1 bg-transparent text-[14px] text-n-800 outline-none placeholder:text-n-400"
         />
         <button onClick={() => { setError(null); setDraft({ ...EMPTY }); }} className="shrink-0 rounded-md px-2 py-1.5 text-[12px] font-medium text-n-500 hover:bg-n-50">
@@ -373,10 +390,10 @@ function AddPaper({ allTags }: { allTags: string[] }) {
                 ))}
               </div>
             </Field>
-            <Field label="Tags"><TagPicker selected={draft.tags} all={allTags} compact onChange={(t) => set("tags", t)} /></Field>
+            {allTags && <Field label="Tags"><TagPicker selected={draft.tags} all={allTags} compact onChange={(t) => set("tags", t)} /></Field>}
           </div>
           <Field label="Notes">
-            <textarea value={draft.notes} onChange={(e) => set("notes", e.target.value)} rows={3} placeholder="Why it matters to your project (markdown)" className={clsx(inputCls, "h-auto resize-y py-2")} />
+            <textarea value={draft.notes} onChange={(e) => set("notes", e.target.value)} rows={3} placeholder={`Why it matters to ${forWhat} (markdown)`} className={clsx(inputCls, "h-auto resize-y py-2")} />
           </Field>
           <div className="flex justify-end gap-2">
             <button onClick={() => setDraft(null)} className="rounded-md px-3 py-1.5 text-[12.5px] font-semibold text-n-500 hover:bg-n-100">Cancel</button>

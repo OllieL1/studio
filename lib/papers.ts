@@ -4,8 +4,12 @@
  *
  * Lookups use two free services with no account: Crossref (anything with a
  * DOI - ACM, Springer, Elsevier, most journals) and arXiv. Nothing personal
- * is sent; only the DOI or arXiv id being looked up.
+ * is sent; only the DOI or arXiv id being looked up. Any other web link - a
+ * blog, an article, documentation - is fetched directly and read for the
+ * details the page publishes about itself (lib/webMeta.ts).
  */
+
+import { fetchableUrl, parseWebMeta } from "./webMeta";
 
 export type PaperMeta = {
   title: string;
@@ -15,7 +19,7 @@ export type PaperMeta = {
   doi: string | null;
   arxivId: string | null;
   url: string | null;
-  kind: "article" | "inproceedings" | "preprint" | "book" | "thesis" | "misc";
+  kind: "article" | "inproceedings" | "preprint" | "book" | "thesis" | "misc" | "web";
 };
 
 export const PAPER_STATUSES = ["to-read", "reading", "read"] as const;
@@ -58,13 +62,72 @@ export async function lookupPaper(raw: string): Promise<{ ok: true; meta: PaperM
   try {
     if (arxivId) return { ok: true, meta: await fromArxiv(arxivId) };
     if (doi) return { ok: true, meta: await fromCrossref(doi, url) };
+    if (url) {
+      if (!fetchableUrl(url)) return { ok: false, error: "That address can't be fetched from here. You can fill the details in by hand." };
+      return { ok: true, meta: await fromWebPage(url) };
+    }
   } catch (e) {
     return { ok: false, error: `Couldn't fetch details (${e instanceof Error ? e.message : "network error"}). You can fill them in by hand.` };
   }
   return {
     ok: false,
-    error: "No DOI or arXiv id in that link, so details can't be looked up. Fill them in by hand - or paste the paper's DOI.",
+    error: "Paste a DOI, an arXiv link or a web address, and details are filled in. Otherwise add them by hand.",
   };
+}
+
+/** A web page's own metadata. A scholarly page that names its DOI gets the full Crossref record. */
+async function fromWebPage(url: string): Promise<PaperMeta> {
+  const res = await fetch(url, {
+    headers: { ...HEADERS, Accept: "text/html,application/xhtml+xml" },
+    redirect: "follow",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!res.ok) throw new Error(`the site answered ${res.status}`);
+  const type = res.headers.get("content-type") ?? "";
+  if (type && !/html|xml/i.test(type)) throw new Error("that link isn't a web page");
+  const page = parseWebMeta(await readCapped(res, 600_000), res.url || url);
+
+  if (page.doi) {
+    try { return await fromCrossref(page.doi, url); } catch { /* fall back to what the page itself says */ }
+  }
+  return {
+    title: page.title ?? new URL(url).hostname,
+    authors: page.authors.map(normaliseAuthor),
+    year: page.year,
+    venue: page.venue,
+    doi: page.doi,
+    arxivId: null,
+    url,
+    kind: page.kind,
+  };
+}
+
+/** The start of a response body - a page's metadata is in its head, so there's no need for all of it. */
+async function readCapped(res: Response, max: number): Promise<string> {
+  if (!res.body) return res.text();
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  while (text.length < max) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+  }
+  await reader.cancel().catch(() => {});
+  return text;
+}
+
+const ORG_WORDS = /\b(team|staff|inc|ltd|llc|foundation|blog|labs?|news|press|university|institute|group|company|corp|editors?|research|engineering|docs|documentation)\b/i;
+
+/**
+ * "Jane Doe" → "Doe, Jane". Organisations and mononyms stay as written - a
+ * company has no surname to put first.
+ */
+export function normaliseAuthor(name: string): string {
+  const n = name.trim();
+  if (n.includes(",") || ORG_WORDS.test(n)) return n;
+  const words = n.split(/\s+/);
+  return words.length >= 2 && words.length <= 4 ? toSurnameFirst(n) : n;
 }
 
 async function fromCrossref(doi: string, url: string | null): Promise<PaperMeta> {
@@ -177,6 +240,8 @@ export type BibPaper = {
   arxivId: string | null;
   url: string | null;
   kind: string;
+  /** When it was added - a web page's "accessed" date. */
+  createdAt?: Date;
 };
 
 /** Escape characters that break BibTeX/LaTeX. */
@@ -197,13 +262,15 @@ export function toBibtex(papers: BibPaper[]): string {
       const fields: [string, string | null][] = [
         // Double braces keep the title's capitalisation as written.
         ["title", `{${bibEscape(p.title)}}`],
-        ["author", p.authors.split(";").map((a) => bibEscape(a.trim())).filter(Boolean).join(" and ") || null],
+        // A name with no comma is an organisation or mononym: braces stop BibTeX splitting it into given and family.
+        ["author", p.authors.split(";").map((a) => a.trim()).filter(Boolean).map((a) => (a.includes(",") ? bibEscape(a) : `{${bibEscape(a)}}`)).join(" and ") || null],
         ["year", p.year ? String(p.year) : null],
         [venueField ?? "howpublished", p.venue ? bibEscape(p.venue) : null],
         ["doi", p.doi],
         ["eprint", p.arxivId],
         ["archivePrefix", p.arxivId ? "arXiv" : null],
         ["url", p.url],
+        ["urldate", p.kind === "web" && p.createdAt ? p.createdAt.toISOString().slice(0, 10) : null],
       ];
       const body = fields
         .filter(([, v]) => v)

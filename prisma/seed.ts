@@ -40,6 +40,8 @@ type CourseSpec = {
   semester: number;
   /** The dissertation project - gets the /project workspace and a pace tracker. */
   isProject?: boolean;
+  /** Course page gets a literature library, for a lit review. */
+  literature?: boolean;
   hoursTarget?: number;
   /** Credits (default 10). Overall progress is weighted by these. */
   credits?: number;
@@ -90,6 +92,7 @@ const COURSES: CourseSpec[] = [
     code: "COMPSCI4038",
     name: "Professional Software Issues", // PSI
     shortName: "PSI",
+    literature: true,
     colour: "#B28944",
     semester: 1,
     lectureWeight: 35, labWeight: 0, assessmentWeight: 65,
@@ -108,6 +111,7 @@ const COURSES: CourseSpec[] = [
     code: "COMPSCI5025",
     name: "Research Methods & Techniques", // RMT
     shortName: "RMT",
+    literature: true,
     colour: "#3D6924",
     semester: 1,
     lectureWeight: 35, labWeight: 0, assessmentWeight: 65,
@@ -250,6 +254,7 @@ async function main() {
         position: index,
         semester: spec.semester,
         ...(spec.isProject ? { isProject: true } : {}),
+        ...(spec.literature ? { hasLiterature: true } : {}),
         ...(spec.hoursTarget ? { hoursTarget: spec.hoursTarget } : {}),
       },
       create: {
@@ -260,6 +265,7 @@ async function main() {
         position: index,
         semester: spec.semester,
         isProject: spec.isProject ?? false,
+        hasLiterature: spec.literature ?? false,
         hoursTarget: spec.hoursTarget ?? null,
         credits: spec.credits ?? 10,
         lectureWeight: spec.lectureWeight,

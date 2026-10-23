@@ -15,8 +15,14 @@ export async function GET(req: NextRequest) {
   const idsParam = req.nextUrl.searchParams.get("ids");
   const ids = idsParam?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
 
+  // `?course=` is the library being exported; without it, the project's.
+  const courseId = req.nextUrl.searchParams.get("course");
+  const course = courseId
+    ? await db.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, code: true, shortName: true } })
+    : await db.course.findFirst({ where: { isProject: true }, select: { id: true, name: true, code: true, shortName: true } });
+
   const rows = await db.paper.findMany({
-    where: ids.length > 0 ? { id: { in: ids } } : undefined,
+    where: { ...(ids.length > 0 ? { id: { in: ids } } : {}), ...(course ? { courseId: course.id } : {}) },
     orderBy: [{ year: "desc" }, { title: "asc" }],
     include: { tagLinks: { include: { tag: { select: { name: true } } } } },
   });
@@ -26,10 +32,7 @@ export async function GET(req: NextRequest) {
     return new Response("Nothing to export.", { status: 404 });
   }
 
-  const course = await db.course.findFirst({
-    where: { isProject: true },
-    select: { name: true, code: true },
-  });
+  const stem = courseId && course ? course.shortName.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "studio";
 
   const pdf = await buildPapersPdf(papers, {
     subtitle: course ? `${course.name} · ${course.code}` : "Studio",
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
     headers: {
       "Content-Type": "application/pdf",
       // Inline so it opens in a tab; the browser's own save button handles the rest.
-      "Content-Disposition": `inline; filename="studio-research-${toISODate(new Date())}.pdf"`,
+      "Content-Disposition": `inline; filename="${stem}-research-${toISODate(new Date())}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

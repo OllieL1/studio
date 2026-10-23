@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
   const [papers, tags, tasks, notes, meetings, issues] = await Promise.all([
     want("paper")
       ? db.paper.findMany({
-          where: q ? { OR: [{ title: like }, { citeKey: like }, { authors: like }] } : undefined,
+          // @r chips open the project's library, so only its papers are offered.
+          where: { course: { isProject: true }, ...(q ? { OR: [{ title: like }, { citeKey: like }, { authors: like }] } : {}) },
           orderBy: { createdAt: "desc" },
           take: LIMIT_PER_KIND,
           select: { citeKey: true, title: true, year: true },

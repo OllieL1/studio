@@ -134,4 +134,4 @@ function entry(doc: PDFKit.PDFDocument, p: PdfPaper, n: number) {
 }
 
 const KIND_LABEL = (k: string) =>
-  ({ article: "Article", inproceedings: "Conference paper", preprint: "Preprint", book: "Book", thesis: "Thesis", misc: "Misc" })[k] ?? k;
+  ({ article: "Article", inproceedings: "Conference paper", preprint: "Preprint", book: "Book", thesis: "Thesis", web: "Web page", misc: "Misc" })[k] ?? k;
