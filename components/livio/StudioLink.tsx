@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { crossAppHref } from "@/lib/apps";
+import { useAliases } from "../Aliases";
 
 /**
  * A link into Studio from Livio. On livio.localhost a bare "/" is Livio's own
@@ -14,7 +15,8 @@ export function StudioLink({ href, className, title, children }: {
   title?: string;
   children: React.ReactNode;
 }) {
+  const aliases = useAliases();
   const [url, setUrl] = useState(href);
-  useEffect(() => setUrl(crossAppHref("studio", href, window.location)), [href]);
+  useEffect(() => setUrl(crossAppHref("studio", href, window.location, aliases)), [href, aliases]);
   return <a href={url} className={className} title={title}>{children}</a>;
 }

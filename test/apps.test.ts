@@ -35,12 +35,29 @@ test("on plain localhost a path is enough", () => {
   assert.equal(switchHref("/livio/careers", plain), "/");
 });
 
-test("on an alias the other app's alias is used", () => {
-  assert.equal(switchHref("/stats", studioAlias), "http://livio.localhost:3111/");
-  // `/` on livio.localhost is Livio's home, so Studio has to be its own host.
-  assert.equal(switchHref("/livio/careers", livioAlias), "http://studio.localhost:3111/");
-  assert.equal(crossAppHref("studio", "/stats", livioAlias), "http://studio.localhost:3111/stats");
-  assert.equal(crossAppHref("livio", "/livio/todo", studioAlias), "http://livio.localhost:3111/livio/todo");
+const both = { studio: true, livio: true };
+const studioOnly = { studio: true, livio: false };
+
+test("Safari on studio.localhost with no hosts line for Livio stays on the same host", () => {
+  // The bug: this used to send you to livio.localhost, which Safari can't find.
+  assert.equal(switchHref("/stats", studioAlias, studioOnly), "/livio");
+  assert.equal(switchHref("/settings", studioAlias, studioOnly), "/livio/preferences");
+  // And if nothing's been checked yet, the safe answer is the same.
+  assert.equal(switchHref("/stats", studioAlias), "/livio");
+});
+
+test("Livio's own name is used once it resolves", () => {
+  assert.equal(switchHref("/stats", studioAlias, both), "http://livio.localhost:3111/");
+  assert.equal(crossAppHref("livio", "/livio/todo", studioAlias, both), "http://livio.localhost:3111/livio/todo");
+});
+
+test("from livio.localhost, Studio needs its own host - its alias if it resolves, else localhost", () => {
+  // `/` on livio.localhost is Livio's home, so a bare path can't reach Studio.
+  assert.equal(switchHref("/livio/careers", livioAlias, both), "http://studio.localhost:3111/");
+  assert.equal(crossAppHref("studio", "/stats", livioAlias, both), "http://studio.localhost:3111/stats");
+  assert.equal(crossAppHref("studio", "/stats", livioAlias, { studio: false, livio: true }), "http://localhost:3111/stats");
+  // Livio pages from livio.localhost are just paths.
+  assert.equal(crossAppHref("livio", "/livio/todo", livioAlias, both), "/livio/todo");
 });
 
 let failed = 0;

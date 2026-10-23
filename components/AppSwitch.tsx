@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { APP_NAME, appOf, switchHref } from "@/lib/apps";
+import { useAliases } from "./Aliases";
 
 /**
  * Studio ⇄ Livio. A quiet button beside the wordmark, and ⌘⇧Space (Ctrl⇧Space
@@ -17,19 +18,20 @@ export function AppSwitch() {
   const other = APP_NAME[appOf(pathname) === "studio" ? "livio" : "studio"];
   // `location` only exists in the browser; the path-only href is right on
   // plain localhost and is what the server renders.
+  const aliases = useAliases();
   const [href, setHref] = useState(() => switchHref(pathname, { protocol: "", hostname: "", port: "" }));
-  useEffect(() => setHref(switchHref(pathname, window.location)), [pathname]);
+  useEffect(() => setHref(switchHref(pathname, window.location, aliases)), [pathname, aliases]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === "Space") {
         e.preventDefault();
-        window.location.assign(switchHref(window.location.pathname, window.location));
+        window.location.assign(switchHref(window.location.pathname, window.location, aliases));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [aliases]);
 
   return (
     <a

@@ -14,6 +14,8 @@ import { isStudyLocation, visibleCourseWhere } from "@/lib/types";
 import { getPreferences } from "@/lib/preferences";
 import { isGoogleConfigured } from "@/lib/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { getAliases } from "@/lib/aliases";
+import { AliasProvider } from "@/components/Aliases";
 
 /**
  * The browser paints its own canvas before our first byte lands, and it picks
@@ -37,7 +39,7 @@ export default async function RootLayout({
 }) {
   // The timer and course list live in the shell, so they're fetched once here
   // rather than by every page.
-  const [prefs, timer, courses, lastSession, googleAuth, repos] = await Promise.all([
+  const [prefs, timer, courses, lastSession, googleAuth, repos, aliases] = await Promise.all([
     getPreferences(),
     getActiveTimer(),
     db.course.findMany({
@@ -56,6 +58,7 @@ export default async function RootLayout({
       ? db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } })
       : Promise.resolve(null),
     repoMenu(),
+    getAliases(),
   ]);
   const calendarConnected = !!googleAuth;
 
@@ -70,6 +73,7 @@ export default async function RootLayout({
       style={{ background: prefs.theme === "dark" ? "#141210" : "#fbfaf8" }}
     >
       <body>
+        <AliasProvider aliases={aliases}>
         <ThemeProvider
           initial={prefs.theme}
           mode={prefs.mode}
@@ -95,6 +99,7 @@ export default async function RootLayout({
         {/* Outside the wrapper above, so it sits over modals as well. */}
         <BusyBar />
         </ThemeProvider>
+        </AliasProvider>
       </body>
     </html>
   );

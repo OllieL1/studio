@@ -3,12 +3,11 @@ import { HOST_ALIAS, LIVIO_HOST_ALIAS } from "./origin";
 /**
  * Studio and Livio: two sites served by one process.
  *
- * Livio's pages live under /livio, which always works. On the friendly names
- * the two apps sit on their own hosts instead (studio.localhost and
- * livio.localhost), and proxy.ts sends livio.localhost's `/` to /livio. That
- * front door is why a cross-app link can't just be a path: `/` on
- * livio.localhost is Livio's home, not Studio's. So when you're on an alias,
- * the other app's alias is used; on plain localhost, the path alone is.
+ * Livio's pages live under /livio, which always works. livio.localhost is an
+ * optional front door (proxy.ts sends its `/` to /livio) - used only when
+ * this machine resolves it, which Safari needs an /etc/hosts line for. That
+ * front door is why a cross-app link can't always be a path: `/` on
+ * livio.localhost is Livio's home, not Studio's.
  *
  * Pure, so the nav, the switch shortcut and tests can all share it.
  */
@@ -40,19 +39,39 @@ export function counterpartPath(pathname: string): string {
 
 type Here = { protocol: string; hostname: string; port: string };
 
-/** A link to `path` in `app`, from wherever the browser currently is. */
-export function crossAppHref(app: App, path: string, here: Here): string {
-  const onAlias = here.hostname === HOST_ALIAS || here.hostname === LIVIO_HOST_ALIAS;
-  if (!onAlias) return path;
+/**
+ * Which friendly names this machine actually resolves. Chrome resolves any
+ * *.localhost by itself, but Safari only knows what /etc/hosts lists - so a
+ * name is only used once the server (on the same machine, reading the same
+ * hosts file) has found it. See lib/aliases.ts.
+ */
+export type Aliases = { studio: boolean; livio: boolean };
 
-  const host = app === "livio" ? LIVIO_HOST_ALIAS : HOST_ALIAS;
-  // livio.localhost's `/` already is Livio's home; keep the URL tidy.
-  const tidy = app === "livio" && path === LIVIO_BASE ? "/" : path;
-  return `${here.protocol}//${host}${here.port ? `:${here.port}` : ""}${tidy}`;
+export const NO_ALIASES: Aliases = { studio: false, livio: false };
+
+/**
+ * A link to `path` in `app`, from wherever the browser currently is.
+ *
+ * Stay on the current host where that works - Livio is always at /livio. The
+ * one place it can't: Studio from livio.localhost, where `/` is Livio's home,
+ * so that goes to studio.localhost if it resolves, or plain localhost.
+ * Livio's own name is only used when it resolves.
+ */
+export function crossAppHref(app: App, path: string, here: Here, aliases: Aliases = NO_ALIASES): string {
+  const origin = (host: string) => `${here.protocol}//${host}${here.port ? `:${here.port}` : ""}`;
+  if (here.hostname === LIVIO_HOST_ALIAS) {
+    if (app === "livio") return path;
+    return `${origin(aliases.studio ? HOST_ALIAS : "localhost")}${path}`;
+  }
+  if (app === "livio" && here.hostname === HOST_ALIAS && aliases.livio) {
+    // livio.localhost's `/` already is Livio's home; keep the URL tidy.
+    return `${origin(LIVIO_HOST_ALIAS)}${path === LIVIO_BASE ? "/" : path}`;
+  }
+  return path;
 }
 
 /** The other app's counterpart to this page, as a link. */
-export function switchHref(pathname: string, here: Here): string {
+export function switchHref(pathname: string, here: Here, aliases: Aliases = NO_ALIASES): string {
   const target: App = appOf(pathname) === "studio" ? "livio" : "studio";
-  return crossAppHref(target, counterpartPath(pathname), here);
+  return crossAppHref(target, counterpartPath(pathname), here, aliases);
 }

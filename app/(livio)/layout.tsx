@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { LivioNav } from "@/components/livio/LivioNav";
 import { NotionAutoPull } from "@/components/livio/NotionAutoPull";
 import { db } from "@/lib/db";
+import { getAliases } from "@/lib/aliases";
+import { AliasProvider } from "@/components/Aliases";
 
 /**
  * Livio's root layout - its own site, served by the same process as Studio.
@@ -29,9 +31,10 @@ export const metadata: Metadata = {
 };
 
 export default async function LivioLayout({ children }: { children: React.ReactNode }) {
-  const [prefs, notion] = await Promise.all([
+  const [prefs, notion, aliases] = await Promise.all([
     getPreferences(),
     db.notionAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }),
+    getAliases(),
   ]);
 
   return (
@@ -43,6 +46,7 @@ export default async function LivioLayout({ children }: { children: React.ReactN
       style={{ background: CANVAS[prefs.theme] }}
     >
       <body>
+        <AliasProvider aliases={aliases}>
         <ThemeProvider initial={prefs.theme} mode={prefs.mode} darkFrom={prefs.darkFrom} darkTo={prefs.darkTo}>
           <div className="relative z-10 flex min-h-screen flex-col">
             <LivioNav />
@@ -50,6 +54,7 @@ export default async function LivioLayout({ children }: { children: React.ReactN
             {notion && <NotionAutoPull />}
           </div>
         </ThemeProvider>
+        </AliasProvider>
       </body>
     </html>
   );
