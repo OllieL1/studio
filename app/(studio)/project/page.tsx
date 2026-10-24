@@ -18,6 +18,7 @@ import { NexusGallery } from "@/components/project/NexusGallery";
 import { MeetingButton, type MeetingDraft } from "@/components/project/MeetingDialog";
 import { MoodleLink } from "@/components/MoodleLink";
 import { QuickAdd } from "@/components/QuickAdd";
+import { TaskImport } from "@/components/project/TaskImport";
 import { TaskRow } from "@/components/TaskRow";
 import { Sparkbar } from "@/components/charts/Sparkbar";
 import { BarChart } from "@/components/charts/BarChart";
@@ -401,6 +402,7 @@ async function ProjectTasks({
 
   return (
     <div className="space-y-4">
+      <TaskImport />
       <QuickAdd
         courses={courses}
         calendarConnected={googleConnected}

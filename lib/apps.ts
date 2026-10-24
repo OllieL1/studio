@@ -1,13 +1,9 @@
-import { HOST_ALIAS, LIVIO_HOST_ALIAS } from "./origin";
-
 /**
  * Studio and Livio: two sites served by one process.
  *
  * Livio's pages live under /livio, which always works. livio.localhost is an
- * optional front door (proxy.ts sends its `/` to /livio) - used only when
- * this machine resolves it, which Safari needs an /etc/hosts line for. That
- * front door is why a cross-app link can't always be a path: `/` on
- * livio.localhost is Livio's home, not Studio's.
+ * optional front door (proxy.ts sends its `/` to /livio) for machines that
+ * resolve it; Safari needs an /etc/hosts line for that.
  *
  * Pure, so the nav, the switch shortcut and tests can all share it.
  */
@@ -37,41 +33,24 @@ export function counterpartPath(pathname: string): string {
   return from === "studio" ? LIVIO_BASE : "/";
 }
 
-type Here = { protocol: string; hostname: string; port: string };
-
 /**
- * Which friendly names this machine actually resolves. Chrome resolves any
- * *.localhost by itself, but Safari only knows what /etc/hosts lists - so a
- * name is only used once the server (on the same machine, reading the same
- * hosts file) has found it. See lib/aliases.ts.
- */
-export type Aliases = { studio: boolean; livio: boolean };
-
-export const NO_ALIASES: Aliases = { studio: false, livio: false };
-
-/**
- * A link to `path` in `app`, from wherever the browser currently is.
+ * A link to `path` in `app`. Always a path on the current host - never a
+ * different host, which is what used to break: Safari can't resolve
+ * *.localhost names without an /etc/hosts line, and a guess about which
+ * names resolve sent the switch to the wrong place.
  *
- * Stay on the current host where that works - Livio is always at /livio. The
- * one place it can't: Studio from livio.localhost, where `/` is Livio's home,
- * so that goes to studio.localhost if it resolves, or plain localhost.
- * Livio's own name is only used when it resolves.
+ * The one catch: on livio.localhost a bare `/` is Livio's home, so Studio's
+ * home is `/?studio` there (proxy.ts leaves that alone). It's harmless on
+ * every other host, so it isn't conditional.
  */
-export function crossAppHref(app: App, path: string, here: Here, aliases: Aliases = NO_ALIASES): string {
-  const origin = (host: string) => `${here.protocol}//${host}${here.port ? `:${here.port}` : ""}`;
-  if (here.hostname === LIVIO_HOST_ALIAS) {
-    if (app === "livio") return path;
-    return `${origin(aliases.studio ? HOST_ALIAS : "localhost")}${path}`;
-  }
-  if (app === "livio" && here.hostname === HOST_ALIAS && aliases.livio) {
-    // livio.localhost's `/` already is Livio's home; keep the URL tidy.
-    return `${origin(LIVIO_HOST_ALIAS)}${path === LIVIO_BASE ? "/" : path}`;
-  }
-  return path;
+export const STUDIO_HOME_ON_LIVIO_HOST = "/?studio";
+
+export function crossAppHref(app: App, path: string): string {
+  return app === "studio" && path === "/" ? STUDIO_HOME_ON_LIVIO_HOST : path;
 }
 
 /** The other app's counterpart to this page, as a link. */
-export function switchHref(pathname: string, here: Here, aliases: Aliases = NO_ALIASES): string {
+export function switchHref(pathname: string): string {
   const target: App = appOf(pathname) === "studio" ? "livio" : "studio";
-  return crossAppHref(target, counterpartPath(pathname), here, aliases);
+  return crossAppHref(target, counterpartPath(pathname));
 }

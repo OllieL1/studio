@@ -11,6 +11,8 @@ import { isTaskDone } from "@/lib/progress";
 import { shortAuthors } from "@/lib/papers";
 import { projectRepoWork } from "@/lib/githubData";
 import { lastMeetingBefore } from "@/lib/projectData";
+import { parseTaskImport } from "@/lib/taskImport";
+import { DEFAULT_ITEMS } from "@/lib/types";
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -368,3 +370,84 @@ export async function deletePaper(id: string) {
   refresh();
 }
 
+
+/* ── Import tasks from JSON ─────────────────────────────────────────────── */
+
+export type TaskImportResult =
+  | { ok: false; error: string }
+  | { ok: true; created: number; skipped: string[]; warnings: string[]; errors: string[] };
+
+/**
+ * Add a whole workplan to the project in one go. Re-importing the same file is
+ * safe: a task whose title is already on the project (any state) is skipped,
+ * not duplicated. Entries with problems are reported and left out; the rest
+ * still go in. Format and rules: lib/taskImport.ts.
+ */
+export async function importProjectTasks(json: string): Promise<TaskImportResult> {
+  let parsed: unknown;
+  try { parsed = JSON.parse(json); }
+  catch { return { ok: false, error: "That isn't valid JSON - check for a missing comma or quote." }; }
+
+  const { tasks, errors } = parseTaskImport(parsed);
+  if (tasks.length === 0) {
+    return { ok: false, error: errors.length ? errors.join("\n") : "There were no tasks in that file." };
+  }
+  const course = await projectCourse();
+  if (!course) return { ok: false, error: "No project course found." };
+
+  const existing = await db.task.findMany({ where: { courseId: course.id }, select: { id: true, title: true } });
+  const idByTitle = new Map(existing.map((t) => [t.title.trim().toLowerCase(), t.id]));
+  const skipped: string[] = [];
+  const created: { id: string; task: (typeof tasks)[number] }[] = [];
+  const now = new Date();
+
+  for (const t of tasks) {
+    const key = t.title.toLowerCase();
+    if (idByTitle.has(key)) { skipped.push(t.title); continue; }
+
+    const at = (date: string, time: string) => {
+      const [y, m, d] = date.split("-").map(Number);
+      const [hh, mm] = time.split(":").map(Number);
+      return new Date(y, m - 1, d, hh, mm, 0, 0);
+    };
+    const labels = t.subtasks.length > 0 ? t.subtasks : (DEFAULT_ITEMS[t.kind] ?? []);
+    const row = await db.task.create({
+      data: {
+        courseId: course.id,
+        title: t.title,
+        kind: t.kind,
+        notes: t.notes,
+        // Pushed back means not due yet (see setTaskBacklog).
+        dueAt: t.due && !t.backlog ? at(t.due, t.dueTime ?? "23:59") : null,
+        startsAt: t.start ? at(t.start, "00:00") : null,
+        gradeWeight: t.weight,
+        priority: t.priority ? 1 : 0,
+        backlog: t.backlog,
+        doneAt: t.done ? now : null,
+        items: { create: labels.map((label, i) => ({ label, position: i, doneAt: t.done ? now : null })) },
+      },
+    });
+    idByTitle.set(key, row.id);
+    created.push({ id: row.id, task: t });
+  }
+
+  // Dependencies last, so a task can name one that comes later in the file.
+  const warnings: string[] = [];
+  for (const { id, task } of created) {
+    for (const name of task.dependsOn) {
+      const prerequisiteId = idByTitle.get(name.toLowerCase());
+      if (!prerequisiteId || prerequisiteId === id) {
+        warnings.push(`“${task.title}” depends on “${name}”, which isn't a task on the project - left out.`);
+        continue;
+      }
+      await db.taskDependency.upsert({
+        where: { dependentId_prerequisiteId: { dependentId: id, prerequisiteId } },
+        create: { dependentId: id, prerequisiteId },
+        update: {},
+      });
+    }
+  }
+
+  refresh();
+  return { ok: true, created: created.length, skipped, warnings, errors };
+}
