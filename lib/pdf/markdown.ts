@@ -223,11 +223,16 @@ function proseFace(font: string): string {
 const SPLIT =
   /(@[r#tnmiu]\[[^\]|]+(?:\|[^\]]*)?\]|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|\$[^$\n]+\$|!?\[[^\]]*\]\([^)]+\))/g;
 
+/**
+ * A line as styled runs. Bold and italic are parsed again inside, so code,
+ * maths and links within them keep their own look (`**the `foo` call**`).
+ * There's no bold-italic face, so italic inside bold stays bold.
+ */
 export function parseInline(text: string, base: Inline["font"] = "body"): Inline[] {
   return text
     .split(SPLIT)
     .filter((p) => p !== "" && p !== undefined)
-    .map((part): Inline => {
+    .flatMap((part): Inline | Inline[] => {
       // A mention prints as its label, in the accent colour; a link chip also
       // keeps its target, since a printed page can still be clicked.
       const mention = /^@([r#tnmiu])\[([^\]|]+)(?:\|([^\]]*))?\]$/.exec(part);
@@ -250,8 +255,8 @@ export function parseInline(text: string, base: Inline["font"] = "body"): Inline
       const image = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(part);
       if (image) return { text: image[1] ? `[image: ${image[1]}]` : "[image]", font: "italic", colour: FAINT };
       if (link) return { text: link[1], font: base, colour: RUST, link: link[2] };
-      if (/^(\*\*|__)/.test(part) && part.length > 4) return { text: part.slice(2, -2), font: "bold", colour: INK };
-      if (/^(\*|_)/.test(part) && part.length > 2) return { text: part.slice(1, -1), font: "italic", colour: INK };
+      if (/^(\*\*|__)/.test(part) && part.length > 4) return parseInline(part.slice(2, -2), "bold");
+      if (/^(\*|_)/.test(part) && part.length > 2) return parseInline(part.slice(1, -1), base === "bold" ? "bold" : "italic");
       if (/^`/.test(part) && part.length > 2) return { text: part.slice(1, -1), font: "mono", colour: RUST };
       // Inline maths: the dollars are syntax, the LaTeX inside is typeset.
       if (/^\$[^$]+\$$/.test(part)) return { text: part.slice(1, -1), font: "maths", colour: INK };
@@ -374,10 +379,7 @@ function drawCallout(doc: PDFKit.PDFDocument, title: string, body: string, style
   const inner = { ...style, x: style.x + pad + 3, width: style.width - pad * 2 - 3 };
 
   const height = measure(inner.width, (probe, width) => {
-    if (title) {
-      probe.font("prose-bold").fontSize(style.size).fillColor(INK);
-      probe.text(title, probe.x, probe.y, { width });
-    }
+    if (title) inline(probe, parseInline(title, "bold"), { size: style.size, x: probe.x, width });
     if (body) renderMarkdown(probe, body, { size: style.size, x: probe.x, width });
   });
 
@@ -390,10 +392,8 @@ function drawCallout(doc: PDFKit.PDFDocument, title: string, body: string, style
   doc.rect(style.x, top, 2.5, height + pad * 2).fillColor(RUST).fill();
 
   doc.y = top + pad;
-  if (title) {
-    doc.font("prose-bold").fontSize(style.size).fillColor(RUST);
-    doc.text(title, inner.x, doc.y, { width: inner.width });
-  }
+  // The title is markdown, like the body: code and maths render in it.
+  if (title) inline(doc, parseInline(title, "bold"), { size: style.size, x: inner.x, width: inner.width, colour: RUST });
   if (body) renderMarkdown(doc, body, { ...inner, ensure: undefined });
   doc.y = top + height + pad * 2 + 6;
   doc.fillColor(INK);

@@ -7,7 +7,7 @@ import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
 import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
 import { measureMath } from "../lib/pdf/math";
 import { newDoc, MARGIN } from "../lib/pdf/doc";
-import { notesStyle, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
+import { notesStyle, parseInline, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
 import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
 const tests: [string, () => Promise<void>][] = [];
@@ -376,6 +376,16 @@ test("code: the page break never leaves a block's first row stranded alone", asy
   const firstPage = code[0].page;
   const onFirst = code.filter((c) => c.page === firstPage).length;
   assert.ok(onFirst >= 3 || onFirst === 12, `the block opened with just ${onFirst} row(s) at the foot of a page`);
+});
+
+test("inline: code, maths and links inside bold and italic keep their own look", async () => {
+  const runs = (s: string) => parseInline(s).map((r) => [r.text, r.font]);
+  assert.deepEqual(runs("**the `foo` function** next"), [["the ", "bold"], ["foo", "mono"], [" function", "bold"], [" next", "body"]]);
+  assert.deepEqual(runs("*it $x^2$ is*"), [["it ", "italic"], ["x^2", "maths"], [" is", "italic"]]);
+  assert.deepEqual(runs("**see [docs](https://a.b)**").map(([, f]) => f), ["bold", "bold"]);
+  assert.equal(parseInline("**see [docs](https://a.b)**")[1].link, "https://a.b");
+  // No bold-italic face: italic inside bold stays bold.
+  assert.deepEqual(runs("**very _much_ so**").map(([, f]) => f), ["bold", "bold", "bold"]);
 });
 
 let failed = 0;

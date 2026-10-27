@@ -6,7 +6,8 @@ import { Fragment } from "react";
  * Table cells need **bold**, `code`, *emphasis* and links to show as
  * formatting rather than as syntax, but a cell is small and there are many of
  * them - firing a render request per cell would make typing feel slow. Only
- * inline marks are handled here; a cell can't hold a heading or a list.
+ * inline marks are handled here; a cell can't hold a heading or a list. Marks
+ * nest: code inside bold is still code.
  */
 
 const SPLIT = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~|\[[^\]]+\]\([^)]+\))/g;
@@ -55,13 +56,13 @@ export function InlineMarkdown({ text }: { text: string }) {
           );
         }
         if (/^(\*\*|__)/.test(part) && part.length > 4) {
-          return <strong key={key} className="font-semibold">{part.slice(2, -2)}</strong>;
+          return <strong key={key} className="font-semibold"><InlineMarkdown text={part.slice(2, -2)} /></strong>;
         }
         if (/^~~/.test(part) && part.length > 4) {
-          return <s key={key} className="text-n-400">{part.slice(2, -2)}</s>;
+          return <s key={key} className="text-n-400"><InlineMarkdown text={part.slice(2, -2)} /></s>;
         }
         if (/^(\*|_)/.test(part) && part.length > 2) {
-          return <em key={key}>{part.slice(1, -1)}</em>;
+          return <em key={key}><InlineMarkdown text={part.slice(1, -1)} /></em>;
         }
         if (/^`/.test(part) && part.length > 2) {
           return (
