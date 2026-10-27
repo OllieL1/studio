@@ -68,6 +68,12 @@ test("empty markdown renders to nothing, not a crash", () => {
   assert.equal(wordCount(""), 0);
 });
 
+test("a callout's title renders code and maths, like its body", () => {
+  const html = renderMarkdown("> [!note] Uses `foo` and $a+b$\n> Body `bar`");
+  assert.match(html, /md-callout-title">Uses <code>foo<\/code> and <span class="katex">/);
+  assert.match(html, /Body <code>bar<\/code>/);
+});
+
 let passed = 0, failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); passed++; console.log(`  \x1b[32m✓\x1b[0m ${name}`); }
