@@ -183,6 +183,22 @@ export function listContinuation(text: string, caret: number): { insert: string 
   return { insert: `\n${indent}${next}${space}${task ? "[ ] " : ""}` };
 }
 
+/**
+ * What Enter should do inside a quote or callout: carry on with another `> `
+ * line, so a callout's body (code, maths and all) stays inside its box. Enter
+ * on an empty `>` line leaves it, the same way an empty list item does.
+ */
+export function quoteContinuation(text: string, caret: number): { insert: string } | { exit: true; text: string } | null {
+  const before = text.slice(0, caret);
+  const line = before.slice(before.lastIndexOf("\n") + 1);
+  const m = /^(\s*>\s?)(.*)$/.exec(line);
+  if (!m) return null;
+  if (!m[2].trim() && before.includes("\n")) {
+    return { exit: true, text: text.slice(0, caret - line.length) + text.slice(caret) };
+  }
+  return { insert: `\n${m[1].trimEnd()} ` };
+}
+
 const INDENT = "  ";
 
 /**

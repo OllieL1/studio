@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { saveNotes } from "@/app/actions";
 import {
-  applyInsert, autoArrow, caretLine, filterInserts, joinBlocks, listContinuation,
+  applyInsert, autoArrow, caretLine, filterInserts, joinBlocks, listContinuation, quoteContinuation,
   classify, indentLines, newId, retype, sourceOffset, splitBlocks, type Block, type Insert,
 } from "@/lib/editor/blocks";
 import { clsx } from "@/lib/clsx";
@@ -442,7 +442,9 @@ export function LiveEditor({
         return;
       }
 
-      const cont = listContinuation(el.value, caret);
+      const cont = b.kind === "quote" || b.kind === "callout"
+        ? quoteContinuation(el.value, caret)
+        : listContinuation(el.value, caret);
       if (cont && "insert" in cont) {
         e.preventDefault();
         write(el, b.id, el.value.slice(0, caret) + cont.insert + el.value.slice(caret), caret + cont.insert.length);

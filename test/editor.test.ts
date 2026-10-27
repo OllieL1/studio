@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import {
   applyInsert, autoArrow, caretLine, classify, filterInserts, indentLines, INSERTS,
-  joinBlocks, listContinuation, parseCallout, parseColumns, serializeCallout,
+  joinBlocks, listContinuation, quoteContinuation, parseCallout, parseColumns, serializeCallout,
   serializeColumns, sourceOffset, splitBlocks,
 } from "../lib/editor/blocks";
 
@@ -126,6 +126,20 @@ test("Enter on an empty item leaves the list", () => {
 test("Enter continues a checklist as a checklist", () => {
   const text = "- [ ] one";
   assert.deepEqual(listContinuation(text, text.length), { insert: "\n- [ ] " });
+});
+
+test("Enter in a callout carries on inside it", () => {
+  const title = "> [!note] Title with `code`";
+  assert.deepEqual(quoteContinuation(title, title.length), { insert: "\n> " });
+  const body = `${title}\n> some $x$`;
+  assert.deepEqual(quoteContinuation(body, body.length), { insert: "\n> " });
+});
+
+test("Enter on an empty quote line leaves the callout", () => {
+  const text = "> [!note] T\n> body\n> ";
+  assert.deepEqual(quoteContinuation(text, text.length), { exit: true, text: "> [!note] T\n> body\n" });
+  // The first line is never treated as empty-and-leaving.
+  assert.deepEqual(quoteContinuation("> ", 2), { insert: "\n> " });
 });
 
 test("Enter outside a list does nothing special", () => {

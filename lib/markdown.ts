@@ -112,8 +112,9 @@ const callout = {
     return { type: "callout", raw: m[0], title: m[2].trim(), body };
   },
   renderer(token: { title: string; body: string }) {
+    // The title is markdown too: `code`, $maths$ and links render in it.
     const title = token.title
-      ? `<p class="md-callout-title">${escapeHtml(token.title)}</p>`
+      ? `<p class="md-callout-title">${marked.parseInline(token.title, { async: false }) as string}</p>`
       : "";
     const body = token.body ? (marked.parse(token.body, { async: false }) as string) : "";
     return `<div class="md-callout">${title}${body}</div>`;
