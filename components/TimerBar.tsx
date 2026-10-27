@@ -141,6 +141,7 @@ export function TimerBar({
                 })
               }
               disabled={pending}
+              title="Start studying (⌥S, from anywhere)"
               className="group flex items-center gap-2.5 rounded-full py-1 pl-1 pr-4 transition-colors duration-[120ms] hover:bg-n-50 disabled:opacity-50"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-rust-500 transition-transform duration-[180ms] group-hover:scale-105">

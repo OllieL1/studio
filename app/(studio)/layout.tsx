@@ -6,6 +6,7 @@ import { repoMenu } from "@/lib/githubData";
 import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { GlobalQuickAdd } from "@/components/GlobalQuickAdd";
+import { SessionHotkey } from "@/components/SessionHotkey";
 import { LastLecture } from "@/components/LastLecture";
 import { BusyBar } from "@/components/BusyBar";
 import { getActiveTimer } from "@/lib/queries";
@@ -84,6 +85,7 @@ export default async function RootLayout({
           <CommandPalette />
           <LastLecture />
           <GlobalQuickAdd courses={courses} calendarConnected={calendarConnected} />
+          <SessionHotkey startedAt={timer?.startedAt.toISOString() ?? null} />
           <TimerBar
             startedAt={timer?.startedAt.toISOString() ?? null}
             draftName={timer?.draftName ?? null}

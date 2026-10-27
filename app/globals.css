@@ -421,6 +421,19 @@ body::before {
   animation: colon-blink 2s ease-in-out infinite;
 }
 
+/* The ⌥S "session started" notice (components/SessionHotkey.tsx): rises from
+   the bottom edge, settles, then sinks back out. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sink-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(18px) scale(0.98); }
+}
+.animate-rise-in { animation: rise-in 420ms var(--ease-out-expo) both; }
+.animate-sink-out { animation: sink-out 240ms ease-in both; }
+
 /* ── Studying mode (components/FocusMode.tsx) ───────────────────────────────
    Sized from the window, so one layout serves a phone and a wall-mounted
    monitor. A short landscape screen - a phone on its side - has no height to
