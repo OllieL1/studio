@@ -1,3 +1,4 @@
+import { fmtWeight } from "../format";
 import { fmtDateLongYear } from "../dates";
 import { layoutDay, type CalendarItem } from "../calendar";
 import { fmtLength, fmtMinutes, rangeLabel } from "../plan";
@@ -225,7 +226,7 @@ function dayPage(doc: PDFKit.PDFDocument, input: PlanPdfInput, day: PlanPdfInput
     y = sideHeading(doc, "Due", sideX, y, sideW);
     for (const { item } of deadlines) {
       checkbox(doc, sideX, y, BOX, item.colour ?? undefined);
-      const label = `${item.courseShort ? `${item.courseShort} · ` : ""}${item.title}${item.gradeWeight != null ? `  ${item.gradeWeight}%` : ""}`;
+      const label = `${item.courseShort ? `${item.courseShort} · ` : ""}${item.title}${item.gradeWeight != null ? `  ${fmtWeight(item.gradeWeight)}%` : ""}`;
       doc.font("body").fontSize(9).fillColor(INK);
       const h = doc.heightOfString(label, { width: sideW - BOX - 8 });
       doc.text(label, sideX + BOX + 8, y + 0.5, { width: sideW - BOX - 8 });

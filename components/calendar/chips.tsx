@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import type { CalendarItem } from "@/lib/calendar";
 import { fmtHM } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
@@ -120,7 +121,7 @@ export function Chip({
     >
       {item.blocked && (
         <span className="shrink-0 rounded-[3px] bg-[var(--scrim-strong)] px-1 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
-          {item.kind === "EXAM" ? "Exam" : `${item.gradeWeight}%`}
+          {item.kind === "EXAM" ? "Exam" : `${fmtWeight(item.gradeWeight ?? 0)}%`}
         </span>
       )}
       {time && <span className="font-num shrink-0 text-[10px] text-n-500">{time}</span>}

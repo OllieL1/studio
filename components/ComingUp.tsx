@@ -1,3 +1,4 @@
+import { fmtWeight } from "@/lib/format";
 import type { Route } from "next";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -199,7 +200,7 @@ function TaskEntry({ task }: { task: Task }) {
         </p>
       </div>
       {task.gradeWeight != null && (
-        <div className="shrink-0 pt-0.5 text-right" title={`${task.gradeWeight}% of the course grade`}>
+        <div className="shrink-0 pt-0.5 text-right" title={`${fmtWeight(task.gradeWeight)}% of the course grade`}>
           <span className="font-num block text-[12px] font-semibold leading-4 text-n-700">{fmtWeight(task.gradeWeight)}%</span>
           <span className="mt-1 block h-[3px] w-9 bg-n-100">
             <span className="block h-full" style={{ width: `${Math.min(task.gradeWeight, 100)}%`, background: colour }} />
@@ -275,10 +276,6 @@ function weekLabel(week: number, thisWeek: number): string {
 
 function fmtShort(d: Date) {
   return `${DAY[(d.getDay() + 6) % 7]} ${d.getDate()} ${MONTH[d.getMonth()]}`;
-}
-
-function fmtWeight(w: number) {
-  return Number.isInteger(w) ? String(w) : w.toFixed(1);
 }
 
 /** Deadlines with no real time are stored at 23:59 (or midnight). */

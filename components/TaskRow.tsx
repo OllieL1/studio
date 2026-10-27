@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -132,7 +133,7 @@ export function TaskRow({
             {backlogPill && task.backlog && !done && <Pill>Backlog</Pill>}
             {task.gradeWeight != null && (
               <span className="font-num text-[11px] font-medium text-n-400">
-                {task.gradeWeight}%
+                {fmtWeight(task.gradeWeight)}%
               </span>
             )}
           </div>

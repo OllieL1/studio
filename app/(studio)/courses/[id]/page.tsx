@@ -1,3 +1,4 @@
+import { fmtWeight } from "@/lib/format";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -227,7 +228,7 @@ export default async function CoursePage({
                       <p className="mt-0.5 text-[12px] text-n-500">
                         {e.examDiet ?? (e.dueAt ? fmtRelative(e.dueAt) : "Date TBC")}
                         {e.gradeWeight != null && (
-                          <span className="font-num ml-2 text-n-400">{e.gradeWeight}% of grade</span>
+                          <span className="font-num ml-2 text-n-400">{fmtWeight(e.gradeWeight)}% of grade</span>
                         )}
                       </p>
                     </div>

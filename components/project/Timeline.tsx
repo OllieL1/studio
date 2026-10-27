@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import type { Route } from "next";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -181,7 +182,7 @@ export function Timeline({
           <p className="text-n-500">
             {hover.start !== hover.end && hover.row === "task" ? `${fmtDayDate(new Date(hover.start))} → ` : ""}
             {fmtDayDate(new Date(hover.end))}
-            {hover.weight != null && ` · ${hover.weight}%`}
+            {hover.weight != null && ` · ${fmtWeight(hover.weight)}%`}
             {hover.done && " · done"}
           </p>
         </div>

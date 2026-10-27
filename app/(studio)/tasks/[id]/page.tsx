@@ -1,3 +1,4 @@
+import { fmtWeight } from "@/lib/format";
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -106,7 +107,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
                   "No date"
                 )}
                 {task.gradeWeight != null && (
-                  <span className="font-num text-n-400"> · {task.gradeWeight}% of grade</span>
+                  <span className="font-num text-n-400"> · {fmtWeight(task.gradeWeight)}% of grade</span>
                 )}
               </p>
             </div>

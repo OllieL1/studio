@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import Link from "next/link";
 import { daysUntil, fmtRelative, startOfWeek, fmtDate, fmtDayNum } from "@/lib/dates";
 import { BIG_WEIGHT_THRESHOLD } from "@/lib/calendar";
@@ -66,7 +67,7 @@ export function CalendarSidebar({ data }: { data: SidebarData }) {
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12.5px] font-semibold text-n-900">{t.title}</span>
                     <span className="font-num shrink-0 rounded bg-[var(--scrim-strong)] px-1 text-[9.5px] font-bold text-white">
-                      {t.gradeWeight}%
+                      {fmtWeight(t.gradeWeight ?? 0)}%
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">

@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Route } from "next";
@@ -152,7 +153,7 @@ function DueRow({ task, now, onDismiss, onDone }: { task: DueSoon; now: number; 
         <p className="text-[12px] text-n-500">
           <span className={urgent ? "font-semibold text-rust-600" : "font-medium text-n-700"}>Due in {fmtDuration(mins)}</span>
           {" · "}{fmtHM(due)}
-          {task.gradeWeight != null && <>{" · "}<span className="font-num tabular-nums">{fmtWeight(task.gradeWeight)}</span> of the course</>}
+          {task.gradeWeight != null && <>{" · "}<span className="font-num tabular-nums">{fmtWeight(task.gradeWeight)}%</span> of the course</>}
         </p>
       </div>
       <button
@@ -165,9 +166,4 @@ function DueRow({ task, now, onDismiss, onDone }: { task: DueSoon; now: number; 
       </button>
     </li>
   );
-}
-
-/** 1.8 → "1.8%", 15 → "15%". */
-function fmtWeight(w: number): string {
-  return `${Number.isInteger(w) ? w : w.toFixed(1)}%`;
 }

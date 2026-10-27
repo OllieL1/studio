@@ -72,9 +72,9 @@ const COURSES: CourseSpec[] = [
       { kind: "LECTURE", day: TUE, start: H(16), end: H(17) },
     ],
     weekly: [
-      // "Quiz (weekly) | x10 | 18%" → 1.8% each, but only nine run: Tuesdays
-      // at noon from week 2, the last on 1 Dec.
-      { title: "Weekly Quiz", kind: "QUIZ", count: 9, totalWeight: 16.2, dueDay: TUE, dueMin: H(12), weekOffset: 1 },
+      // Nine weekly quizzes worth 20% between them: Tuesdays at noon from
+      // week 2, the last on 1 Dec.
+      { title: "Weekly Quiz", kind: "QUIZ", count: 9, totalWeight: 20, dueDay: TUE, dueMin: H(12), weekOffset: 1 },
     ],
     tasks: [
       // Mini Coaching Exercise Reports | 20% across 4 submissions.

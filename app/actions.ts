@@ -1,5 +1,6 @@
 "use server";
 
+import { fmtWeight } from "@/lib/format";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notionDoneSync } from "@/lib/notionSync";
@@ -626,7 +627,7 @@ export async function pushToCalendar(taskId: string) {
       summary: task.course ? `${task.course.shortName}: ${task.title}` : task.title,
       description: [
         task.notes,
-        task.gradeWeight != null ? `Worth ${task.gradeWeight}% of the course.` : null,
+        task.gradeWeight != null ? `Worth ${fmtWeight(task.gradeWeight)}% of the course.` : null,
         task.course ? `${task.course.name} (${task.course.code})` : null,
         task.courseId ? "Added from Studio." : "Added from Livio.",
       ].filter(Boolean).join("\n\n"),

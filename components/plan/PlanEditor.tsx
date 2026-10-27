@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import { Fragment, useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -555,7 +556,7 @@ function DaySection({
               {item.source === "deadline" && <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-n-500">Due</span>}
               {item.courseShort && <span className="font-medium" style={{ color: cssColour(item.colour) }}>{item.courseShort}</span>}
               <span className="truncate">{item.title}</span>
-              {item.gradeWeight != null && <span className="font-num text-n-400">{item.gradeWeight}%</span>}
+              {item.gradeWeight != null && <span className="font-num text-n-400">{fmtWeight(item.gradeWeight)}%</span>}
               <button
                 onClick={() => onHideChip(item, !hidden)}
                 aria-label={hidden ? `Put ${item.title} back` : `Leave ${item.title} off the plan`}

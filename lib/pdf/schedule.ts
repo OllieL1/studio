@@ -1,3 +1,4 @@
+import { fmtWeight } from "../format";
 import { fmtDateLongYear, fmtDayDate, startOfWeek } from "../dates";
 import { stackRows, timelinePosition, timelineWeeks } from "../project";
 import { contentWidth, footers, newDoc, FAINT, INK, MARGIN, MUTED, RULE, RUST } from "./doc";
@@ -346,7 +347,7 @@ function byWeek(doc: PDFKit.PDFDocument, { timeline, undated }: SchedInput) {
         it.row === "task" && it.start !== it.end
           ? `${fmtDayDate(new Date(it.start))} → ${fmtDayDate(new Date(it.end))}`
           : fmtDayDate(new Date(it.end));
-      const extra = it.weight != null ? `  ·  ${it.weight}%` : "";
+      const extra = it.weight != null ? `  ·  ${fmtWeight(it.weight)}%` : "";
       doc.font("body").fontSize(8).fillColor(MUTED).text(span + extra, MARGIN + width - cols.when, y, {
         width: cols.when,
         align: "right",

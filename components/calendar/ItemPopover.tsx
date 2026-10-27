@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtWeight } from "@/lib/format";
 import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -112,7 +113,7 @@ export function ItemPopover({
         <div className="mt-2 flex flex-wrap gap-1">
           {item.done && <Pill tone="ok">Done</Pill>}
           {item.blocked && <Pill tone="danger">{item.kind === "EXAM" ? "Exam" : "Big deadline"}</Pill>}
-          {item.gradeWeight != null && <Pill tone="neutral">{item.gradeWeight}% of grade</Pill>}
+          {item.gradeWeight != null && <Pill tone="neutral">{fmtWeight(item.gradeWeight)}% of grade</Pill>}
           {item.onGoogle && item.source !== "google" && <Pill tone="info">On Google Calendar</Pill>}
         </div>
 

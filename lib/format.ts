@@ -21,6 +21,15 @@ export function formatValue(key: FormatKey, v: number): string {
   }
 }
 
+/**
+ * A grade weight as a number to put a % after: "15", "1.8", "2.22". Weights
+ * shared evenly can be long fractions (nine quizzes over 20% is 2.222…), so at
+ * most two decimals, with trailing zeros dropped.
+ */
+export function fmtWeight(w: number): string {
+  return String(Math.round(w * 100) / 100);
+}
+
 /** "2.4 MB" - file sizes in the attachment list. */
 export function fmtBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
