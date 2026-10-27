@@ -104,6 +104,9 @@ export function LiveEditor({
   const anchorRef = useRef<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef(initial);
+  const rowHandlers = useRef<{ extend: (i: number) => void; enter: (id: string, caret: number) => void }>(null!);
+  const extendRow = useCallback((i: number) => rowHandlers.current.extend(i), []);
+  const enterRow = useCallback((id: string, caret: number) => rowHandlers.current.enter(id, caret), []);
 
   const markdown = useMemo(() => (raw ? rawText : joinBlocks(blocks)), [raw, rawText, blocks]);
 
@@ -655,6 +658,24 @@ export function LiveEditor({
     );
   }
 
+  // Rendered blocks get these two through a ref: stable functions, so their
+  // memo holds and typing in one block doesn't re-render the other ninety.
+  rowHandlers.current = {
+    extend: (i: number) => {
+      if (activeId) settle(activeId);
+      const anchor = selection?.from ?? anchorRef.current ?? i;
+      setSelection({ from: anchor, to: i });
+      setActiveId(null);
+      setMenu(null);
+      window.getSelection()?.removeAllRanges();
+      (document.activeElement as HTMLElement | null)?.blur();
+    },
+    enter: (id: string, caret: number) => {
+      setSelection(null);
+      focusBlock(id, caret);
+    },
+  };
+
   return (
     <div className={clsx("relative", nested ? "pb-0" : minimal ? "pb-24" : "pb-10")}>
       {blocks.map((b, i) => {
@@ -760,23 +781,7 @@ export function LiveEditor({
               )}
             </div>
           ) : (
-            <Rendered
-              block={b}
-              html={html[b.id] ?? ""}
-              onExtend={() => {
-                if (activeId) settle(activeId);
-                const anchor = selection?.from ?? anchorRef.current ?? i;
-                setSelection({ from: anchor, to: i });
-                setActiveId(null);
-                setMenu(null);
-                window.getSelection()?.removeAllRanges();
-                (document.activeElement as HTMLElement | null)?.blur();
-              }}
-              onEnter={(caret) => {
-                setSelection(null);
-                focusBlock(b.id, caret);
-              }}
-            />
+            <Rendered block={b} index={i} html={html[b.id] ?? ""} onEnter={enterRow} onExtend={extendRow} />
           )}
         </div>
         );
@@ -802,15 +807,17 @@ export function LiveEditor({
 /** A rendered block. Memoised: typing in one block never re-renders the rest. */
 const Rendered = memo(function Rendered({
   block,
+  index,
   html,
   onEnter,
   onExtend,
 }: {
   block: Block;
+  index: number;
   html: string;
-  onEnter: (caret: number) => void;
+  onEnter: (id: string, caret: number) => void;
   /** Shift-click: extend a multi-block selection to here. */
-  onExtend: () => void;
+  onExtend: (index: number) => void;
 }) {
   const empty = !block.text.trim();
   const router = useRouter();
@@ -828,7 +835,7 @@ const Rendered = memo(function Rendered({
     }
     if ((e.target as HTMLElement).closest("a")) return;
     if (e.shiftKey) return; // handled on mousedown, before the blur
-    onEnter(caretFromPoint(e, block.text));
+    onEnter(block.id, caretFromPoint(e, block.text));
   };
 
   // Both cases have to be caught on mousedown. Leaving the block that was
@@ -857,7 +864,7 @@ const Rendered = memo(function Rendered({
     }
     if (!e.shiftKey) return;
     e.preventDefault();
-    onExtend();
+    onExtend(index);
   };
 
   return (
@@ -868,7 +875,7 @@ const Rendered = memo(function Rendered({
       onMouseDown={mouseDown}
       onFocus={(e) => {
         // Reached by keyboard: enter at the start.
-        if (e.target === e.currentTarget) onEnter(0);
+        if (e.target === e.currentTarget) onEnter(block.id, 0);
       }}
       className={clsx(
         "prose-notes cursor-text rounded-sm px-2 py-1 transition-colors duration-[120ms] hover:bg-n-25",

@@ -187,11 +187,31 @@ marked.use({
   },
 });
 
+/**
+ * Rendered HTML by source, most recently used last.
+ *
+ * Every autosave re-renders the lecture page, which renders every block of the
+ * note again - ninety-odd blocks of KaTeX, highlight.js and sanitising, when
+ * only the one being typed in has changed. The output depends on nothing but
+ * the source, so remembering it costs nothing in correctness.
+ */
+const rendered = new Map<string, string>();
+const RENDER_CACHE_SIZE = 2000;
+
 export function renderMarkdown(md: string): string {
+  const hit = rendered.get(md);
+  if (hit !== undefined) {
+    rendered.delete(md);
+    rendered.set(md, hit);
+    return hit;
+  }
   const raw = marked.parse(md, { async: false }) as string;
-  return DOMPurify.sanitize(raw, {
+  const html = DOMPurify.sanitize(raw, {
     ADD_ATTR: ["id", "class", "target", "rel"],
   });
+  rendered.set(md, html);
+  if (rendered.size > RENDER_CACHE_SIZE) rendered.delete(rendered.keys().next().value!);
+  return html;
 }
 
 export type TocEntry = { id: string; text: string; depth: number };
