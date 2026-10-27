@@ -149,6 +149,44 @@ export async function getComingUp(days = 21) {
   };
 }
 
+/** Graded work due within this long gets the banner on every page. */
+export const DUE_SOON_HOURS = 3;
+
+export type DueSoon = {
+  id: string;
+  title: string;
+  /** ISO, so it crosses to the client and the API as-is. */
+  dueAt: string;
+  gradeWeight: number | null;
+  course: { shortName: string; colour: string };
+};
+
+/** Coursework and quizzes due in the next three hours and not yet done. */
+export async function getDueSoon(): Promise<DueSoon[]> {
+  const now = new Date();
+  const to = new Date(now.getTime() + DUE_SOON_HOURS * 3_600_000);
+  const tasks = await db.task.findMany({
+    where: {
+      cancelled: false,
+      backlog: false,
+      kind: { in: ["COURSEWORK", "QUIZ"] },
+      courseId: { not: null },
+      dueAt: { gt: now, lte: to },
+    },
+    include: { items: true, course: true },
+    orderBy: [{ dueAt: "asc" }, { gradeWeight: "desc" }],
+  });
+  return tasks
+    .filter((t) => !(t.items.length ? t.items.every((i) => i.doneAt) : t.doneAt))
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      dueAt: t.dueAt!.toISOString(),
+      gradeWeight: t.gradeWeight,
+      course: { shortName: t.course!.shortName, colour: t.course!.colour },
+    }));
+}
+
 /** Anything past its deadline and not finished, and not pushed to the backlog. */
 export async function getOverdue() {
   const tasks = await db.task.findMany({

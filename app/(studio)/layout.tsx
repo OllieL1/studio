@@ -7,9 +7,10 @@ import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { GlobalQuickAdd } from "@/components/GlobalQuickAdd";
 import { SessionHotkey } from "@/components/SessionHotkey";
+import { DueSoonBanner } from "@/components/DueSoonBanner";
 import { LastLecture } from "@/components/LastLecture";
 import { BusyBar } from "@/components/BusyBar";
-import { getActiveTimer } from "@/lib/queries";
+import { getActiveTimer, getDueSoon } from "@/lib/queries";
 import { db } from "@/lib/db";
 import { isStudyLocation, visibleCourseWhere } from "@/lib/types";
 import { getPreferences } from "@/lib/preferences";
@@ -38,7 +39,7 @@ export default async function RootLayout({
 }) {
   // The timer and course list live in the shell, so they're fetched once here
   // rather than by every page.
-  const [prefs, timer, courses, lastSession, googleAuth, repos] = await Promise.all([
+  const [prefs, timer, courses, lastSession, googleAuth, repos, dueSoon] = await Promise.all([
     getPreferences(),
     getActiveTimer(),
     db.course.findMany({
@@ -57,6 +58,7 @@ export default async function RootLayout({
       ? db.googleAuth.findUnique({ where: { id: "singleton" }, select: { id: true } })
       : Promise.resolve(null),
     repoMenu(),
+    getDueSoon(),
   ]);
   const calendarConnected = !!googleAuth;
 
@@ -79,6 +81,7 @@ export default async function RootLayout({
         >
         <div className="relative z-10 flex min-h-screen flex-col">
           <Nav courses={courses} repos={repos} />
+          <DueSoonBanner initial={dueSoon} />
           <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-32 pt-8 sm:px-8">
             {children}
           </main>

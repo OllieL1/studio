@@ -5,6 +5,7 @@ import { getPreferences } from "@/lib/preferences";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LivioNav } from "@/components/livio/LivioNav";
 import { NotionAutoPull } from "@/components/livio/NotionAutoPull";
+import { DueSoonBanner } from "@/components/DueSoonBanner";
 import { db } from "@/lib/db";
 
 /**
@@ -46,6 +47,8 @@ export default async function LivioLayout({ children }: { children: React.ReactN
         <ThemeProvider initial={prefs.theme} mode={prefs.mode} darkFrom={prefs.darkFrom} darkTo={prefs.darkTo}>
           <div className="relative z-10 flex min-h-screen flex-col">
             <LivioNav />
+            {/* Studio's deadlines reach here too - a quiz in an hour matters wherever you are. */}
+            <DueSoonBanner initial={null} />
             <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-24 pt-8 sm:px-8">{children}</main>
             {notion && <NotionAutoPull />}
           </div>
