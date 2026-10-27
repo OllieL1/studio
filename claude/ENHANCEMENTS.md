@@ -1,5 +1,70 @@
 # Enhancement List - Check Off as we go
 
+27/10
+
+[x] Please allow support of rendering things like code, equations etc. in our callouts. Currently they do not render
+[x] Please allow support of rendering things like code in our bold in the PDF export
+[~] Please investigate slow live rendering times of larger documents. In my CP Lecture 6 (1500 words), after i hit ctrl enter it can take 5 to 10 seconds to render the block.
+[x] Please change the CTRL / command for switching between live and markdown as this interferes wth the global ctrl / command for tasks.
+[x] Please create a global command for starting a session. On activation this should animate showing the timer started - likely a nice clean animation of this starting at the bottom. Make sure this displays on the focus mode page for lectures (i.e. tempoarily shows with a nice animation and then goes away).
+[x] If a piece of coursework is due within the next 3 hours, please show this as a (beautiful integrated) banner on every page. This can be dismissed (i.e. if i am working on it so i am aware of it). Display the task, how long till its due, its weight and a checkbox plus dismiss for the banner. 
+[x] Please amend the database to ensure that the coaching quizzes are due on Tuesdays (currently they are Fridays) - make them due at 12pm noon - their last one is 1st Dec. The functional quizzes should all be set to Monday at 11.59pm (i think these also are on fridays). 
+Please commit these as we go and then push these changes to remote. Then flash to the stick (it should be plugged in.)
+
+---
+
+## Status - 27/10/26
+
+`[x]` done · `[~]` improved, but the slowness didn't reproduce here
+
+**Callouts** - the body already rendered code and maths; the *title* line was
+printed as plain text, and Enter after `> [!note] …` left the callout, so
+everything typed before it ended up in the title. The title now renders code,
+maths and links (page and PDF), and Enter inside a quote or callout carries on
+with `> ` - an empty `> ` line leaves it, like an empty bullet. Shift-Enter
+for a blank line inside one.
+
+**Code in bold in the PDF** - bold and italic are parsed again inside, so
+`**the `foo` call**` prints the call in mono, and maths and links in bold or
+italic keep their look too. Same fix in table cells in the live editor. There's
+no bold-italic face, so italic inside bold stays bold.
+
+**Slow ⌘↵** `[~]` - couldn't reproduce on the Mac: CP Lecture 6 (copied from
+the stick) renders a block in 10-50 ms after ⌘↵, typing straight through or
+pausing first. What I did find: every autosave re-rendered the whole lecture
+page on the server, which rendered all ~90 blocks again (the outline and word
+count need that re-render). Rendered HTML is now remembered by source, so a
+save renders only the block that changed - ~150 ms → ~60 ms of server time
+per save here, and proportionally more on the ThinkPad from the stick, where
+it's a single thread shared with the block render. Rendered blocks also stopped
+re-rendering on every keystroke. **If it's still slow, tell me which machine
+and browser** - that's the missing piece.
+
+**Live / Markdown** is ⌘⇧M (Ctrl-Shift-M), so ⌘/ is only ever quick-add.
+⌘⇧S (slides) no longer also saves.
+
+**⌥S starts a session** from anywhere (Alt-S on the ThinkPad), even mid-
+sentence. A pill rises from the bottom - "Session started 00:00" - and sinks
+away after a couple of seconds; it sits above lecture focus mode, which covers
+the timer bar. Pressed again while running it shows the time so far ("Already
+studying") and never stops anything. Studio only - Livio has no timer.
+
+**Due-soon banner** - coursework and quizzes due within three hours, under
+the nav on every page of Studio and Livio: tick, title (opens the task),
+course, "Due in 2h 15m · 14:00", weight, Dismiss. Dismissing is remembered per
+task in that browser; it checks every minute, so a deadline crossing into the
+window turns up on its own, and it goes at the due time (Overdue takes over).
+Not shown inside lecture focus mode.
+
+**Quizzes** - a migration, so the stick's database moved too. Quiz *n* is due
+in teaching week *n*+1, as the ones already moved by hand were:
+- Coaching: Tuesdays 12:00, Quiz 1 on 6 Oct to Quiz 9 on 1 Dec; Quiz 10 is
+  cancelled. Each is still worth 1.8%, so nine come to 16.2% - say if the
+  course reweighted them.
+- FP: Mondays 23:59, Quiz 1 on 5 Oct to Quiz 10 on 7 Dec. FP 5 and 6 were
+  already on those dates, so their Google Calendar events are unchanged.
+
+
 23/10 
 Ths biggest change so far. I would like to build a partner app for Studio that generalises towards the rest of my life. This should work with Studios data but be its own site. 
 We will call this site Livio (Liv(ing) + IO)
