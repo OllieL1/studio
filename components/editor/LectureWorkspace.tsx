@@ -102,7 +102,9 @@ export function LectureWorkspace({
         e.preventDefault();
         setShowTime((s) => !s);
       }
-      if (mod && e.key === "/") {
+      // ⌘⇧M, not ⌘/ - that's quick-add everywhere. By physical key, since
+      // Shift changes e.key.
+      if (mod && e.shiftKey && e.code === "KeyM") {
         e.preventDefault();
         setRaw((r) => !r);
       }
@@ -178,7 +180,7 @@ export function LectureWorkspace({
           key={label}
           onClick={() => setRaw(value)}
           aria-pressed={raw === value}
-          title={`${label} (⌘/)`}
+          title={`${label} (⌘⇧M)`}
           className={clsx(
             "flex h-full items-center rounded-[5px] px-2 text-[11px] font-semibold transition-colors duration-[120ms]",
             raw === value ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50 hover:text-n-800",

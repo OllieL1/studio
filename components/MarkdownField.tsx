@@ -41,10 +41,11 @@ export function MarkdownField({
   const lastSaved = useRef(initial);
   const host = useRef<HTMLDivElement>(null);
 
-  // ⌘/ switches modes, but only for the field the caret is actually in.
+  // ⌘⇧M switches modes, but only for the field the caret is actually in.
+  // (⌘/ is quick-add everywhere.)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key !== "/") return;
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.code !== "KeyM") return;
       if (!host.current?.contains(document.activeElement)) return;
       e.preventDefault();
       setRaw((r) => !r);
@@ -89,7 +90,7 @@ export function MarkdownField({
                 type="button"
                 onClick={() => setRaw(mode)}
                 aria-pressed={raw === mode}
-                title={`${label} (⌘/)`}
+                title={`${label} (⌘⇧M)`}
                 className={clsx(
                   "rounded-[5px] px-2 py-0.5 text-[11.5px] font-semibold transition-colors duration-[120ms]",
                   raw === mode ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50",

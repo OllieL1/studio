@@ -401,7 +401,8 @@ export function LiveEditor({
       }
     }
 
-    if (mod && e.key.toLowerCase() === "s") {
+    // Not ⌘⇧S: that's the slides.
+    if (mod && !e.shiftKey && e.key.toLowerCase() === "s") {
       e.preventDefault();
       void persist(markdown);
       return;
