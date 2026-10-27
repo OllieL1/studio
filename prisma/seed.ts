@@ -29,7 +29,11 @@ type TaskSpec = {
   items?: string[];
   notes?: string;
 };
-type WeeklySpec = { title: string; kind: string; count: number; totalWeight?: number; dueDay: number; dueMin: number };
+type WeeklySpec = {
+  title: string; kind: string; count: number; totalWeight?: number; dueDay: number; dueMin: number;
+  /** Teaching weeks before the first one is due (quiz n in week n + offset). */
+  weekOffset?: number;
+};
 
 type CourseSpec = {
   code: string;
@@ -68,8 +72,9 @@ const COURSES: CourseSpec[] = [
       { kind: "LECTURE", day: TUE, start: H(16), end: H(17) },
     ],
     weekly: [
-      // "Quiz (weekly) | x10 | 18%" → 1.8% each.
-      { title: "Weekly Quiz", kind: "QUIZ", count: 10, totalWeight: 18, dueDay: FRI, dueMin: H(23, 59) },
+      // "Quiz (weekly) | x10 | 18%" → 1.8% each, but only nine run: Tuesdays
+      // at noon from week 2, the last on 1 Dec.
+      { title: "Weekly Quiz", kind: "QUIZ", count: 9, totalWeight: 16.2, dueDay: TUE, dueMin: H(12), weekOffset: 1 },
     ],
     tasks: [
       // Mini Coaching Exercise Reports | 20% across 4 submissions.
@@ -152,7 +157,7 @@ const COURSES: CourseSpec[] = [
       { kind: "LAB", day: FRI, start: H(11), end: H(12) },
     ],
     weekly: [
-      { title: "Weekly Quiz", kind: "QUIZ", count: 10, totalWeight: 5, dueDay: FRI, dueMin: H(23, 59) },
+      { title: "Weekly Quiz", kind: "QUIZ", count: 10, totalWeight: 5, dueDay: MON, dueMin: H(23, 59), weekOffset: 1 },
     ],
     tasks: [
       { title: "In-Person Class Test", kind: "COURSEWORK", due: "2026-10-16", weight: 15 },
@@ -362,7 +367,7 @@ async function main() {
     for (const wk of spec.weekly ?? []) {
       const each = wk.totalWeight != null ? wk.totalWeight / wk.count : undefined;
       for (let i = 0; i < wk.count; i++) {
-        const weekStart = addWeeks(termStart, i);
+        const weekStart = addWeeks(termStart, i + (wk.weekOffset ?? 0));
         const date = new Date(weekStart);
         date.setDate(date.getDate() + (wk.dueDay - isoDayOfWeek(weekStart)));
         await add({
