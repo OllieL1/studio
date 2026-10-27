@@ -59,8 +59,8 @@ Not shown inside lecture focus mode.
 **Quizzes** - a migration, so the stick's database moved too. Quiz *n* is due
 in teaching week *n*+1, as the ones already moved by hand were:
 - Coaching: Tuesdays 12:00, Quiz 1 on 6 Oct to Quiz 9 on 1 Dec; Quiz 10 is
-  cancelled. Each is still worth 1.8%, so nine come to 16.2% - say if the
-  course reweighted them.
+  cancelled. *Follow-up:* the nine are worth 20% between them, 2.22% each
+  (Quiz 10 carries none). Weights everywhere now print to at most two decimals.
 - FP: Mondays 23:59, Quiz 1 on 5 Oct to Quiz 10 on 7 Dec. FP 5 and 6 were
   already on those dates, so their Google Calendar events are unchanged.
 
