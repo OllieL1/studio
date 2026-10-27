@@ -39,14 +39,14 @@ export function TaskImport() {
 
   return (
     <div>
-      <div className="flex items-center justify-end gap-1.5">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => file.current?.click()}
           disabled={pending}
           className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1 text-[12px] font-semibold text-n-600 transition-colors hover:bg-n-50 disabled:opacity-50"
         >
-          {pending ? "Importing…" : "Import tasks JSON"}
+          {pending ? "Importing…" : "Import Tasks JSON"}
         </button>
         <button
           type="button"
@@ -79,7 +79,7 @@ export function TaskImport() {
 function ImportResult({ result, onClose }: { result: TaskImportResult; onClose: () => void }) {
   const lines = result.ok ? [...result.errors, ...result.warnings] : result.error.split("\n");
   return (
-    <div className="mt-2 rounded-md border border-n-100 bg-n-25 px-3 py-2 text-[12.5px] text-n-700" role="status">
+    <div className="fixed bottom-6 right-6 z-[70] w-[min(420px,calc(100vw-3rem))] rounded-md border border-n-200 bg-n-0 px-3 py-2.5 text-[12.5px] text-n-700 shadow-[var(--shadow-modal)]" role="status">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-semibold">
           {result.ok

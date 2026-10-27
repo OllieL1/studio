@@ -127,6 +127,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
             </Link>
           );
         })}
+        {tab === "tasks" && <div className="ml-auto self-center pb-1"><TaskImport /></div>}
       </nav>
 
       {tab === "overview" && (
@@ -402,7 +403,6 @@ async function ProjectTasks({
 
   return (
     <div className="space-y-4">
-      <TaskImport />
       <QuickAdd
         courses={courses}
         calendarConnected={googleConnected}
