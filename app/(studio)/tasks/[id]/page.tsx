@@ -17,12 +17,24 @@ import { cssColour } from "@/lib/palette";
 import { IssueLinks } from "@/components/IssueLinks";
 import { isGitHubConnected } from "@/lib/github";
 import { projectRepo } from "@/lib/githubData";
+import { toNexusCard } from "@/lib/nexusData";
+import { extOf } from "@/lib/uploads";
+import type { BrowserItem } from "@/lib/noteTree";
+import { TaskWorkspace } from "@/components/TaskWorkspace";
 
 export const dynamic = "force-dynamic";
 
-/** Everything about one task: its detail, checklist, dependencies and the work logged against it. */
-export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
+/** Everything about one task: its detail, checklist, dependencies and the
+ *  work logged against it - and, on the Files tab, its notes and uploads. */
+export default async function TaskPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
+  const tab = (await searchParams).tab === "files" ? "files" : "overview";
 
   const task = await db.task.findUnique({
     where: { id },
@@ -32,9 +44,25 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       dependsOn: { include: { prerequisite: { include: { items: true, course: true } } } },
       dependents: { include: { dependent: { include: { items: true, course: true } } } },
       issues: { orderBy: { number: "asc" } },
+      taskNotes: {
+        orderBy: { updatedAt: "desc" },
+        include: { tags: { include: { tag: { select: { name: true } } } } },
+      },
+      attachments: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!task) notFound();
+
+  const files: BrowserItem[] = [
+    ...task.taskNotes.map((n) => ({ ...toNexusCard(n), kind: "note" as const })),
+    ...task.attachments.map((a) => ({
+      kind: "file" as const, id: a.id, filename: a.filename, ext: extOf(a.storedName), size: a.size, createdAt: a.createdAt,
+    })),
+  ];
+  // Only the tags this task's notes use, so every chip finds something.
+  const fileTags = [...new Set(task.taskNotes.flatMap((n) => n.tags.map((t) => t.tag.name)))].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
 
   const visible = await db.course.findMany({
     where: visibleCourseWhere(),
@@ -162,44 +190,46 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         )}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        {/* ── Main column ──────────────────────────────────────────────── */}
-        <div className="min-w-0 space-y-5">
-          <SubtaskPanel
-            taskId={task.id}
-            kind={task.kind}
-            done={!!task.doneAt}
-            items={task.items.map((i) => ({ id: i.id, label: i.label, done: !!i.doneAt }))}
-          />
-
-          <TaskTime taskId={task.id} />
-        </div>
-
-        {/* ── Side column ──────────────────────────────────────────────── */}
-        <aside className="space-y-5">
-          {(canLinkIssues || task.issues.length > 0) && (
-            <IssueLinks
+      <TaskWorkspace taskId={task.id} tab={tab} items={files} tags={fileTags}>
+        <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+          {/* ── Main column ──────────────────────────────────────────────── */}
+          <div className="min-w-0 space-y-5">
+            <SubtaskPanel
               taskId={task.id}
-              canLink={canLinkIssues}
-              issues={task.issues.map((i) => ({ repo: i.repo, number: i.number, title: i.title, state: i.state === "closed" ? "closed" : "open" }))}
+              kind={task.kind}
+              done={!!task.doneAt}
+              items={task.items.map((i) => ({ id: i.id, label: i.label, done: !!i.doneAt }))}
             />
-          )}
 
-          <DependencyEditor
-            taskId={task.id}
-            courseId={task.courseId}
-            prerequisites={prereqs.map((p) => ({
-              id: p.id, title: p.title, done: isTaskDone(p),
-              colour: p.course?.colour ?? null, courseShort: p.course?.shortName ?? null,
-            }))}
-            dependents={task.dependents.map((d) => ({
-              id: d.dependent.id, title: d.dependent.title, done: isTaskDone(d.dependent),
-              colour: d.dependent.course?.colour ?? null, courseShort: d.dependent.course?.shortName ?? null,
-            }))}
-            readiness={prereqs.length > 0 ? { done: prereqsDone, total: prereqs.length } : null}
-          />
-        </aside>
-      </div>
+            <TaskTime taskId={task.id} />
+          </div>
+
+          {/* ── Side column ──────────────────────────────────────────────── */}
+          <aside className="space-y-5">
+            {(canLinkIssues || task.issues.length > 0) && (
+              <IssueLinks
+                taskId={task.id}
+                canLink={canLinkIssues}
+                issues={task.issues.map((i) => ({ repo: i.repo, number: i.number, title: i.title, state: i.state === "closed" ? "closed" : "open" }))}
+              />
+            )}
+
+            <DependencyEditor
+              taskId={task.id}
+              courseId={task.courseId}
+              prerequisites={prereqs.map((p) => ({
+                id: p.id, title: p.title, done: isTaskDone(p),
+                colour: p.course?.colour ?? null, courseShort: p.course?.shortName ?? null,
+              }))}
+              dependents={task.dependents.map((d) => ({
+                id: d.dependent.id, title: d.dependent.title, done: isTaskDone(d.dependent),
+                colour: d.dependent.course?.colour ?? null, courseShort: d.dependent.course?.shortName ?? null,
+              }))}
+              readiness={prereqs.length > 0 ? { done: prereqsDone, total: prereqs.length } : null}
+            />
+          </aside>
+        </div>
+      </TaskWorkspace>
     </div>
   );
 }

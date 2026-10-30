@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { deleteNote, setNoteTags, updateNote } from "@/app/nexusActions";
@@ -8,17 +9,24 @@ import { TagPicker } from "./TagPicker";
 import { clsx } from "@/lib/clsx";
 
 /**
- * One Nexus note: a title, its tags, and the same editor the lectures use -
- * so `[` inserts blocks and `@` mentions papers, tags, tasks and meetings.
+ * One note - in Nexus or on a task: a title, its tags, and the same editor
+ * the lectures use - so `[` inserts blocks and `@` mentions papers, tags,
+ * tasks and meetings.
  */
 export function NoteEditor({
   note,
   initialHtml,
   allTags,
+  backHref = "/project?tab=nexus",
+  showPin = true,
 }: {
   note: { id: string; title: string; body: string; pinned: boolean; tags: string[] };
   initialHtml: string[];
   allTags: string[];
+  /** Where deleting the note leaves you. */
+  backHref?: string;
+  /** Pinning orders the Nexus gallery; a task's notes have no use for it. */
+  showPin?: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(note.title);
@@ -85,7 +93,7 @@ export function NoteEditor({
             </button>
           </>
         )}
-        <button
+        {showPin && <button
           onClick={() => {
             setPinned((p) => !p);
             save({ pinned: !pinned });
@@ -98,7 +106,7 @@ export function NoteEditor({
           )}
         >
           {pinned ? "Pinned" : "Pin"}
-        </button>
+        </button>}
         <span className="flex items-center gap-1.5 text-[11px] text-n-400">
           <span aria-hidden className={clsx("h-1.5 w-1.5 rounded-full", saved ? "bg-ok" : "bg-warn")} />
           {saved ? "Saved" : "Saving…"}
@@ -132,7 +140,7 @@ export function NoteEditor({
             if (!confirm(`Delete "${title}"?`)) return;
             startTransition(async () => {
               await deleteNote(note.id);
-              router.push("/project?tab=nexus");
+              router.push(backHref as Route);
             });
           }}
           className="h-8 shrink-0 rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-500 transition-colors duration-[120ms] hover:bg-danger-soft hover:text-danger"

@@ -146,6 +146,8 @@ model Task {
   /// as task dependencies).
   prepFor       MeetingPrep[]
   attachments   Attachment[]
+  /// Notes written for this task, from its Files tab.
+  taskNotes     Note[]
   /// GitHub issues this task tracks.
   issues        TaskIssue[]
   /// Denormalised completion stamp. Truth lives in TaskItem; this is set when
@@ -542,12 +544,18 @@ model Note {
   courseId String?
   course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
+  /// Set for a note written on a task's page. Those stay out of the Nexus
+  /// gallery and live in the task's Files tab instead.
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
   tags NoteTag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([pinned, updatedAt])
+  @@index([taskId])
 }
 
 model NoteTag {

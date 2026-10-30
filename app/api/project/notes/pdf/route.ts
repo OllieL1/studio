@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const ids = req.nextUrl.searchParams.get("ids")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
 
   const rows = await db.note.findMany({
-    where: ids.length > 0 ? { id: { in: ids } } : undefined,
+    where: ids.length > 0 ? { id: { in: ids } } : { taskId: null },
     orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
     include: { tags: { include: { tag: { select: { name: true } } } } },
   });

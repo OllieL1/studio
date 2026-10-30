@@ -43,7 +43,7 @@ export async function getProject() {
       orderBy: { createdAt: "desc" },
       include: { tagLinks: { include: { tag: { select: { name: true } } } } },
     }),
-    db.note.count(),
+    db.note.count({ where: { taskId: null } }),
     db.session.findMany({
       where: { courses: { some: { courseId: course.id } } },
       include: { courses: true, tasks: true },

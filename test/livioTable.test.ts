@@ -56,6 +56,22 @@ test("page commands run by full name with an argument, or by a unique prefix", (
   assert.equal(parseCommand("nonsense", COMMANDS, FIELDS).kind, "unknown");
 });
 
+test("aliases take an argument too", () => {
+  const cmds = [{ name: "new", hint: "", arg: "title", aliases: ["n"] }, { name: "upload", hint: "", aliases: ["u"] }];
+  assert.deepEqual(parseCommand("n Plan for Monday", cmds, []), { kind: "run", name: "new", arg: "Plan for Monday" });
+  assert.deepEqual(parseCommand(":u", cmds, []), { kind: "run", name: "upload", arg: "" });
+  assert.deepEqual(parseCommand("new", cmds, []), { kind: "run", name: "new", arg: "" });
+});
+
+test("off a table, there's no search, sort or filter", () => {
+  const cmds = [{ name: "files", hint: "" }, { name: "summary", hint: "", aliases: ["s"] }];
+  assert.deepEqual(parseCommand("s", cmds, [], false), { kind: "run", name: "summary", arg: "" });
+  assert.equal(parseCommand("f", cmds, [], false).kind, "run", "f is a prefix of files");
+  assert.equal(parseCommand("^ title", cmds, [], false).kind, "unknown");
+  assert.deepEqual(parseCommand("help", cmds, [], false), { kind: "help" });
+  assert.deepEqual(completions("", cmds, [], false).map((c) => c.label), ["files", "summary", "help"]);
+});
+
 test("completions follow what's typed", () => {
   assert.deepEqual(completions("co", COMMANDS, FIELDS).map((c) => c.label), ["cold email"]);
   assert.deepEqual(completions("^ d", COMMANDS, FIELDS).map((c) => c.fill), ["^ sent", "^ deadline"]);

@@ -6,14 +6,16 @@ import { uploadExists, uploadPath } from "@/lib/uploads";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** Serve an attached file. `?download=1` saves rather than opens it. */
+/** Serve an attached file. `?download=1` saves rather than opens it, and
+ *  anything but a PDF always downloads - a browser can't show a deck. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const file = await db.attachment.findUnique({ where: { id } });
   if (!file || !uploadExists(file.storedName)) return new Response("Not found.", { status: 404 });
 
   const bytes = await readFile(uploadPath(file.storedName));
-  const disposition = req.nextUrl.searchParams.get("download") === "1" ? "attachment" : "inline";
+  const inline = file.mime === "application/pdf" && req.nextUrl.searchParams.get("download") !== "1";
+  const disposition = inline ? "inline" : "attachment";
 
   return new Response(new Uint8Array(bytes), {
     headers: {

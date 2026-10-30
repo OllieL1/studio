@@ -11,6 +11,9 @@ import { addDays, startOfDay } from "../dates";
  *   :^ company              sort ascending      :!^ deadline   descending
  *   :help                   keybinds
  *   :cold email Google      a page's own command, with an argument
+ *
+ * Pages that aren't tables (a Studio task page) pass `table = false`: only
+ * :help and their own commands then exist, so `:s` can be one of theirs.
  */
 
 export type Field = {
@@ -25,6 +28,8 @@ export type PageCommand = {
   hint: string;
   /** Shown after the name when the command takes an argument. */
   arg?: string;
+  /** Short forms that also take an argument: `n` for "new" in `:n Plan`. */
+  aliases?: string[];
 };
 
 export type ParsedCommand =
@@ -49,26 +54,30 @@ export function resolveField(fields: Field[], text: string): string | null {
   return prefixed.length === 1 ? prefixed[0].key : null;
 }
 
-export function parseCommand(input: string, commands: PageCommand[], fields: Field[]): ParsedCommand {
+export function parseCommand(input: string, commands: PageCommand[], fields: Field[], table = true): ParsedCommand {
   const text = norm(input.replace(/^:/, ""));
   const raw = input.replace(/^:/, "").trim();
 
-  const sort = /^(!?)\^\s*(.*)$/.exec(text);
-  if (sort) return { kind: "sort", dir: sort[1] ? "desc" : "asc", field: resolveField(fields, sort[2]), text: sort[2] };
+  if (table) {
+    const sort = /^(!?)\^\s*(.*)$/.exec(text);
+    if (sort) return { kind: "sort", dir: sort[1] ? "desc" : "asc", field: resolveField(fields, sort[2]), text: sort[2] };
 
-  const search = /^(?:s|search)(?:\s+([\s\S]*))?$/.exec(text);
-  if (search) return { kind: "search", query: raw.replace(/^(?:s|search)\s*/i, "") };
+    const search = /^(?:s|search)(?:\s+([\s\S]*))?$/.exec(text);
+    if (search) return { kind: "search", query: raw.replace(/^(?:s|search)\s*/i, "") };
 
-  if (text === "f" || text === "filter" || text === "filters") return { kind: "filter" };
+    if (text === "f" || text === "filter" || text === "filters") return { kind: "filter" };
+  }
   if (text === "help" || text === "?" || text === "h") return { kind: "help" };
 
-  // A full name, then anything after it is the argument; the longest name
-  // wins so "cold email" isn't read as "cold" + "email".
-  const byLength = [...commands].sort((a, b) => b.name.length - a.name.length);
-  for (const c of byLength) {
-    const n = norm(c.name);
+  // A full name or alias, then anything after it is the argument; the
+  // longest wins so "cold email" isn't read as "cold" + "email".
+  const names = commands
+    .flatMap((c) => [c.name, ...(c.aliases ?? [])].map((name) => ({ name, c })))
+    .sort((a, b) => b.name.length - a.name.length);
+  for (const { name, c } of names) {
+    const n = norm(name);
     if (text === n || text.startsWith(`${n} `)) {
-      return { kind: "run", name: c.name, arg: raw.slice(c.name.length).trim() };
+      return { kind: "run", name: c.name, arg: raw.slice(name.length).trim() };
     }
   }
   // Or an unambiguous start of one: "cold" runs "cold email".
@@ -89,20 +98,20 @@ const BUILTINS: Completion[] = [
 ];
 
 /** Suggestions for what's been typed so far. Tab or ↓ picks one. */
-export function completions(input: string, commands: PageCommand[], fields: Field[]): Completion[] {
+export function completions(input: string, commands: PageCommand[], fields: Field[], table = true): Completion[] {
   const text = norm(input.replace(/^:/, ""));
 
-  const sort = /^(!?)\^\s*(.*)$/.exec(text);
+  const sort = table ? /^(!?)\^\s*(.*)$/.exec(text) : null;
   if (sort) {
     const prefix = sort[1] ? "!^" : "^";
     return fields
       .filter((f) => [f.key, f.label, ...(f.aliases ?? [])].some((n) => norm(n).startsWith(sort[2])))
       .map((f) => ({ label: `${prefix} ${f.label.toLowerCase()}`, hint: sort[1] ? "Z → A, newest first" : "A → Z, oldest first", fill: `${prefix} ${f.key}` }));
   }
-  if (/^(?:s|search)\s/.test(text)) return [];
+  if (table && /^(?:s|search)\s/.test(text)) return [];
 
   const page = commands.map((c) => ({ label: c.name, hint: c.hint, fill: c.arg ? `${c.name} ` : c.name }));
-  const all = [...page, ...BUILTINS];
+  const all = [...page, ...(table ? BUILTINS : BUILTINS.filter((b) => b.label === "help"))];
   return text ? all.filter((c) => norm(c.label).startsWith(text) || norm(c.hint).startsWith(text)) : all;
 }
 

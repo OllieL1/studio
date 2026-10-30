@@ -20,9 +20,11 @@ import { renameTagMentions } from "@/lib/mentions";
  * currently writing on invites the server to re-render the editor underneath
  * you, and nothing on it has changed that you didn't just type.
  */
-const refreshIndexes = () => {
+const refreshIndexes = (taskId?: string | null) => {
   revalidatePath("/project");
   revalidatePath("/project/tags", "layout");
+  // A task note is listed on its task's page instead of the gallery.
+  if (taskId) revalidatePath(`/tasks/${taskId}`);
 };
 
 /** Also the note pages - only when one appears, vanishes, or is rewritten. */
@@ -31,17 +33,28 @@ const refreshAll = () => {
   revalidatePath("/project/nexus", "layout");
 };
 
-export async function createNote(input?: { title?: string; body?: string }) {
-  const project = await db.course.findFirst({ where: { isProject: true }, select: { id: true } });
+/** A Nexus note, or - given a taskId - a note filed under that task, which
+ *  takes the task's course rather than the project's. */
+export async function createNote(input?: { title?: string; body?: string; taskId?: string }) {
+  let courseId: string | null;
+  if (input?.taskId) {
+    const task = await db.task.findUnique({ where: { id: input.taskId }, select: { courseId: true } });
+    if (!task) return { ok: false as const, error: "That task is gone." };
+    courseId = task.courseId;
+  } else {
+    const project = await db.course.findFirst({ where: { isProject: true }, select: { id: true } });
+    courseId = project?.id ?? null;
+  }
   const note = await db.note.create({
     data: {
-      title: input?.title?.trim() || "Untitled",
+      title: input?.title?.trim().slice(0, 120) || "Untitled",
       body: input?.body ?? "",
-      courseId: project?.id ?? null,
+      courseId,
+      taskId: input?.taskId ?? null,
     },
     select: { id: true },
   });
-  refreshIndexes();
+  refreshIndexes(input?.taskId);
   return { ok: true as const, id: note.id };
 }
 
@@ -54,17 +67,18 @@ export async function updateNote(
   if (data.body !== undefined) patch.body = data.body;
   if (data.pinned !== undefined) patch.pinned = data.pinned;
 
-  await db.note.update({ where: { id }, data: patch });
+  const note = await db.note.update({ where: { id }, data: patch, select: { taskId: true } });
   // A body save is the autosave; only what the gallery shows is worth
   // invalidating, and the gallery is dynamic so it re-queries on arrival.
-  if (data.title !== undefined || data.pinned !== undefined) refreshIndexes();
+  if (data.title !== undefined || data.pinned !== undefined) refreshIndexes(note.taskId);
   return { ok: true as const };
 }
 
 export async function deleteNote(id: string) {
-  await db.note.delete({ where: { id } });
+  const note = await db.note.delete({ where: { id }, select: { taskId: true } });
   await pruneOrphanTags();
   refreshAll();
+  if (note.taskId) revalidatePath(`/tasks/${note.taskId}`, "layout");
   return { ok: true as const };
 }
 
@@ -78,7 +92,8 @@ export async function setNoteTags(id: string, names: string[]) {
     }
   });
   await pruneOrphanTags();
-  refreshIndexes();
+  const note = await db.note.findUnique({ where: { id }, select: { taskId: true } });
+  refreshIndexes(note?.taskId);
   return { ok: true as const };
 }
 

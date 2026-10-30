@@ -21,6 +21,7 @@ export function CommandBar({
   onRun,
   onPreview,
   onClose,
+  table = true,
 }: {
   initial: string;
   commands: PageCommand[];
@@ -30,13 +31,15 @@ export function CommandBar({
   /** A search being typed, or null to put the committed one back. */
   onPreview?: (query: string | null) => void;
   onClose: () => void;
+  /** False on a page that isn't a table: no search, sort or filter. */
+  table?: boolean;
 }) {
   const [text, setText] = useState(initial);
   const [active, setActive] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
-  const list = useMemo(() => completions(text, commands, fields), [text, commands, fields]);
+  const list = useMemo(() => completions(text, commands, fields, table), [text, commands, fields, table]);
 
   const close = () => {
     onPreview?.(null);
@@ -47,7 +50,7 @@ export function CommandBar({
     setText(next);
     setActive(-1);
     setError(null);
-    const parsed = parseCommand(next, commands, fields);
+    const parsed = parseCommand(next, commands, fields, table);
     onPreview?.(parsed.kind === "search" ? parsed.query : null);
   };
 
@@ -57,7 +60,7 @@ export function CommandBar({
   };
 
   const submit = () => {
-    let parsed = parseCommand(text, commands, fields);
+    let parsed = parseCommand(text, commands, fields, table);
     // A highlighted suggestion - or the only one, when what's typed means
     // nothing yet - is what Enter takes. One that still needs an argument
     // ("^ ", "s ") is filled in for typing rather than run half-finished.
@@ -68,7 +71,7 @@ export function CommandBar({
         change(chosen.fill);
         return;
       }
-      parsed = parseCommand(chosen.fill, commands, fields);
+      parsed = parseCommand(chosen.fill, commands, fields, table);
     }
     if (parsed.kind === "unknown") {
       setError(parsed.text ? `No command “${parsed.text}”. :help lists them.` : "Type a command - :help lists them.");

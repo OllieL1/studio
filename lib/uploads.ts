@@ -3,7 +3,7 @@ import { mkdirSync, existsSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path";
 
 /**
- * Files attached to a task - lecture slides, handouts.
+ * Files attached to a task - lecture slides, handouts, a coursework spec.
  *
  * The bytes live beside the database (data/uploads) rather than inside it: a
  * term of slide decks would bloat the SQLite file, and every backup copies it
@@ -12,13 +12,48 @@ import { dirname, join, resolve } from "node:path";
  */
 
 export const MAX_UPLOAD_BYTES = 40 * 1024 * 1024; // 40MB - a big slide deck
-export const ALLOWED_MIME = ["application/pdf"];
 
-/** Where the SQLite file lives; uploads sit next to it. */
-export function dataDir(): string {
-  const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
-  const file = url.replace(/^file:/, "");
-  return dirname(resolve(file));
+/**
+ * What can be attached, by extension. The browser's content type is often
+ * blank or wrong for Office files, so the extension says what it claims to be
+ * and the bytes have to agree: a PDF starts `%PDF`, and docx/pptx are zips
+ * whose entries live under word/ or ppt/.
+ */
+export const FILE_TYPES = {
+  pdf: { mime: "application/pdf", label: "PDF" },
+  docx: { mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", label: "Word" },
+  pptx: { mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation", label: "PowerPoint" },
+} as const;
+
+export type FileExt = keyof typeof FILE_TYPES;
+
+/** The lower-cased extension of a filename, or "" without one. */
+export function extOf(filename: string): string {
+  const m = /\.([a-z0-9]+)$/i.exec(filename.trim());
+  return m ? m[1].toLowerCase() : "";
+}
+
+export const isFileExt = (ext: string): ext is FileExt => Object.hasOwn(FILE_TYPES, ext);
+
+function looksLike(ext: FileExt, bytes: Uint8Array): boolean {
+  const head = Buffer.from(bytes.subarray(0, 4)).toString("latin1");
+  if (ext === "pdf") return head === "%PDF";
+  if (head !== "PK\x03\x04") return false;
+  // Entry names are stored as plain text in a zip, so the folder that makes
+  // it a Word or PowerPoint file can be found without unzipping.
+  return Buffer.from(bytes).includes(ext === "docx" ? "word/" : "ppt/", 0, "latin1");
+}
+
+/**
+ * Where the SQLite file lives; uploads sit next to it. A relative path is
+ * read the way Prisma reads it - from the folder holding schema.prisma, not
+ * the working directory - so `file:./dev.db` means prisma/dev.db. Reading it
+ * from the working directory put development uploads loose in the repo root.
+ * The stick passes an absolute path, which is unaffected.
+ */
+export function dataDir(url = process.env.DATABASE_URL ?? "file:./dev.db", schemaDir = resolve("prisma")): string {
+  const file = url.replace(/^file:/, "").split("?")[0];
+  return dirname(resolve(schemaDir, file));
 }
 
 export function uploadsDir(): string {
@@ -63,10 +98,17 @@ export function uploadExists(storedName: string): boolean {
   }
 }
 
-/** What's wrong with this upload, or null if it's fine. */
-export function checkUpload(mime: string, size: number): string | null {
-  if (!ALLOWED_MIME.includes(mime)) return "Only PDFs can be attached.";
-  if (size <= 0) return "That file is empty.";
-  if (size > MAX_UPLOAD_BYTES) return `That file is over ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.`;
-  return null;
+/** The upload's type if it's one we keep and the bytes agree, or what's wrong. */
+export function checkUpload(
+  filename: string,
+  bytes: Uint8Array,
+): { ok: true; ext: FileExt; mime: string } | { ok: false; error: string } {
+  const ext = extOf(filename);
+  if (!isFileExt(ext)) return { ok: false, error: "Only PDF, Word (.docx) and PowerPoint (.pptx) files can be attached." };
+  if (bytes.byteLength <= 0) return { ok: false, error: "That file is empty." };
+  if (bytes.byteLength > MAX_UPLOAD_BYTES) {
+    return { ok: false, error: `That file is over ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.` };
+  }
+  if (!looksLike(ext, bytes)) return { ok: false, error: `That doesn't look like a ${FILE_TYPES[ext].label} file.` };
+  return { ok: true, ext, mime: FILE_TYPES[ext].mime };
 }

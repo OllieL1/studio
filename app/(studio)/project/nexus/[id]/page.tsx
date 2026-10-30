@@ -1,6 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getBacklinks, getNote } from "@/lib/nexusData";
 import { allTags } from "@/lib/tags";
 import { splitBlocks } from "@/lib/editor/blocks";
@@ -16,6 +16,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const note = await getNote(id);
   if (!note) notFound();
+  // Mentions and search link every note here; a task's notes live under it.
+  if (note.taskId) redirect(`/tasks/${note.taskId}/notes/${note.id}` as Route);
 
   const [tags, backlinks] = await Promise.all([allTags(), getBacklinks(id)]);
   const initialHtml = splitBlocks(note.body).map((b) => (b.text.trim() ? renderMarkdown(b.text) : ""));

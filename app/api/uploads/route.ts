@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkUpload, saveUpload } from "@/lib/uploads";
+import { checkUpload, MAX_UPLOAD_BYTES, saveUpload } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** Attach a PDF to a task. Multipart: `taskId` and `file`. */
+/** Attach a PDF, Word or PowerPoint file to a task. Multipart: `taskId` and `file`. */
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const taskId = form.get("taskId");
@@ -18,22 +18,23 @@ export async function POST(req: NextRequest) {
   const task = await db.task.findUnique({ where: { id: taskId }, select: { id: true } });
   if (!task) return NextResponse.json({ error: "No such task." }, { status: 404 });
 
-  const problem = checkUpload(file.type, file.size);
-  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
-
-  const bytes = Buffer.from(await file.arrayBuffer());
-  // Trust the magic number, not the browser's content type.
-  if (bytes.subarray(0, 4).toString() !== "%PDF") {
-    return NextResponse.json({ error: "That doesn't look like a PDF." }, { status: 400 });
+  // Turned away before reading, so a huge file is never held in memory.
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: `That file is over ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.` }, { status: 400 });
   }
 
-  const saved = saveUpload(bytes, "pdf");
+  const bytes = Buffer.from(await file.arrayBuffer());
+  // Trust the extension and the magic number, not the browser's content type.
+  const vetted = checkUpload(file.name, bytes);
+  if (!vetted.ok) return NextResponse.json({ error: vetted.error }, { status: 400 });
+
+  const saved = saveUpload(bytes, vetted.ext);
   const attachment = await db.attachment.create({
     data: {
       taskId,
-      filename: file.name.slice(0, 200) || "document.pdf",
+      filename: file.name.slice(0, 200) || `document.${vetted.ext}`,
       storedName: saved.storedName,
-      mime: "application/pdf",
+      mime: vetted.mime,
       size: saved.size,
     },
   });

@@ -20,3 +20,5 @@ backups/
 
 # Node runtimes downloaded for the USB stick, and the staged app
 .usb-cache/
+# Files attached to tasks in development (lib/uploads.ts) - beside dev.db
+prisma/uploads/

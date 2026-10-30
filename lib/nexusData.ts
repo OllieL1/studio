@@ -1,10 +1,12 @@
 import { db } from "./db";
 import { stripMentions } from "./mentions";
 
-/** What the Nexus gallery shows, newest first with pinned notes on top. */
+/** What the Nexus gallery shows, newest first with pinned notes on top.
+ *  Notes written on a task's page live there instead. */
 export async function getNexus(tag?: string, query?: string) {
   const notes = await db.note.findMany({
     where: {
+      taskId: null,
       ...(tag ? { tags: { some: { tag: { key: tag.toLowerCase() } } } } : {}),
       ...(query ? { OR: [{ title: { contains: query } }, { body: { contains: query } }] } : {}),
     },
@@ -12,7 +14,21 @@ export async function getNexus(tag?: string, query?: string) {
     include: { tags: { include: { tag: { select: { name: true, key: true } } } } },
   });
 
-  return notes.map((n) => ({
+  return notes.map(toNexusCard);
+}
+
+type NoteWithTags = {
+  id: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  updatedAt: Date;
+  tags: { tag: { name: string } }[];
+};
+
+/** A note as the gallery and tree draw it - shared by Nexus and task pages. */
+export function toNexusCard(n: NoteWithTags) {
+  return {
     id: n.id,
     title: n.title,
     pinned: n.pinned,
@@ -20,7 +36,7 @@ export async function getNexus(tag?: string, query?: string) {
     tags: n.tags.map((t) => t.tag.name),
     excerpt: excerptOf(n.body),
     words: stripMentions(n.body).split(/\s+/).filter(Boolean).length,
-  }));
+  };
 }
 
 /** The first couple of lines, with syntax and chips reduced to plain text. */
