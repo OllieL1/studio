@@ -217,6 +217,21 @@ test("notes: an empty note and one with no project still build", async () => {
   assert.ok(pages(buf) >= 4);
 });
 
+test("notes: headed by course and task, with no app branding", async () => {
+  const notes = [
+    note({ course: { name: "Functional Programming", code: "COMPSCI4021" }, work: "Coursework 2" }),
+    note({ id: "n2", title: "Second", course: { name: "Functional Programming", code: "COMPSCI4021" }, work: "Coursework 2" }),
+  ];
+  for (const set of [notes.slice(0, 1), notes]) {
+    const buf = await buildNotesPdf({ notes: set, course: null, generatedAt: new Date(2026, 9, 30) });
+    assert.ok(isPdf(buf));
+    // The info dictionary is plain text; page content is compressed, so the
+    // header and footer are checked by eye (see the commit) rather than here.
+    const raw = buf.toString("latin1");
+    assert.ok(!/Studio|Nexus/.test(raw), "no Studio or Nexus in the metadata");
+  }
+});
+
 test("notes: markdown, mentions and maths all render", async () => {
   const body = "# Heading\n\n$$x^2$$\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n> quote\n\n- one\n  - nested\n- two\n\n@r[hu2021lora|LoRA] and @t[abc|A task]\n";
   const buf = await buildNotesPdf({ notes: [note({ body })], course: null, generatedAt: new Date(2026, 8, 28) });

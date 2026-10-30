@@ -4,7 +4,11 @@ import { contentWidth, footers, newDoc, FAINT, INK, MARGIN, MUTED, RULE, RUST } 
 import { plainText, renderMarkdown } from "./markdown";
 
 /**
- * Nexus notes as a bound document: one note, or the whole notebook.
+ * Notes - Nexus's or a task's - as a bound document: one note, or a bundle.
+ *
+ * They carry no app branding: every page is headed with the note's course
+ * and, for a task's note, the piece of work it belongs to, and the footer is
+ * just the date and the page number.
  *
  * Built the same way as the lecture export - a bundle gets a cover and a
  * contents list with real page numbers, which means laying the body out twice:
@@ -20,25 +24,50 @@ export type PdfNote = {
   tags: string[];
   pinned: boolean;
   updatedAt: Date;
+  /** The note's own course, when it has one; otherwise `NotesInput.course`. */
+  course?: Course | null;
+  /** The task it was written for - "Coursework 2" - if any. */
+  work?: string | null;
 };
+
+type Course = { name: string; code: string };
 
 export type NotesInput = {
   notes: PdfNote[];
-  /** The project the notebook belongs to, for the cover and the footer. */
-  course: { name: string; code: string } | null;
+  /** The course for notes that don't name their own. */
+  course: Course | null;
   generatedAt: Date;
 };
+
+/** What heads a note's pages. */
+type Heading = { course: Course | null; work: string | null };
+
+const headingOf = (n: PdfNote, input: NotesInput): Heading => ({
+  course: n.course ?? input.course,
+  work: n.work ?? null,
+});
+
+/** The value every note shares, or null when they differ. */
+function shared<T>(values: T[], key: (v: T) => string): T | null {
+  if (values.length === 0) return null;
+  return values.every((v) => key(v) === key(values[0])) ? values[0] : null;
+}
 
 const BODY_SIZE = 10;
 const WORDS = (md: string) => plainText(md).split(/\s+/).filter(Boolean).length;
 
 export async function buildNotesPdf(input: NotesInput): Promise<Buffer> {
-  const stamp = `Studio  ·  Nexus  ·  ${fmtDateLongYear(input.generatedAt)}`;
-  const subject = input.course ? `${input.course.name} · ${input.course.code}` : "Project notes";
+  const stamp = fmtDateLongYear(input.generatedAt);
+  const headings = input.notes.map((n) => headingOf(n, input));
+  const course = shared(headings.map((h) => h.course), (c) => c?.code ?? "");
+  const work = shared(headings.map((h) => h.work), (w) => w ?? "");
+  const subject = course?.code ? `${course.name} · ${course.code}` : "Notes";
 
   if (input.notes.length === 1) {
-    const { doc, done } = newDoc({ title: input.notes[0].title, subject, createdAt: input.generatedAt });
-    note(doc, input.notes[0], null);
+    const { doc, done } = newDoc({ title: input.notes[0].title, subject, createdAt: input.generatedAt, author: null });
+    const pages = pageHeadings(doc);
+    note(doc, input.notes[0], null, pages, headings[0]);
+    headers(doc, pages.list);
     footers(doc, stamp);
     doc.end();
     return done;
@@ -46,36 +75,88 @@ export async function buildNotesPdf(input: NotesInput): Promise<Buffer> {
 
   // Pass 1: where does each note start, counting from the first body page?
   const probe = newDoc({ title: "probe", subject: "probe", createdAt: input.generatedAt });
-  const offsets = body(probe.doc, input);
+  const offsets = body(probe.doc, input, pageHeadings(probe.doc), headings);
   probe.doc.end();
   await probe.done;
 
-  const { doc, done } = newDoc({ title: "Nexus", subject, createdAt: input.generatedAt });
-  cover(doc, input);
+  const title = work ?? course?.name ?? "Notes";
+  const { doc, done } = newDoc({ title, subject, createdAt: input.generatedAt, author: null });
+  cover(doc, input, { title, subtitle: work ? course?.name ?? null : null, code: course?.code ?? null });
   contents(doc, input, offsets);
-  body(doc, input);
+  const pages = pageHeadings(doc);
+  body(doc, input, pages, headings);
+  headers(doc, pages.list);
   footers(doc, stamp);
   doc.end();
   return done;
 }
 
+/* ── Running header ──────────────────────────────────────────────────────── */
+
+/** Which note's heading each page carries. A note that runs onto a second
+ *  page takes its heading with it; the cover and contents get none. */
+function pageHeadings(doc: PDFKit.PDFDocument) {
+  const list: (Heading | null)[] = [];
+  const state = { current: null as Heading | null };
+  const page = () => doc.bufferedPageRange().count - 1;
+  doc.on("pageAdded", () => { list[page()] = state.current; });
+  return {
+    list,
+    /** From here on, pages belong to this note. */
+    start(h: Heading) {
+      state.current = h;
+      list[page()] = h;
+    },
+  };
+}
+
+/** Course on the left, the piece of work on the right, above the margin. */
+function headers(doc: PDFKit.PDFDocument, list: (Heading | null)[]) {
+  const range = doc.bufferedPageRange();
+  for (let i = range.start; i < range.start + range.count; i++) {
+    const h = list[i];
+    if (!h || (!h.course && !h.work)) continue;
+    doc.switchToPage(i);
+    const top = doc.page.margins.top;
+    doc.page.margins.top = 0;
+    const width = contentWidth(doc);
+    const y = MARGIN - 26;
+    doc.font("body").fontSize(8).fillColor(FAINT);
+    if (h.course) {
+      const left = h.course.code ? `${h.course.name}  ·  ${h.course.code}` : h.course.name;
+      doc.text(fit(doc, left, h.work ? width / 2 - 8 : width), MARGIN, y, { width, lineBreak: false });
+    }
+    if (h.work) {
+      const right = fit(doc, h.work, h.course ? width / 2 - 8 : width);
+      doc.text(right, MARGIN, y, { width, align: "right", lineBreak: false });
+    }
+    doc.page.margins.top = top;
+  }
+}
+
 /* ── Cover ───────────────────────────────────────────────────────────────── */
 
-function cover(doc: PDFKit.PDFDocument, { notes, course, generatedAt }: NotesInput) {
+function cover(
+  doc: PDFKit.PDFDocument,
+  { notes, generatedAt }: NotesInput,
+  head: { title: string; subtitle: string | null; code: string | null },
+) {
   const width = contentWidth(doc);
   const words = notes.reduce((s, n) => s + WORDS(n.body), 0);
   const tags = new Set(notes.flatMap((n) => n.tags));
   const top = doc.page.height * 0.3;
 
   doc.rect(MARGIN, top - 30, 42, 4).fillColor(RUST).fill();
-  if (course) {
-    doc.font("body").fontSize(9.5).fillColor(MUTED).text(course.code.toUpperCase(), MARGIN, top - 16, { characterSpacing: 0.8 });
+  if (head.code) {
+    doc.font("body").fontSize(9.5).fillColor(MUTED).text(head.code.toUpperCase(), MARGIN, top - 16, { characterSpacing: 0.8 });
   } else {
     doc.y = top - 16;
   }
 
-  doc.font("display").fontSize(38).fillColor(INK).text("Nexus", MARGIN, doc.y + 4, { width: width * 0.86, lineGap: -2 });
-  doc.font("display").fontSize(20).fillColor(MUTED).text(course?.name ?? "Project notes", MARGIN, doc.y + 6, { width: width * 0.86 });
+  doc.font("display").fontSize(38).fillColor(INK).text(head.title, MARGIN, doc.y + 4, { width: width * 0.86, lineGap: -2 });
+  if (head.subtitle) {
+    doc.font("display").fontSize(20).fillColor(MUTED).text(head.subtitle, MARGIN, doc.y + 6, { width: width * 0.86 });
+  }
 
   doc.y += 18;
   const y = doc.y;
@@ -135,26 +216,38 @@ function contents(doc: PDFKit.PDFDocument, { notes }: NotesInput, offsets: numbe
 /* ── Body ────────────────────────────────────────────────────────────────── */
 
 /** Every note, each on its own page; returns each one's page index. */
-function body(doc: PDFKit.PDFDocument, input: NotesInput): number[] {
+function body(
+  doc: PDFKit.PDFDocument,
+  input: NotesInput,
+  pages: ReturnType<typeof pageHeadings>,
+  headings: Heading[],
+): number[] {
   const firstBodyPage = doc.bufferedPageRange().count;
   const offsets: number[] = [];
 
   input.notes.forEach((n, i) => {
     doc.addPage();
     offsets.push(doc.bufferedPageRange().count - 1 - firstBodyPage);
-    note(doc, n, i + 1);
+    note(doc, n, i + 1, pages, headings[i]);
   });
 
   return offsets;
 }
 
-function note(doc: PDFKit.PDFDocument, n: PdfNote, index: number | null) {
+function note(
+  doc: PDFKit.PDFDocument,
+  n: PdfNote,
+  index: number | null,
+  pages: ReturnType<typeof pageHeadings>,
+  heading: Heading,
+) {
   const width = contentWidth(doc);
+  pages.start(heading);
   doc.y = MARGIN;
 
   const words = WORDS(n.body);
   const eyebrow = [
-    index != null ? String(index).padStart(2, "0") : "NEXUS",
+    index != null ? String(index).padStart(2, "0") : null,
     n.pinned ? "Pinned" : null,
     `Updated ${fmtDateLongYear(n.updatedAt)}`,
   ]

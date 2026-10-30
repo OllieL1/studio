@@ -33,17 +33,20 @@ export function newDoc({
   subject,
   orientation = "portrait",
   createdAt,
+  author = "Studio",
 }: {
   title: string;
   subject: string;
   orientation?: Orientation;
   createdAt: Date;
+  /** Null leaves the author out - notes read as the course's, not the app's. */
+  author?: string | null;
 }) {
   const doc = new PDFDocument({
     size: "A4",
     layout: orientation,
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-    info: { Title: title, Author: "Studio", Subject: subject, CreationDate: createdAt },
+    info: { Title: title, ...(author ? { Author: author } : {}), Subject: subject, CreationDate: createdAt },
     autoFirstPage: true,
     // Footers are written at the end, once the page count is known.
     bufferPages: true,
