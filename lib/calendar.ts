@@ -37,7 +37,7 @@ export type CalendarItem = {
 };
 
 /** Coursework at or above this share of a course's mark is blocked out like an exam. */
-export const BIG_WEIGHT_THRESHOLD = 15;
+export const BIG_WEIGHT_THRESHOLD = 10;
 
 export function isBlocked(kind: string, gradeWeight: number | null): boolean {
   if (kind === "EXAM") return true;

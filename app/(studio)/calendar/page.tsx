@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { visibleCourseWhere } from "@/lib/types";
 import { parseLocalDate, toISODate } from "@/lib/dates";
 import { viewRange, type CalendarView } from "@/lib/calendar";
-import { getCalendarItems, getCalendarSidebar } from "@/lib/calendarData";
+import { getCalendarSidebar, getLocalCalendarItems } from "@/lib/calendarData";
 import { CalendarShell } from "@/components/calendar/CalendarShell";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +19,11 @@ export default async function CalendarPage({
 
   const range = viewRange(view, anchor);
 
-  const [{ items, googleConnected, googleError }, sidebar, courses] = await Promise.all([
-    getCalendarItems(range.start, range.end),
+  // Only what this app holds: Google's events are a round trip to Google per
+  // calendar, so the page doesn't wait for them. The shell fetches them from
+  // /api/calendar/google once it's up and they appear as they arrive.
+  const [{ items, googleConnected }, sidebar, courses] = await Promise.all([
+    getLocalCalendarItems(range.start, range.end),
     getCalendarSidebar(),
     db.course.findMany({
       where: visibleCourseWhere(),
@@ -37,7 +40,8 @@ export default async function CalendarPage({
       sidebar={sidebar}
       courses={courses}
       googleConnected={googleConnected}
-      googleError={googleError}
+      rangeStart={range.start.toISOString()}
+      rangeEnd={range.end.toISOString()}
     />
   );
 }

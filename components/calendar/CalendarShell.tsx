@@ -11,6 +11,7 @@ import { WeekGrid } from "./WeekGrid";
 import { CalendarSidebar, type SidebarData } from "./CalendarSidebar";
 import { EventDialog, type EventDraft } from "./EventDialog";
 import { ItemPopover } from "./ItemPopover";
+import { useGoogleItems } from "./useGoogleItems";
 
 export type CourseOption = { id: string; name: string; shortName: string; colour: string };
 
@@ -22,15 +23,19 @@ export type Filters = { deadlines: boolean; classes: boolean; events: boolean; p
  * creation. View and date live in the URL, so back/forward and bookmarks work.
  *
  * Keyboard: ← → page, T today, M month, W week, N new event.
+ *
+ * `items` is what this app holds, so the page opens at once; Google's events
+ * are fetched afterwards (see useGoogleItems) and join in when they arrive.
  */
 export function CalendarShell({
   view,
   anchor,
-  items,
+  items: localItems,
   sidebar,
   courses,
   googleConnected,
-  googleError,
+  rangeStart,
+  rangeEnd,
 }: {
   view: CalendarView;
   anchor: string;
@@ -38,9 +43,16 @@ export function CalendarShell({
   sidebar: SidebarData;
   courses: CourseOption[];
   googleConnected: boolean;
-  googleError: string | null;
+  /** The visible range, ISO - what Google's events are asked for. */
+  rangeStart: string;
+  rangeEnd: string;
 }) {
   const router = useRouter();
+  // A string, not the array: the server hands over a fresh array on every
+  // re-render, and an unchanged calendar mustn't restart Google's request.
+  const syncSignature = useMemo(() => localItems.map((i) => `${i.id}${i.onGoogle ? "+" : ""}`).join(","), [localItems]);
+  const google = useGoogleItems(googleConnected, rangeStart, rangeEnd, syncSignature);
+  const items = useMemo(() => [...localItems, ...google.items], [localItems, google.items]);
   const anchorDate = useMemo(() => parseLocalDate(anchor), [anchor]);
   const [dialog, setDialog] = useState<EventDraft | null>(null);
   const [popover, setPopover] = useState<{ item: CalendarItem; rect: DOMRect } | null>(null);
@@ -137,7 +149,8 @@ export function CalendarShell({
     classes: items.filter((i) => i.source === "class").length,
     events: items.filter((i) => i.source === "event" || i.source === "meeting").length,
     plan: items.filter((i) => i.source === "plan").length,
-    google: items.filter((i) => i.source === "google").length,
+    // Null until Google has answered, so the chip doesn't claim "0" meanwhile.
+    google: google.loading ? null : items.filter((i) => i.source === "google").length,
   };
 
   return (
@@ -225,7 +238,8 @@ export function CalendarShell({
             Connect Google Calendar to see your other events →
           </a>
         )}
-        {googleError && <span className="ml-1 text-[11.5px] font-medium text-warn">{googleError}</span>}
+        {google.loading && <span className="ml-1 text-[11.5px] text-n-400" role="status">Loading Google Calendar…</span>}
+        {google.error && <span className="ml-1 text-[11.5px] font-medium text-warn">{google.error}</span>}
 
         <span className="ml-auto hidden text-[11px] text-n-400 lg:inline">
           ← → to page · T today · M / W to switch · N new event
@@ -280,7 +294,7 @@ export function CalendarShell({
 
 function FilterChip({
   label, count, on, swatch, onToggle,
-}: { label: string; count: number; on: boolean; swatch: React.ReactNode; onToggle: () => void }) {
+}: { label: string; count: number | null; on: boolean; swatch: React.ReactNode; onToggle: () => void }) {
   return (
     <button
       onClick={onToggle}
@@ -292,7 +306,7 @@ function FilterChip({
     >
       <span className={clsx("transition-opacity duration-[180ms]", on ? "opacity-100" : "opacity-35")}>{swatch}</span>
       {label}
-      <span className="font-num text-[10.5px] text-n-400">{count}</span>
+      <span className={clsx("font-num text-[10.5px] text-n-400", count == null && "animate-pulse")}>{count ?? "…"}</span>
     </button>
   );
 }
