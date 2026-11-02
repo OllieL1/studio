@@ -159,13 +159,16 @@ export async function getActiveNow(now: Date = new Date()): Promise<ActiveNow | 
 }
 
 /**
- * Everything on the calendar between `start` and `end`.
+ * Everything on the calendar between `start` and `end` that lives in this
+ * app - no network. `googleConnected` says whether Google's own events are
+ * worth asking for, and `ours` is the set of Google event ids this app
+ * created (a pushed task, a synced uni event, a meeting, a plan block), which
+ * `getGoogleCalendarItems` must leave out.
  *
- * Google events that this app created (a pushed task, or a synced uni event)
- * are dropped from the Google feed — the local copy is richer and editable,
- * and showing both would put every synced item on the calendar twice.
+ * The calendar page renders from this alone, so it opens at database speed;
+ * Google's events follow from `/api/calendar/google`.
  */
-export async function getCalendarItems(start: Date, end: Date, { withPlan = true }: { withPlan?: boolean } = {}) {
+export async function getLocalCalendarItems(start: Date, end: Date, { withPlan = true }: { withPlan?: boolean } = {}) {
   const courseWhere = visibleCourseWhere();
 
   const [tasks, events, syncedTaskIds, syncedEventIds, auth, planBlocks] = await Promise.all([
@@ -321,43 +324,80 @@ export async function getCalendarItems(start: Date, end: Date, { withPlan = true
   }
   const planGoogleIds = planBlocks.map((b) => b.calendarEventId).filter(Boolean) as string[];
 
-  let googleError: string | null = null;
   const googleConnected = !!auth;
+  const ours = new Set(
+    [...[...syncedTaskIds, ...syncedEventIds].map((x) => x.calendarEventId).filter(Boolean) as string[], ...meetingGoogleIds, ...planGoogleIds],
+  );
 
-  if (googleConnected) {
-    const ours = new Set(
-      [...[...syncedTaskIds, ...syncedEventIds].map((x) => x.calendarEventId).filter(Boolean) as string[], ...meetingGoogleIds, ...planGoogleIds],
-    );
-    const { events: google, error } = await listEventsInRange(start, end);
-    googleError = error;
+  return { items, googleConnected, ours };
+}
 
-    for (const g of google) {
-      if (ours.has(g.id)) continue;
-      items.push({
-        id: `google-${g.calendarId}-${g.id}`,
-        source: "google",
-        title: g.summary,
-        start: g.start.toISOString(),
-        end: g.end.toISOString(),
-        allDay: g.allDay,
-        colour: null,
-        courseShort: null,
-        courseId: null,
-        href: g.htmlLink,
-        blocked: false,
-        done: false,
-        kind: null,
-        gradeWeight: null,
-        location: g.location,
-        editable: false,
-        onGoogle: true,
-        notes: g.calendarName,
-      });
-    }
+/**
+ * Google's own events in the range, as calendar items - the slow half, a
+ * round trip to Google per calendar. Events this app created are dropped: the
+ * local copy is richer and editable, and showing both would put every synced
+ * item on the calendar twice. `ours` comes from `getLocalCalendarItems`; when
+ * a caller hasn't got one, it's worked out here.
+ */
+export async function getGoogleCalendarItems(start: Date, end: Date, ours?: Set<string>) {
+  const skip = ours ?? (await googleIdsOfOurs());
+  const { events: google, error } = await listEventsInRange(start, end);
+  const items: CalendarItem[] = [];
+
+  for (const g of google) {
+    if (skip.has(g.id)) continue;
+    items.push({
+      id: `google-${g.calendarId}-${g.id}`,
+      source: "google",
+      title: g.summary,
+      start: g.start.toISOString(),
+      end: g.end.toISOString(),
+      allDay: g.allDay,
+      colour: null,
+      courseShort: null,
+      courseId: null,
+      href: g.htmlLink,
+      blocked: false,
+      done: false,
+      kind: null,
+      gradeWeight: null,
+      location: g.location,
+      editable: false,
+      onGoogle: true,
+      notes: g.calendarName,
+    });
   }
 
-  return { items, googleConnected, googleError };
+  return { items, error };
 }
+
+/** Ids of the Google events this app made, whatever range they fall in. */
+async function googleIdsOfOurs(): Promise<Set<string>> {
+  const [tasks, events, meetings, blocks] = await Promise.all([
+    db.task.findMany({ where: { calendarEventId: { not: null } }, select: { calendarEventId: true } }),
+    db.event.findMany({ where: { calendarEventId: { not: null } }, select: { calendarEventId: true } }),
+    db.meeting.findMany({ where: { calendarEventId: { not: null } }, select: { calendarEventId: true } }),
+    db.planBlock.findMany({ where: { calendarEventId: { not: null } }, select: { calendarEventId: true } }),
+  ]);
+  return new Set([...tasks, ...events, ...meetings, ...blocks].map((x) => x.calendarEventId).filter(Boolean) as string[]);
+}
+
+/**
+ * Everything on the calendar between `start` and `end`, Google's included.
+ * For callers that want it all in one go (the planner, Livio); the calendar
+ * page itself loads the two halves separately so it needn't wait on Google.
+ */
+export async function getCalendarItems(
+  start: Date,
+  end: Date,
+  opts: { withPlan?: boolean } = {},
+): Promise<{ items: CalendarItem[]; googleConnected: boolean; googleError: string | null }> {
+  const local = await getLocalCalendarItems(start, end, opts);
+  if (!local.googleConnected) return { items: local.items, googleConnected: false, googleError: null };
+  const google = await getGoogleCalendarItems(start, end, local.ours);
+  return { items: [...local.items, ...google.items], googleConnected: true, googleError: google.error };
+}
+
 
 /** The side panel: what's coming, with the heavy hitters flagged. */
 export async function getCalendarSidebar(now: Date = new Date(), weeks = 6) {

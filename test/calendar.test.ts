@@ -99,7 +99,9 @@ test("blocked items sort to the top of a day", () => {
 test("exams are always blocked; big coursework is; small is not", () => {
   assert.equal(isBlocked("EXAM", null), true);
   assert.equal(isBlocked("COURSEWORK", 40), true);
-  assert.equal(isBlocked("COURSEWORK", 15), true, "threshold is inclusive");
+  assert.equal(isBlocked("COURSEWORK", 15), true);
+  assert.equal(isBlocked("COURSEWORK", 10), true, "threshold is inclusive");
+  assert.equal(isBlocked("COURSEWORK", 9.99), false);
   assert.equal(isBlocked("COURSEWORK", 5), false);
   assert.equal(isBlocked("COURSEWORK", null), false, "unknown weight isn't assumed big");
   assert.equal(isBlocked("LECTURE", 99), false);
