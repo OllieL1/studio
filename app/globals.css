@@ -301,6 +301,20 @@ body::before {
   letter-spacing: -0.02em;
 }
 
+/* JetBrains Mono draws "->", "=>", ">=", "!=" and friends as single joined
+   glyphs. The text underneath is unchanged, but in a code block or a code span
+   a Haskell "a -> b" then looks like it was converted to an arrow - and
+   "->" is syntax there, not prose. Code reads exactly as typed. */
+.font-num,
+.font-mono,
+code,
+pre,
+kbd,
+samp {
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
 .eyebrow {
   font-size: 11px;
   line-height: 16px;

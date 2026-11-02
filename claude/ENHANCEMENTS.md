@@ -669,7 +669,7 @@ Saved together, with discard. If the task is on Google Calendar, the event updat
 
 **Calendar** (`/calendar`) — month (default) and week. Shows Google events, deadlines,
 exams, lectures and labs; study sessions left off as agreed.
-- Exams and coursework worth **15%+ are blocked out** with a hatched tint.
+- Exams and coursework worth **10%+ are blocked out** with a hatched tint.
 - Month collapses a day's classes to coloured dots so deadlines stay visible.
 - Week puts classes and meetings at their real times, side by side when they overlap.
 - Sidebar: big deadlines, the next 6 weeks by week, exams with readiness.

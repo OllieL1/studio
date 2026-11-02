@@ -174,7 +174,7 @@ didn't justify pulling in `googleapis`.
 
 | Shows | How |
 |---|---|
-| Deadlines | Chips; exams and coursework worth **15%+** are blocked out with a hatch |
+| Deadlines | Chips; exams and coursework worth **10%+** are blocked out with a hatch |
 | Lectures & labs | Coloured dots in month view, timed blocks in week view |
 | Uni events | Outlined; created here, optionally synced to Google |
 | Google events | Every calendar you have visible in Google, read-only |
