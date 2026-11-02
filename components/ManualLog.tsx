@@ -11,6 +11,7 @@ import { SubjectSplit } from "./SubjectSplit";
 import { LocationPicker } from "./LocationPicker";
 import type { StudyLocation } from "@/lib/types";
 import { cssColour } from "@/lib/palette";
+import { focusColour } from "@/lib/focus";
 
 type C = { id: string; name: string; shortName: string; colour: string; code: string };
 
@@ -295,10 +296,10 @@ export function ManualLog({ courses }: { courses: C[] }) {
           <div>
             <div className="mb-2 flex items-baseline justify-between">
               <Eyebrow>Focus</Eyebrow>
-              <span className="font-num text-[13px] font-semibold text-n-700">{focus}%</span>
+              <span className="font-num text-[13px] font-semibold" style={{ color: focusColour(focus) }}>{focus}%</span>
             </div>
             <input
-              type="range" min={0} max={100} step={5} value={focus}
+              type="range" min={0} max={100} value={focus}
               onChange={(e) => setFocus(Number(e.target.value))}
               className="h-[18px] w-full"
               aria-label="Focus rating"
