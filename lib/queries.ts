@@ -150,7 +150,7 @@ export async function getComingUp(days = 21) {
 }
 
 /** Graded work due within this long gets the banner on every page. */
-export const DUE_SOON_HOURS = 3;
+export const DUE_SOON_HOURS = 24;
 
 export type DueSoon = {
   id: string;
@@ -161,7 +161,7 @@ export type DueSoon = {
   course: { shortName: string; colour: string };
 };
 
-/** Coursework and quizzes due in the next three hours and not yet done. */
+/** Coursework and quizzes due in the next 24 hours and not yet done, soonest first. */
 export async function getDueSoon(): Promise<DueSoon[]> {
   const now = new Date();
   const to = new Date(now.getTime() + DUE_SOON_HOURS * 3_600_000);
