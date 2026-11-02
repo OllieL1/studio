@@ -472,11 +472,35 @@ export function applyInsert(
   return { text: next, caret: triggerStart + (offset === -1 ? body.length : offset) };
 }
 
-/** Backticks before `pos`: an odd count means it sits inside an inline
- *  code span, which a fenced block (its own "code" kind) never reaches. */
-function insideInlineCode(text: string, pos: number): boolean {
-  const ticks = text.slice(0, pos).match(/`/g);
-  return !!ticks && ticks.length % 2 === 1;
+/**
+ * Whether `pos` sits in code, judged from the text alone.
+ *
+ * A block's `kind` is only set when it settles, so a fence typed into what is
+ * still a "paragraph" block isn't known to be code yet - and counting
+ * backticks across the whole block can't tell an open fence from a closed one.
+ * So: lines between ``` fences (an unclosed fence runs to the end), or inside
+ * a backtick span on the caret's own line. A span opens on a run of N
+ * backticks and closes on the next run of exactly N, so ``a`b`` works.
+ */
+function insideCode(text: string, pos: number): boolean {
+  const head = text.slice(0, pos);
+  const lines = head.split("\n");
+  const current = lines[lines.length - 1];
+
+  let fenced = false;
+  for (let i = 0; i < lines.length - 1; i++) if (/^\s*```/.test(lines[i])) fenced = !fenced;
+  if (fenced || /^\s*```/.test(current)) return true;
+
+  let open = 0;
+  for (let i = 0; i < current.length; ) {
+    if (current[i] !== "`") { i++; continue; }
+    let run = 1;
+    while (current[i + run] === "`") run++;
+    if (open === 0) open = run;
+    else if (open === run) open = 0;
+    i += run;
+  }
+  return open > 0;
 }
 
 /**
@@ -484,8 +508,9 @@ function insideInlineCode(text: string, pos: number): boolean {
  * arrow glyph via a font ligature - purely cosmetic, the text underneath
  * always stayed "->". Lato, chosen for how notes read now, has no such
  * ligature, so this does the same job at the text level: the moment a typed
- * ">" completes "->", it becomes a real "→" character. Code and maths are
- * left alone, since "->" is often meaningful syntax there rather than prose.
+ * ">" completes "->", it becomes a real "→" character. Code (fenced or
+ * inline) and maths are left alone, since "->" is often meaningful syntax
+ * there rather than prose.
  */
 export function autoArrow(
   text: string,
@@ -494,6 +519,6 @@ export function autoArrow(
 ): { text: string; caret: number } | null {
   if (kind === "code" || kind === "math") return null;
   if (caret < 2 || text.slice(caret - 2, caret) !== "->") return null;
-  if (insideInlineCode(text, caret - 2)) return null;
+  if (insideCode(text, caret - 2)) return null;
   return { text: text.slice(0, caret - 2) + "→" + text.slice(caret), caret: caret - 1 };
 }

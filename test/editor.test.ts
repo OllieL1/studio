@@ -225,6 +225,28 @@ test("-> inside an inline code span is left alone, but prose around it isn't", (
   assert.notEqual(autoArrow("a-> then `x->y` after", 3, "paragraph"), null);
 });
 
+test("-> inside a fence typed into a still-paragraph block is left alone", () => {
+  // The block hasn't been re-classified yet, so `kind` says "paragraph".
+  const open = "```ts\nconst f = (x) =>";
+  assert.equal(autoArrow(open.replace("=>", "->"), open.length, "paragraph"), null);
+  const closed = "```\nlet a = b->";
+  assert.equal(autoArrow(closed + "\n```", closed.length, "paragraph"), null);
+  assert.equal(autoArrow("```->", 5, "paragraph"), null, "the info string is code too");
+});
+
+test("-> after a closed fence in the same block is prose again", () => {
+  const text = "```\ncode\n```\nthen go->";
+  assert.notEqual(autoArrow(text, text.length, "paragraph"), null);
+});
+
+test("-> inside a double-backtick span or after a closed span", () => {
+  assert.equal(autoArrow("see ``a`b->c``", 12, "paragraph"), null);
+  assert.equal(autoArrow("`x` and `y->", 12, "paragraph"), null, "unclosed span still counts");
+  assert.notEqual(autoArrow("`x` and `y` then->", 18, "paragraph"), null);
+  // Backticks on an earlier line don't leak into this one.
+  assert.notEqual(autoArrow("a `b\nc->", 8, "paragraph"), null);
+});
+
 test("clicking in rendered text maps back into the markdown", () => {
   // "Hello world" rendered from "**Hello** world": clicking before "world"
   // (visible offset 6) should land after the bold markers.
