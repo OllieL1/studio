@@ -294,10 +294,23 @@ test("lectures: a bundle with no course still builds", async () => {
 /* ── Code blocks ─────────────────────────────────────────────────────────── */
 
 /** Render markdown the way the exports do, recording every row of text drawn and where. */
-async function drawn(md: string) {
+async function drawn(md: string, opts: { ensure?: boolean } = {}) {
   const { doc, done } = newDoc({ title: "t", subject: "t", createdAt: new Date(2026, 9, 1) });
   const calls: { page: number; text: string; x: number; y: number }[] = [];
+  /** Vertical strokes (the quote bar), as drawn: which page, from where to where. */
+  const bars: { page: number; from: number; to: number }[] = [];
   let page = 0;
+  let pen = { x: 0, y: 0 };
+  const moveTo = doc.moveTo.bind(doc);
+  doc.moveTo = ((x: number, y: number) => { pen = { x, y }; return moveTo(x, y); }) as typeof doc.moveTo;
+  const lineTo = doc.lineTo.bind(doc);
+  doc.lineTo = ((x: number, y: number) => {
+    if (x === pen.x && y !== pen.y) {
+      const buffer = (doc as unknown as { _pageBuffer: unknown[] })._pageBuffer;
+      bars.push({ page: buffer.indexOf((doc as unknown as { page: unknown }).page), from: pen.y, to: y });
+    }
+    return lineTo(x, y);
+  }) as typeof doc.lineTo;
   const addPage = doc.addPage.bind(doc);
   doc.addPage = ((...a: Parameters<typeof addPage>) => { page++; return addPage(...a); }) as typeof doc.addPage;
   const text = doc.text.bind(doc) as (...a: unknown[]) => unknown;
@@ -307,14 +320,53 @@ async function drawn(md: string) {
     return text(...a);
   };
   const style = notesStyle(doc);
-  renderMarkdown(doc, md, { ...style, ensure: (h) => { if (doc.y + h > doc.page.height - MARGIN) doc.addPage(); } });
+  const ensure = (h: number) => { if (doc.y + h > doc.page.height - MARGIN) doc.addPage(); };
+  renderMarkdown(doc, md, opts.ensure === false ? style : { ...style, ensure });
   const size = style.size * 0.86;
   const measure = (s: string) => doc.font("mono").fontSize(size).widthOfString(s);
   const dims = { width: doc.page.width, height: doc.page.height };
   doc.end();
   await done;
-  return { calls, pages: page + 1, measure, ...dims };
+  return { calls, bars, pages: page + 1, measure, ...dims };
 }
+
+/** A quote long enough to span pages, after enough prose to start it low on page one. */
+const longQuote = (words: number) =>
+  `${Array.from({ length: 38 }, (_, i) => `Line ${i} of preamble.`).join("\n\n")}\n\n> ${Array.from({ length: words }, (_, i) => `word${i}`).join(" ")}\n\nAfter.`;
+
+/** A bar for every page the quote's text is on: the first runs from the quote's start to the foot, the rest from the top. */
+function assertBarFollowsText(r: Awaited<ReturnType<typeof drawn>>, startPage: number) {
+  const bars = [...r.bars].sort((a, b) => a.page - b.page);
+  const foot = r.height - MARGIN;
+  assert.ok(bars.length >= 2, `a quote this long spans pages, got ${bars.length} bar(s)`);
+  assert.deepEqual(bars.map((b) => b.page), bars.map((_, i) => bars[0].page + i), "one bar per consecutive page");
+  assert.equal(bars[0].page, startPage, "the bar starts on the page the quote starts on");
+  bars.forEach((b, i) => {
+    assert.ok(b.to > b.from, `bar on page ${b.page} runs backwards: ${b.from} -> ${b.to}`);
+    assert.ok(b.from >= MARGIN - 1 && b.to <= foot + 1, `bar on page ${b.page} leaves the text area: ${b.from} -> ${b.to}`);
+    if (i > 0) assert.ok(Math.abs(b.from - MARGIN) <= 4, `page ${b.page}'s bar should start at the top margin, not ${b.from}`);
+    if (i < bars.length - 1) assert.ok(foot - b.to <= 16, `page ${b.page}'s bar should run to the foot, not ${b.to}`);
+  });
+}
+
+test("quote: without page-break handling (papers, callouts) the bar follows the text onto the next page", async () => {
+  const r = await drawn(longQuote(900), { ensure: false });
+  assertBarFollowsText(r, 0);
+});
+
+test("quote: one taller than a page gets a bar on every page it fills", async () => {
+  const r = await drawn(longQuote(3200));
+  assertBarFollowsText(r, r.bars.length ? Math.min(...r.bars.map((b) => b.page)) : 0);
+  assert.ok(r.bars.length >= 3);
+});
+
+test("quote: a short quote near the foot of a page moves whole, bar and all", async () => {
+  const r = await drawn(longQuote(12));
+  assert.equal(r.bars.length, 1);
+  const quoted = r.calls.filter((c) => c.text.includes("word0"));
+  assert.equal(quoted.length, 1);
+  assert.equal(quoted[0].page, r.bars[0].page, "bar is on the same page as its words");
+});
 
 const squash = (s: string) => s.replace(/\s+/g, "");
 
