@@ -7,7 +7,7 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { toggleTask } from "@/app/actions";
 import type { DueSoon } from "@/lib/queries";
-import { fmtDuration, fmtHM } from "@/lib/dates";
+import { fmtDuration, fmtHM, isSameDay } from "@/lib/dates";
 import { cssColour } from "@/lib/palette";
 import { afterTick, Tick, useShown } from "./Tick";
 
@@ -30,7 +30,7 @@ function writeDismissed(ids: string[]) {
 }
 
 /**
- * Coursework or a quiz due within three hours, across the top of every page
+ * Coursework or a quiz due within 24 hours, across the top of every page
  * until it's done, dismissed, or due. Dismissing is for "I know, I'm on it" -
  * it's remembered per task in this browser.
  *
@@ -152,7 +152,7 @@ function DueRow({ task, now, onDismiss, onDone }: { task: DueSoon; now: number; 
         </div>
         <p className="text-[12px] text-n-500">
           <span className={urgent ? "font-semibold text-rust-600" : "font-medium text-n-700"}>Due in {fmtDuration(mins)}</span>
-          {" · "}{fmtHM(due)}
+          {" · "}{isSameDay(due, new Date(now)) ? "" : "tomorrow "}{fmtHM(due)}
           {task.gradeWeight != null && <>{" · "}<span className="font-num tabular-nums">{fmtWeight(task.gradeWeight)}%</span> of the course</>}
         </p>
       </div>
