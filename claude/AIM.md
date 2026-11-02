@@ -116,7 +116,7 @@ I had a study planner for my third year exams and it worked incredibly well. I r
 
 - **Calendar**: month (default) + week. Shows Google events, deadlines/exams, lectures
   and labs — **not** study sessions. Exams and coursework ≥ `BIG_WEIGHT_THRESHOLD`
-  (15%) are blocked out. Items this app pushed to Google are de-duplicated.
+  (10%) are blocked out. Items this app pushed to Google are de-duplicated.
 - **Uni events** (`Event` model) are **one-off only**, optionally synced to Google.
   All-day events store an exclusive end (Google's convention).
 - **Task pages** at `/tasks/[id]`; every task property editable. A session tagged to

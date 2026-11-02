@@ -105,6 +105,21 @@ test("cssColour points at the variable, with the hex as a fallback", () => {
   assert.equal(cssColour(null), "");
 });
 
+test("code never shows ligatures: the mono font would draw -> as an arrow", () => {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  // JetBrains Mono joins "->" into one glyph. In a code block or span that
+  // reads as a conversion to an arrow, and in Haskell "->" is syntax.
+  const rule = /(^|\n)([^{}]*)\{([^}]*)\}/g;
+  const covered = new Set<string>();
+  for (const m of css.matchAll(rule)) {
+    if (!/font-variant-ligatures:\s*none/.test(m[3]) || !/"calt"\s+0/.test(m[3])) continue;
+    for (const sel of m[2].split(",")) covered.add(sel.trim());
+  }
+  for (const sel of [".font-num", ".font-mono", "code", "pre"]) {
+    assert.ok(covered.has(sel), `${sel} should switch ligatures off`);
+  }
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log(`  \x1b[32m✓\x1b[0m ${name}`); }

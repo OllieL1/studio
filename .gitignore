@@ -22,3 +22,6 @@ backups/
 .usb-cache/
 # Files attached to tasks in development (lib/uploads.ts) - beside dev.db
 prisma/uploads/
+
+# output from running graphify to get ASTs for msci-project
+graphify-out/
