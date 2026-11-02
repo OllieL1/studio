@@ -193,14 +193,53 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
       });
       style.ensure?.(height + 8);
       const y = doc.y;
+      const startPage = currentPage(doc);
       inline(doc, parseInline(quote[1]), inner);
-      doc.moveTo(style.x + 3, y + 1).lineTo(style.x + 3, doc.y - 2).lineWidth(1.5).strokeColor(RULE).stroke();
+      quoteBar(doc, style.x + 3, startPage, y + 1, doc.y - 2);
       continue;
     }
 
     style.ensure?.(style.size + 6);
     inline(doc, parseInline(line), style);
   }
+}
+
+/** Index of the page being drawn on - the last one, as layout only ever moves forward. */
+function currentPage(doc: PDFKit.PDFDocument): number {
+  const { start, count } = doc.bufferedPageRange();
+  return start + count - 1;
+}
+
+/**
+ * The bar down the left of a quote, from `top` on the page the quote started
+ * on to `bottom` on the page it ended on.
+ *
+ * A quote that wraps across a page break (no `ensure` to move it whole, or
+ * taller than a page) used to get one stroke from its start to its end, drawn
+ * on the *last* page - a bar running the wrong way, or the full height of a
+ * page it only touches the top of. Instead each page gets its own segment:
+ * from the quote's start to the foot of the first, top margin to foot on any
+ * between, and top margin to the quote's end on the last.
+ */
+function quoteBar(doc: PDFKit.PDFDocument, x: number, startPage: number, top: number, bottom: number) {
+  const endPage = currentPage(doc);
+  const stroke = (from: number, to: number) => {
+    if (to > from) doc.moveTo(x, from).lineTo(x, to).lineWidth(1.5).strokeColor(RULE).stroke();
+  };
+  if (endPage === startPage) {
+    stroke(top, bottom);
+    return;
+  }
+  for (let p = startPage; p <= endPage; p++) {
+    doc.switchToPage(p);
+    stroke(
+      p === startPage ? top : doc.page.margins.top,
+      p === endPage ? bottom : doc.page.height - doc.page.margins.bottom,
+    );
+  }
+  // switchToPage moves the drawing context, not the cursor - but the next
+  // block must land on the page the text finished on.
+  doc.switchToPage(endPage);
 }
 
 /* ── Inline ──────────────────────────────────────────────────────────────── */
