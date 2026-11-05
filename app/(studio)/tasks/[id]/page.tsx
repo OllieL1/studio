@@ -17,9 +17,7 @@ import { cssColour } from "@/lib/palette";
 import { IssueLinks } from "@/components/IssueLinks";
 import { isGitHubConnected } from "@/lib/github";
 import { projectRepo } from "@/lib/githubData";
-import { toNexusCard } from "@/lib/nexusData";
-import { extOf } from "@/lib/uploads";
-import type { BrowserItem } from "@/lib/noteTree";
+import { taskFiles, taskFilesInclude } from "@/lib/taskFiles";
 import { TaskWorkspace } from "@/components/TaskWorkspace";
 
 export const dynamic = "force-dynamic";
@@ -44,25 +42,12 @@ export default async function TaskPage({
       dependsOn: { include: { prerequisite: { include: { items: true, course: true } } } },
       dependents: { include: { dependent: { include: { items: true, course: true } } } },
       issues: { orderBy: { number: "asc" } },
-      taskNotes: {
-        orderBy: { updatedAt: "desc" },
-        include: { tags: { include: { tag: { select: { name: true } } } } },
-      },
-      attachments: { orderBy: { createdAt: "desc" } },
+      ...taskFilesInclude,
     },
   });
   if (!task) notFound();
 
-  const files: BrowserItem[] = [
-    ...task.taskNotes.map((n) => ({ ...toNexusCard(n), kind: "note" as const })),
-    ...task.attachments.map((a) => ({
-      kind: "file" as const, id: a.id, filename: a.filename, ext: extOf(a.storedName), size: a.size, createdAt: a.createdAt,
-    })),
-  ];
-  // Only the tags this task's notes use, so every chip finds something.
-  const fileTags = [...new Set(task.taskNotes.flatMap((n) => n.tags.map((t) => t.tag.name)))].sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: "base" }),
-  );
+  const { files, tags: fileTags } = taskFiles(task);
 
   const visible = await db.course.findMany({
     where: visibleCourseWhere(),

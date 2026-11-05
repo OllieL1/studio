@@ -65,9 +65,14 @@ export function TaskWorkspace({
   tab,
   items,
   tags,
+  base = `/tasks/${taskId}`,
+  storageKey = "studio.view.task",
   children,
 }: {
   taskId: string;
+  /** The task page's path - Livio's todos live under /livio/todo instead. */
+  base?: string;
+  storageKey?: string;
   tab: TaskTab;
   items: BrowserItem[];
   tags: string[];
@@ -76,7 +81,7 @@ export function TaskWorkspace({
   const router = useRouter();
   const [command, setCommand] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
-  const [view, setView] = useStoredView("studio.view.task", "tree");
+  const [view, setView] = useStoredView(storageKey, "tree");
   const [creating, startCreating] = useTransition();
   const [, startTransition] = useTransition();
   const [over, setOver] = useState(false);
@@ -85,7 +90,6 @@ export function TaskWorkspace({
   const picker = useRef<HTMLInputElement>(null);
   const { upload: uploadFiles, busy, error } = useUploader(taskId);
 
-  const base = `/tasks/${taskId}`;
   const goTo = (next: TaskTab) => {
     if (next !== tab) router.push((next === "files" ? `${base}?tab=files` : base) as Route, { scroll: false });
   };
@@ -210,7 +214,7 @@ export function TaskWorkspace({
             noteHref={noteHref}
             view={view}
             onViewChange={setView}
-            storageKey="studio.view.task"
+            storageKey={storageKey}
             onNew={() => newNote()}
             creating={creating}
             actions={

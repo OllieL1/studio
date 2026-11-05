@@ -20,7 +20,8 @@ npm run dev      # → http://localhost:3111  (shows a "Dev copy" badge)
 same process at [`/livio`](http://localhost:3111/livio). With a hosts line
 (`127.0.0.1  livio.localhost`) it also has its own address,
 `http://livio.localhost:3111`. Switch between the apps with the ⇄ beside the
-wordmark, or ⌘⇧Space.
+wordmark, or ⌘⇧Space. A Livio todo has the same Files tab as a Studio task -
+notes and uploads kept with it (`o` on a todo, or its paperclip, opens it).
 
 ---
 

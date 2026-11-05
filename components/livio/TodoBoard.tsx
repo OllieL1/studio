@@ -50,6 +50,7 @@ const HELP: HelpSection[] = [
       [["↵"], "Rename"],
       [["d"], "Due date - fri 5pm, 3 nov"],
       [["p"], "Priority"],
+      [["o"], "Open - its notes and files"],
       [["c"], "Google Calendar on / off"],
       [["m"], "Move to a Studio course"],
       [["⌫"], "Delete (undo with u)"],
@@ -293,6 +294,7 @@ export function TodoBoard({
         e: () => setEditing({ key: cursor, field: "title" }),
         d: () => setEditing({ key: cursor, field: "due" }),
         p: () => patchTodo(t, { priority: t.priority ? 0 : 1 }),
+        o: () => router.push(`${LIVIO_BASE}/todo/${t.id}` as Route),
         c: () => calendar(t),
         m: () => setPicking(cursor),
         Backspace: () => remove(t),
@@ -623,6 +625,18 @@ function TodoItem({
         ) : <span className="tick-words">{hl(t.title)}</span>}
       </span>
       {t.priority > 0 && !done && <Priority />}
+      <Link
+        href={`${LIVIO_BASE}/todo/${t.id}?tab=files` as Route}
+        title={t.files ? `${t.files} note${t.files === 1 ? "" : "s"} and file${t.files === 1 ? "" : "s"} - open (o)` : "Notes and files - open (o)"}
+        aria-label={t.files ? `${t.files} notes and files` : "Notes and files"}
+        className={clsx(
+          "font-num flex h-6 shrink-0 items-center gap-1 rounded-full px-1.5 text-[11px] transition-colors duration-[120ms] hover:bg-n-100 hover:text-n-700",
+          t.files ? "text-n-500" : clsx("text-n-300", !active && "opacity-0 group-hover:opacity-100"),
+        )}
+      >
+        <Paperclip />
+        {t.files > 0 && t.files}
+      </Link>
       {t.notionPageId && (
         <span title="From Notion - ticking it off marks it Done there too" className="font-num text-[10px] font-semibold text-n-300">N</span>
       )}
@@ -661,6 +675,14 @@ function Plus() {
   return (
     <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden>
       <path d="M4 1v6M1 4h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Paperclip() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l5.6-5.6a2.3 2.3 0 0 1 3.3 3.3L6.3 11.3a1.1 1.1 0 0 1-1.6-1.6L10 4.4" />
     </svg>
   );
 }
