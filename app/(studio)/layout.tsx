@@ -7,6 +7,7 @@ import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { GlobalQuickAdd } from "@/components/GlobalQuickAdd";
 import { SessionHotkey } from "@/components/SessionHotkey";
+import { EnhancementHotkey } from "@/components/EnhancementHotkey";
 import { DueSoonBanner } from "@/components/DueSoonBanner";
 import { LastLecture } from "@/components/LastLecture";
 import { BusyBar } from "@/components/BusyBar";
@@ -89,6 +90,7 @@ export default async function RootLayout({
           <LastLecture />
           <GlobalQuickAdd courses={courses} calendarConnected={calendarConnected} />
           <SessionHotkey startedAt={timer?.startedAt.toISOString() ?? null} />
+          <EnhancementHotkey />
           <TimerBar
             startedAt={timer?.startedAt.toISOString() ?? null}
             draftName={timer?.draftName ?? null}

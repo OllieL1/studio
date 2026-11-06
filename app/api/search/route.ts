@@ -21,6 +21,7 @@ const PAGES: SearchHit[] = [
   { id: "p-plan", type: "page", title: "Weekly schedule", subtitle: "Plan the week around your timetable", href: "/plan", colour: null },
   { id: "p-sessions", type: "page", title: "Sessions", subtitle: "Study history", href: "/sessions", colour: null },
   { id: "p-project", type: "page", title: "Project", subtitle: "Meetings, research, schedule", href: "/project", colour: null },
+  { id: "p-enhancements", type: "page", title: "Enhancements", subtitle: "The queue for Claude Code - ⌥Q adds one", href: "/settings#enhancements", colour: null },
   { id: "p-nexus", type: "page", title: "Nexus", subtitle: "Project notes", href: "/project?tab=nexus", colour: null },
 ];
 
