@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { LivioNav } from "@/components/livio/LivioNav";
 import { NotionAutoPull } from "@/components/livio/NotionAutoPull";
 import { DueSoonBanner } from "@/components/DueSoonBanner";
+import { EnhancementHotkey } from "@/components/EnhancementHotkey";
 import { db } from "@/lib/db";
 
 /**
@@ -51,6 +52,7 @@ export default async function LivioLayout({ children }: { children: React.ReactN
             <DueSoonBanner initial={null} />
             <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-24 pt-8 sm:px-8">{children}</main>
             {notion && <NotionAutoPull />}
+            <EnhancementHotkey />
           </div>
         </ThemeProvider>
       </body>

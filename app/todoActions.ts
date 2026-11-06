@@ -29,6 +29,8 @@ export type TodoRow = {
   createdAt: Date;
   calendarEventId: string | null;
   notionPageId: string | null;
+  /** Notes and uploads kept with it. */
+  files: number;
 };
 
 export type InboxRow = InboxItem;
@@ -37,11 +39,20 @@ export type TodoCourse = { id: string; name: string; shortName: string; code: st
 
 const select = {
   id: true, title: true, dueAt: true, priority: true, doneAt: true, createdAt: true, calendarEventId: true, notionPageId: true,
+  _count: { select: { taskNotes: true, attachments: true } },
 } as const;
+
+type Selected = Omit<TodoRow, "files"> & { _count: { taskNotes: number; attachments: number } };
+
+function toRow({ _count, ...t }: Selected): TodoRow {
+  return { ...t, files: _count.taskNotes + _count.attachments };
+}
+
+const rowOf = async (id: string) => toRow(await db.task.findUniqueOrThrow({ where: { id }, select }));
 
 /** Open course-less tasks, plus the last fortnight's finished ones. */
 export async function listTodos(): Promise<TodoRow[]> {
-  return db.task.findMany({
+  const tasks = await db.task.findMany({
     where: {
       courseId: null,
       cancelled: false,
@@ -49,6 +60,7 @@ export async function listTodos(): Promise<TodoRow[]> {
     },
     select,
   });
+  return tasks.map(toRow);
 }
 
 export async function listInbox(): Promise<InboxRow[]> {
@@ -90,7 +102,7 @@ export async function createTodo(text: string): Promise<{ row: TodoRow } | Moved
     select,
   });
   if (p.courseId) return { movedTo: await courseName(p.courseId) };
-  return { row: task };
+  return { row: toRow(task) };
 }
 
 export type TodoPatch = Partial<{ title: string; dueAt: Date | null; priority: number; courseId: string | null }>;
@@ -110,37 +122,60 @@ export async function updateTodo(id: string, patch: TodoPatch): Promise<{ row: T
     else await removeFromCalendar(id);
   }
   if (patch.courseId) return { movedTo: await courseName(patch.courseId) };
-  return { row: await db.task.findUniqueOrThrow({ where: { id }, select }) };
+  return { row: await rowOf(id) };
 }
 
 export async function toggleTodo(id: string): Promise<TodoRow> {
   await setTaskDone(db, id);
   after(() => notionDoneSync(id));
-  return db.task.findUniqueOrThrow({ where: { id }, select });
+  return rowOf(id);
 }
 
-export type TodoSnapshot = TodoRow & { notes: string | null };
+/** Its notes and uploaded files, which go with it when it's deleted. The
+ *  upload bytes stay on disk, so putting the records back is enough. */
+export type TodoSnapshot = Omit<TodoRow, "files"> & {
+  notes: string | null;
+  taskNotes: { id: string; title: string; body: string; pinned: boolean; courseId: string | null; createdAt: Date; updatedAt: Date; tags: string[] }[];
+  attachments: { id: string; filename: string; storedName: string; mime: string; size: number; createdAt: Date }[];
+};
 
 /** Deleted outright - its calendar event too - but handed back for undo. */
 export async function deleteTodo(id: string): Promise<TodoSnapshot | null> {
-  const task = await db.task.findUnique({ where: { id }, select: { ...select, notes: true } });
+  const task = await db.task.findUnique({
+    where: { id },
+    select: {
+      id: true, title: true, dueAt: true, priority: true, doneAt: true, createdAt: true, calendarEventId: true, notionPageId: true, notes: true,
+      taskNotes: { include: { tags: { select: { tagId: true } } } },
+      attachments: true,
+    },
+  });
   if (!task) return null;
   if (task.calendarEventId) await deleteEvent(task.calendarEventId).catch(() => false);
   await db.task.delete({ where: { id } });
-  return task;
+  const { taskNotes, attachments, ...rest } = task;
+  return {
+    ...rest,
+    taskNotes: taskNotes.map(({ tags, taskId: _t, ...n }) => ({ ...n, tags: tags.map((t) => t.tagId) })),
+    attachments: attachments.map(({ taskId: _t, ...a }) => a),
+  };
 }
 
 export async function restoreTodo(t: TodoSnapshot): Promise<TodoRow> {
-  const { calendarEventId: _gone, ...rest } = t;
+  const { calendarEventId: _gone, taskNotes, attachments, ...rest } = t;
   void _gone;
-  return db.task.create({ data: { ...rest, kind: "OTHER" }, select });
+  await db.task.create({ data: { ...rest, kind: "OTHER" } });
+  for (const { tags, ...n } of taskNotes) {
+    await db.note.create({ data: { ...n, taskId: t.id, tags: { create: tags.map((tagId) => ({ tagId })) } } });
+  }
+  if (attachments.length) await db.attachment.createMany({ data: attachments.map((a) => ({ ...a, taskId: t.id })) });
+  return rowOf(t.id);
 }
 
 /** On the calendar if it isn't, off if it is. */
 export async function toggleTodoCalendar(id: string): Promise<{ row: TodoRow; error?: string }> {
-  const task = await db.task.findUniqueOrThrow({ where: { id }, select });
+  const task = await rowOf(id);
   const res = task.calendarEventId ? await removeFromCalendar(id) : await pushToCalendar(id);
-  const row = await db.task.findUniqueOrThrow({ where: { id }, select });
+  const row = await rowOf(id);
   return "error" in res && res.error ? { row, error: res.error } : { row };
 }
 
@@ -168,9 +203,9 @@ export async function enterInbox(id: string): Promise<({ row: TodoRow } | Moved 
     if (!res.ok) calendarError = res.error;
   }
   const task = await db.task.findUniqueOrThrow({ where: { id: entered.taskId }, select: { ...select, courseId: true } });
-  const { courseId, ...row } = task;
+  const { courseId, ...raw } = task;
   if (courseId) return { movedTo: await courseName(courseId), calendarError };
-  return { row, calendarError };
+  return { row: toRow(raw), calendarError };
 }
 
 export async function dismissInbox(id: string): Promise<InboxRow | null> {

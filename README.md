@@ -20,7 +20,8 @@ npm run dev      # → http://localhost:3111  (shows a "Dev copy" badge)
 same process at [`/livio`](http://localhost:3111/livio). With a hosts line
 (`127.0.0.1  livio.localhost`) it also has its own address,
 `http://livio.localhost:3111`. Switch between the apps with the ⇄ beside the
-wordmark, or ⌘⇧Space.
+wordmark, or ⌘⇧Space. A Livio todo has the same Files tab as a Studio task -
+notes and uploads kept with it (`o` on a todo, or its paperclip, opens it).
 
 ---
 
@@ -35,7 +36,8 @@ wordmark, or ⌘⇧Space.
 | **Task** | Full view of one task: details (all editable), subtasks, prerequisites, time tracked and work history. |
 | **Lectures** | Every lecture, filterable by course and by what's missing. Typed notes, handwritten notebook references, PDF export. |
 | **Course** | Weighted breakdown, exam readiness, revision mode, assessed work and classes by teaching week. |
-| **Settings** | Google Calendar, Spotify and GitHub connections, the Repos menu, semester-2 status. |
+| **Settings** | Google Calendar, Spotify and GitHub connections, the Repos menu, semester-2 status, and the enhancement queue. |
+| **Enhancements** | ⌥Q (Alt-Q) anywhere in Studio or Livio notes a bug, feature or tweak, with the page it was on. Claude Code works the queue top-down with `/enhancements` (`npm run queue`); its write-ups show in Settings after the next deploy. |
 | **Timer** | Always-visible global on/off control, pinned bottom-centre on every page. |
 | **⌘K** | Global search across courses, lectures, tasks and the full text of your notes. |
 

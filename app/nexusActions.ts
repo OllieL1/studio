@@ -24,7 +24,10 @@ const refreshIndexes = (taskId?: string | null) => {
   revalidatePath("/project");
   revalidatePath("/project/tags", "layout");
   // A task note is listed on its task's page instead of the gallery.
-  if (taskId) revalidatePath(`/tasks/${taskId}`);
+  if (taskId) {
+    revalidatePath(`/tasks/${taskId}`);
+    revalidatePath(`/livio/todo/${taskId}`);
+  }
 };
 
 /** Also the note pages - only when one appears, vanishes, or is rewritten. */
@@ -78,7 +81,10 @@ export async function deleteNote(id: string) {
   const note = await db.note.delete({ where: { id }, select: { taskId: true } });
   await pruneOrphanTags();
   refreshAll();
-  if (note.taskId) revalidatePath(`/tasks/${note.taskId}`, "layout");
+  if (note.taskId) {
+    revalidatePath(`/tasks/${note.taskId}`, "layout");
+    revalidatePath(`/livio/todo/${note.taskId}`, "layout");
+  }
   return { ok: true as const };
 }
 

@@ -757,3 +757,32 @@ model CvVersion {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
+
+// ─── Enhancement queue ────────────────────────────────────────────────────
+// Bugs, features and tweaks noted while using the apps (⌥Q from anywhere),
+// worked through top-down by Claude Code: `npm run queue` reads them, and
+// what was done comes back via claude/queue/resolved.json on the next deploy.
+model Enhancement {
+  id         String    @id @default(cuid())
+  /// "#14" - stable, short, for talking about it.
+  number     Int       @unique
+  /// bug | feature | tweak
+  kind       String    @default("feature")
+  title      String
+  body       String    @default("")
+  /// studio | livio, and the page it was noted on.
+  app        String    @default("studio")
+  path       String?
+  /// queued | question | done | wontfix
+  status     String    @default("queued")
+  position   Float
+  /// Claude's write-up - or, while status is "question", its question.
+  resolution String?
+  commit     String?
+  /// When Claude's latest resolution was written (deploy applies only newer ones).
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status, position])
+}

@@ -1,3 +1,8 @@
+> **Archive.** New enhancements go in the queue instead: ⌥Q (Alt-Q) from any
+> page of Studio or Livio, or Settings → Enhancements. Claude Code works
+> through it with `/enhancements` (`npm run queue`); see
+> `.claude/skills/enhancements/SKILL.md`. This file is kept for the history.
+
 # Enhancement List - Check Off as we go
 
 27/10

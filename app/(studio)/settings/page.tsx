@@ -12,6 +12,8 @@ import { hasHistoryScope, isSpotifyConfigured } from "@/lib/spotify";
 import { GitHubPanel } from "@/components/GitHubPanel";
 import { githubToken } from "@/lib/github";
 import { projectRepo } from "@/lib/githubData";
+import { EnhancementsPanel } from "@/components/EnhancementsPanel";
+import { listEnhancements } from "@/app/enhancementActions";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,7 @@ export default async function SettingsPage({
   const calendars = auth ? await listCalendars() : [];
   const linked = await db.task.count({ where: { calendarEventId: { not: null } } });
   const prefs = await getPreferences();
+  const enhancements = await listEnhancements();
   const [ghAuth, ghToken, ghProject, repos] = await Promise.all([
     db.gitHubAuth.findUnique({ where: { id: "singleton" }, select: { login: true, name: true, scopes: true } }),
     githubToken(),
@@ -66,6 +69,8 @@ export default async function SettingsPage({
         <Eyebrow className="mb-3">Appearance</Eyebrow>
         <ThemePanel darkFrom={prefs.darkFrom} darkTo={prefs.darkTo} />
       </Card>
+
+      <EnhancementsPanel rows={enhancements} />
 
       {google && MESSAGES[google] && (
         <div
