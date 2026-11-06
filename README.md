@@ -36,7 +36,8 @@ notes and uploads kept with it (`o` on a todo, or its paperclip, opens it).
 | **Task** | Full view of one task: details (all editable), subtasks, prerequisites, time tracked and work history. |
 | **Lectures** | Every lecture, filterable by course and by what's missing. Typed notes, handwritten notebook references, PDF export. |
 | **Course** | Weighted breakdown, exam readiness, revision mode, assessed work and classes by teaching week. |
-| **Settings** | Google Calendar, Spotify and GitHub connections, the Repos menu, semester-2 status. |
+| **Settings** | Google Calendar, Spotify and GitHub connections, the Repos menu, semester-2 status, and the enhancement queue. |
+| **Enhancements** | ⌥Q (Alt-Q) anywhere in Studio or Livio notes a bug, feature or tweak, with the page it was on. Claude Code works the queue top-down with `/enhancements` (`npm run queue`); its write-ups show in Settings after the next deploy. |
 | **Timer** | Always-visible global on/off control, pinned bottom-centre on every page. |
 | **⌘K** | Global search across courses, lectures, tasks and the full text of your notes. |
 

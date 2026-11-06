@@ -32,6 +32,7 @@ import {
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findStick, fingerprint, foldedCopy, isWindowsDrive, studioRunning } from "./stick.mjs";
+import { applyResolutions, readResolutions } from "../queue/lib.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STICK = findStick();
@@ -251,7 +252,28 @@ const out = execSync("npx prisma migrate deploy", {
   encoding: "utf8",
 });
 const applied = (out.match(/Applying migration/g) ?? []).length;
-if (viaCopy && applied) {
+
+// What Claude did about queued enhancements (claude/queue/resolved.json),
+// applied in the same pass so it rides the same safe write-back.
+let resolved = [];
+try {
+  const { DatabaseSync } = await import("node:sqlite");
+  const sqlite = new DatabaseSync(work);
+  // The commit that recorded each resolution, found by its unique timestamp.
+  const entries = readResolutions(join(REPO, "claude", "queue", "resolved.json"));
+  const commitOf = (id) => {
+    const e = entries.find((x) => x.id === id);
+    try {
+      return execSync(`git log -1 --format=%h -S'"at": "${e.at}"' -- claude/queue/resolved.json`, { cwd: REPO, encoding: "utf8" }).trim() || null;
+    } catch { return null; }
+  };
+  resolved = applyResolutions(sqlite, entries, commitOf);
+  sqlite.close();
+} catch (e) {
+  die(`Couldn't apply the enhancement queue's resolutions: ${e.message}. Nothing was written back.`);
+}
+
+if (viaCopy && (applied || resolved.length)) {
   // Checked again: nothing may have touched the stick's copy since.
   const running = await studioRunning(STICK);
   if (running || fingerprint(db) !== before) {
@@ -266,6 +288,7 @@ if (viaCopy && applied) {
   renameSync(next, db);
 }
 info(applied ? `${applied} migration(s) applied` : "already up to date");
+if (resolved.length) info(`enhancement queue: ${resolved.map((e) => `#${e.number} ${e.status}`).join(", ")}`);
 
 // ── 6. Stamp ─────────────────────────────────────────────────────────────
 let commit = "unknown";
