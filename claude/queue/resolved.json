@@ -22,5 +22,13 @@
     "status": "done",
     "note": "Moving a meeting now makes every open prep task due at the meeting's new time - including ones that had been set for an earlier day, so nothing is left offset. Undated prep gets the meeting time too. Done, cancelled and backlogged prep stays where it was, and prep on Google Calendar has its event moved. It only happens when the date or time changes: renaming a meeting or changing its location leaves the prep dates alone. Action items keep their own dates.",
     "at": "2026-11-07T13:03:22.023Z"
+  },
+  {
+    "id": "cmw6evn160041153gxxxgblgg",
+    "number": 4,
+    "title": "Instead of the file icon for markdown notes in the files tab of a task/nexus, can we display an md pill similar in style to the PDF bill (but of course different colour)",
+    "status": "done",
+    "note": "Markdown notes now carry a green 'MD' pill in the Files tab and the Nexus, in the same style as the PDF, DOCX and PPTX pills, instead of the little page icon. It's in both views: at the start of the row in Tree, and in the card's footer in Gallery, where file cards already showed theirs. Green, because pink, blue and amber are already PDF, Word and PowerPoint. An uploaded .md file gets the same pill.",
+    "at": "2026-11-07T13:06:07.932Z"
   }
 ]
