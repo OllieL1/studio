@@ -20,7 +20,7 @@
     "number": 3,
     "title": "if we move a project meeting that has prep items, ensure that we move their due dates to the new meeting i.e. ensure the tasks are tied to that meeting so we dont have to manually update them",
     "status": "done",
-    "note": "Moving a project meeting now moves its prep with it, so the tasks stay tied to the meeting. When you change a meeting's date or time (Edit on the meeting), every open prep task follows: one due at the meeting (or with no date) becomes due at the new time, and one due at some other time keeps its distance - due two days before stays two days before. Done, cancelled and backlogged prep is left where it was. Prep already on Google Calendar has its event moved too. Caveat: only prep moves - action items from the meeting keep their own dates, and a task's planned start on the timeline isn't shifted.",
-    "at": "2026-11-07T11:31:58.622Z"
+    "note": "Moving a meeting now makes every open prep task due at the meeting's new time - including ones that had been set for an earlier day, so nothing is left offset. Undated prep gets the meeting time too. Done, cancelled and backlogged prep stays where it was, and prep on Google Calendar has its event moved. It only happens when the date or time changes: renaming a meeting or changing its location leaves the prep dates alone. Action items keep their own dates.",
+    "at": "2026-11-07T13:03:22.023Z"
   }
 ]

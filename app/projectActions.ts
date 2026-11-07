@@ -97,8 +97,10 @@ export async function updateMeeting(id: string, input: MeetingInput) {
   if (!existing) return { ok: false as const, error: "Meeting not found." };
   const t = resolveEventTimes({ date: input.date, startTime: input.startTime, endTime: input.endTime, allDay: false });
   if (!t.ok) return { ok: false as const, error: t.error };
-  // Its prep is due for this meeting, so it moves when the meeting does.
-  const moved = movedPrepDueDates(existing.prep.map((p) => p.task), existing.startAt, t.startAt);
+  // Its prep is due for this meeting, so when the meeting moves, every open
+  // prep task is due at the new time. Renaming it leaves them alone.
+  const moving = existing.startAt.getTime() !== t.startAt.getTime();
+  const moved = moving ? movedPrepDueDates(existing.prep.map((p) => p.task), t.startAt) : [];
   await db.$transaction([
     db.meeting.update({
       where: { id },

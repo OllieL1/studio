@@ -198,9 +198,8 @@ test("carry-over takes the last meeting's open actions and prep, once each", () 
   assert.deepEqual(ids, ["open", "half", "both", "prep"], "backlogged prep stays behind");
 });
 
-test("moving a meeting moves its open prep with it", () => {
+test("moving a meeting makes its open prep due at the new time", () => {
   const from = new Date(2026, 10, 12, 14, 0), to = new Date(2026, 10, 19, 10, 30);
-  const day = 86_400_000;
   const t = (id: string, dueAt: Date | null, o: { done?: boolean; cancelled?: boolean; backlog?: boolean; items?: boolean[] } = {}) => ({
     id, dueAt, cancelled: !!o.cancelled, backlog: !!o.backlog, doneAt: o.done ? new Date() : null,
     items: (o.items ?? []).map((d) => ({ doneAt: d ? new Date() : null })),
@@ -208,18 +207,16 @@ test("moving a meeting moves its open prep with it", () => {
   const moved = movedPrepDueDates([
     t("at-meeting", from),
     t("undated", null),
-    t("two-days-before", new Date(from.getTime() - 2 * day)),
+    t("two-days-before", new Date(from.getTime() - 2 * 86_400_000)),
+    t("already-there", to),
     t("done", from, { done: true }),
     t("ticked", from, { items: [true, true] }),
     t("half", from, { items: [true, false] }),
     t("dropped", from, { cancelled: true }),
     t("parked", null, { backlog: true }),
-  ], from, to);
+  ], to);
   assert.deepEqual(moved.map((m) => m.id), ["at-meeting", "undated", "two-days-before", "half"]);
-  assert.equal(moved[0].dueAt.getTime(), to.getTime());
-  assert.equal(moved[1].dueAt.getTime(), to.getTime());
-  assert.equal(moved[2].dueAt.getTime(), to.getTime() - 2 * day, "keeps its distance from the meeting");
-  assert.deepEqual(movedPrepDueDates([t("x", from)], from, from), [], "a meeting that didn't move moves nothing");
+  assert.ok(moved.every((m) => m.dueAt.getTime() === to.getTime()), "all due at the meeting, offsets dropped");
 });
 
 let passed = 0, failed = 0;
