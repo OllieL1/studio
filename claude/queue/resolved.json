@@ -14,5 +14,13 @@
     "status": "done",
     "note": "The ⌥S pop-up is now a slim pill: a small rust dot that pings when a session starts and then gently pulses, 'Session started' (or 'Already studying' if one was running), a hairline, and the clock. The big rust circle with the play button is gone - there was nothing to press, the session was already going. Same place, same rise-and-sink animation, same timing.",
     "at": "2026-11-07T11:29:51.178Z"
+  },
+  {
+    "id": "cmw6be3rg000215l0yafrprdd",
+    "number": 3,
+    "title": "if we move a project meeting that has prep items, ensure that we move their due dates to the new meeting i.e. ensure the tasks are tied to that meeting so we dont have to manually update them",
+    "status": "done",
+    "note": "Moving a project meeting now moves its prep with it, so the tasks stay tied to the meeting. When you change a meeting's date or time (Edit on the meeting), every open prep task follows: one due at the meeting (or with no date) becomes due at the new time, and one due at some other time keeps its distance - due two days before stays two days before. Done, cancelled and backlogged prep is left where it was. Prep already on Google Calendar has its event moved too. Caveat: only prep moves - action items from the meeting keep their own dates, and a task's planned start on the timeline isn't shifted.",
+    "at": "2026-11-07T11:31:58.622Z"
   }
 ]

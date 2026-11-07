@@ -1,7 +1,7 @@
 /** Papers (link parsing, cite keys, BibTeX) and project maths (pace, timeline, agenda). */
 import assert from "node:assert/strict";
 import { parsePaperInput, makeCiteKey, toBibtex, shortAuthors, toSurnameFirst } from "../lib/papers";
-import { projectPace, timelineWeeks, timelinePosition, stackRows, draftAgenda, carryOverTasks, projectSessions, PROJECT_DEADLINE } from "../lib/project";
+import { projectPace, timelineWeeks, timelinePosition, stackRows, draftAgenda, carryOverTasks, movedPrepDueDates, projectSessions, PROJECT_DEADLINE } from "../lib/project";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -196,6 +196,30 @@ test("carry-over takes the last meeting's open actions and prep, once each", () 
     prep: [t("prep"), t("both"), t("already"), t("parked", { backlog: true })],
   }, ["already"]);
   assert.deepEqual(ids, ["open", "half", "both", "prep"], "backlogged prep stays behind");
+});
+
+test("moving a meeting moves its open prep with it", () => {
+  const from = new Date(2026, 10, 12, 14, 0), to = new Date(2026, 10, 19, 10, 30);
+  const day = 86_400_000;
+  const t = (id: string, dueAt: Date | null, o: { done?: boolean; cancelled?: boolean; backlog?: boolean; items?: boolean[] } = {}) => ({
+    id, dueAt, cancelled: !!o.cancelled, backlog: !!o.backlog, doneAt: o.done ? new Date() : null,
+    items: (o.items ?? []).map((d) => ({ doneAt: d ? new Date() : null })),
+  });
+  const moved = movedPrepDueDates([
+    t("at-meeting", from),
+    t("undated", null),
+    t("two-days-before", new Date(from.getTime() - 2 * day)),
+    t("done", from, { done: true }),
+    t("ticked", from, { items: [true, true] }),
+    t("half", from, { items: [true, false] }),
+    t("dropped", from, { cancelled: true }),
+    t("parked", null, { backlog: true }),
+  ], from, to);
+  assert.deepEqual(moved.map((m) => m.id), ["at-meeting", "undated", "two-days-before", "half"]);
+  assert.equal(moved[0].dueAt.getTime(), to.getTime());
+  assert.equal(moved[1].dueAt.getTime(), to.getTime());
+  assert.equal(moved[2].dueAt.getTime(), to.getTime() - 2 * day, "keeps its distance from the meeting");
+  assert.deepEqual(movedPrepDueDates([t("x", from)], from, from), [], "a meeting that didn't move moves nothing");
 });
 
 let passed = 0, failed = 0;
