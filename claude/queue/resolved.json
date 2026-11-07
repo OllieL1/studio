@@ -4,8 +4,8 @@
     "number": 1,
     "title": "on open PDFs from studio, could those tabs get their own icon i.e. different from the main home icon that we have for studio tabs? it should be a minimal simple icon that denotes PDF.",
     "status": "done",
-    "note": "PDF tabs now get their own icon: a white page with a turned corner on the rose tile Studio's PDF badges already use, next to the house so the two sit together. A PDF served on its own can't carry an icon (the browser falls back to the site favicon, which is why every PDF tab looked like another Studio tab), so PDFs now open through a small /pdf page that frames the file, sets the icon, and gives the tab a real title (the note's name, 'Stats', 'Project schedule', the attachment's filename) instead of 'pdf'. Covers every Export PDF button in Studio and Livio and opening attached PDFs. The viewer's download button still saves under the usual filename. Caveat: browsers cache favicons hard - if a PDF tab still shows the house, reload it once.",
-    "at": "2026-11-07T11:27:39.515Z"
+    "note": "The PDF tab icon is now the pink 'PDF' pill from the Files tab: soft pink with the letters in the same rose. It wasn't showing before because the icon was only an SVG, and some browsers (Safari among them) skip an SVG icon and fall back to their own PDF glyph. It now ships as PNGs too (16, 32 and 48 px, plus a large one for Safari), which every browser takes, and the URL is versioned so a cached older icon isn't reused. Caveat: I couldn't watch a real tab strip from here - if a PDF tab still shows the browser's own icon after a reload, tell me which browser it is (Safari, Chrome, Edge) and I'll chase it there.",
+    "at": "2026-11-07T13:04:35.578Z"
   },
   {
     "id": "cmw6bcnms000115l0pemzdqqu",

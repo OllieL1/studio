@@ -26,7 +26,9 @@ test("escapes the title and source into the page", () => {
   assert.ok(!html.includes("<script>"));
   assert.ok(html.includes("&lt;script&gt;"));
   assert.ok(html.includes('src="/api/x?a=1&amp;b=&quot;2&quot;"'));
-  assert.ok(html.includes('href="/pdf-icon.svg"'));
+  // PNG as well as SVG - not every browser takes an SVG icon.
+  assert.ok(html.includes('href="/pdf-icon.svg?v=2"'));
+  assert.ok(/rel="icon" href="\/pdf-icon-32\.png\?v=2" type="image\/png"/.test(html));
 });
 
 let failed = 0;
