@@ -122,6 +122,7 @@ export function Stat({
   sub,
   tone,
   text = false,
+  fit = false,
 }: {
   label: string;
   value: string;
@@ -130,16 +131,19 @@ export function Stat({
   tone?: string;
   /** For a name rather than a number: display face, smaller, one line. */
   text?: boolean;
+  /** Every line stays one line: the number scales down with the column
+   *  (container units) rather than wrapping, and label and sub never break. */
+  fit?: boolean;
 }) {
   return (
-    <div className="min-w-0">
-      <Eyebrow>{label}</Eyebrow>
-      <p className="mt-1.5 flex min-w-0 items-baseline gap-1">
+    <div className={clsx("min-w-0", fit && "@container")}>
+      <Eyebrow className={clsx(fit && "truncate whitespace-nowrap")}>{label}</Eyebrow>
+      <p className={clsx("mt-1.5 flex min-w-0 items-baseline gap-1", fit && "whitespace-nowrap")}>
         <span
           className={
             text
               ? "font-display truncate text-[22px] leading-9 font-semibold text-n-900"
-              : "font-num text-[30px] leading-9 font-semibold text-n-900"
+              : clsx("font-num leading-9 font-semibold text-n-900", fit ? "text-[length:clamp(20px,20cqi,30px)]" : "text-[30px]")
           }
           style={tone ? { color: tone } : undefined}
           title={text ? value : undefined}
@@ -148,7 +152,14 @@ export function Stat({
         </span>
         {unit && <span className="font-num text-[15px] font-medium text-n-400">{unit}</span>}
       </p>
-      {sub && <p className="mt-0.5 text-[12px] leading-4 text-n-500">{sub}</p>}
+      {sub && (
+        <p
+          className={clsx("mt-0.5 text-[12px] leading-4 text-n-500", fit && "truncate whitespace-nowrap")}
+          title={fit && typeof sub === "string" ? sub : undefined}
+        >
+          {sub}
+        </p>
+      )}
     </div>
   );
 }

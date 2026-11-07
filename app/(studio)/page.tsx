@@ -78,24 +78,31 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="grid flex-1 grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
+            {/* The stats need ~36rem to sit four across on one line each; short of
+                that beside the progress bar, they wrap underneath it instead of
+                squeezing into columns too narrow for "0 sessions logged". */}
+            <div className="grid min-w-[min(100%,36rem)] flex-1 grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
               <Stat
+                fit
                 label="Today"
                 value={fmtDuration(stats.todayMinutes)}
                 sub={`${stats.todaySessions} session${stats.todaySessions === 1 ? "" : "s"}`}
               />
               <Stat
+                fit
                 label="This week"
                 value={fmtDuration(stats.weekMinutes)}
                 sub={`${stats.weekSessions} session${stats.weekSessions === 1 ? "" : "s"}`}
               />
               <Stat
+                fit
                 label="Streak"
                 value={String(stats.streak)}
                 unit={stats.streak === 1 ? "day" : "days"}
                 sub={stats.streak > 0 ? "Keep it going" : "Start one today"}
               />
               <Stat
+                fit
                 label="Avg focus"
                 value={stats.avgFocus > 0 ? stats.avgFocus.toFixed(0) : "-"}
                 unit={stats.avgFocus > 0 ? "%" : undefined}
