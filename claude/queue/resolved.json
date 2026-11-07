@@ -6,5 +6,13 @@
     "status": "done",
     "note": "PDF tabs now get their own icon: a white page with a turned corner on the rose tile Studio's PDF badges already use, next to the house so the two sit together. A PDF served on its own can't carry an icon (the browser falls back to the site favicon, which is why every PDF tab looked like another Studio tab), so PDFs now open through a small /pdf page that frames the file, sets the icon, and gives the tab a real title (the note's name, 'Stats', 'Project schedule', the attachment's filename) instead of 'pdf'. Covers every Export PDF button in Studio and Livio and opening attached PDFs. The viewer's download button still saves under the usual filename. Caveat: browsers cache favicons hard - if a PDF tab still shows the house, reload it once.",
     "at": "2026-11-07T11:27:39.515Z"
+  },
+  {
+    "id": "cmw6bcnms000115l0pemzdqqu",
+    "number": 2,
+    "title": "for the animated pop up from alt s, the play button doesnt really make sense to display here. can we make this pop up look sleeker",
+    "status": "done",
+    "note": "The ⌥S pop-up is now a slim pill: a small rust dot that pings when a session starts and then gently pulses, 'Session started' (or 'Already studying' if one was running), a hairline, and the clock. The big rust circle with the play button is gone - there was nothing to press, the session was already going. Same place, same rise-and-sink animation, same timing.",
+    "at": "2026-11-07T11:29:51.178Z"
   }
 ]
