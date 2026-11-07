@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { pdfTab } from "@/lib/pdfTab";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -284,7 +285,7 @@ export function ReadingBoard({ initial }: { initial: ReadingRow[] }) {
       return;
     }
     const q = new URLSearchParams({ ids: visible.map((r) => r.id).join(","), ...(how === "notes" ? { notes: "1" } : {}) });
-    window.open(`/api/livio/reading/pdf?${q}`, "_blank", "noopener");
+    window.open(pdfTab(`/api/livio/reading/pdf?${q}`, "Reading list"), "_blank", "noopener");
   };
 
   const run = (cmd: ParsedCommand): string | void => {

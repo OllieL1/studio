@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pdfTab } from "@/lib/pdfTab";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { renderMarkdown, extractToc, wordCount } from "@/lib/markdown";
@@ -57,7 +58,7 @@ export default async function CourseNotesPage({
           {/* Nothing to bind into a document yet - don't offer the button. */}
           {lectures.length > 0 && (
             <a
-              href={`/api/lectures/pdf?course=${course.id}${includeEmpty ? "&empty=1" : ""}`}
+              href={pdfTab(`/api/lectures/pdf?course=${course.id}${includeEmpty ? "&empty=1" : ""}`, `${course.name} - notes`)}
               target="_blank"
               rel="noreferrer"
               className="rounded-md bg-rust-500 px-3 py-2 text-[12px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600"

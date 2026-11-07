@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { pdfTab } from "@/lib/pdfTab";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildTree, filterItems, visibleRows, type BrowserItem, type FileItem, type NoteItem } from "@/lib/noteTree";
@@ -106,7 +107,7 @@ export function NotesBrowser({
         />
         {notes.length > 0 && (
           <a
-            href={`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`}
+            href={pdfTab(`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`, "Notes")}
             target="_blank"
             rel="noreferrer"
             title={filtered ? "Export the notes shown" : "Export every note"}
@@ -170,7 +171,8 @@ export function NotesBrowser({
 
 /* ── Files ───────────────────────────────────────────────────────────────── */
 
-const fileHref = (f: FileItem) => `/api/uploads/${f.id}`;
+/** A PDF opens in a PDF tab (lib/pdfTab.ts); anything else is a plain download. */
+const fileHref = (f: FileItem) => (f.ext === "pdf" ? pdfTab(`/api/uploads/${f.id}`, f.filename) : `/api/uploads/${f.id}`);
 
 /** A PDF opens in a tab; a deck or document downloads - a browser can't show it. */
 const fileLinkProps = (f: FileItem) =>

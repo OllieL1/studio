@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { pdfTab } from "@/lib/pdfTab";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deleteNote, setNoteTags, updateNote } from "@/app/nexusActions";
@@ -144,7 +145,7 @@ export function NoteEditor({
 
   const pdfLink = (
     <a
-      href={`/api/project/notes/pdf?ids=${note.id}`}
+      href={pdfTab(`/api/project/notes/pdf?ids=${note.id}`, title || "Note")}
       target="_blank"
       rel="noreferrer"
       title="Export this note to PDF"

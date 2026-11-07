@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pdfTab } from "@/lib/pdfTab";
 import { LiveEditor } from "./LiveEditor";
 import { Attachments, useUploader, type AttachedFile } from "./Attachments";
 import { LectureChecklist } from "../LectureChecklist";
@@ -243,7 +244,7 @@ export function LectureWorkspace({
         </svg>
       </button>
       <a
-        href={`/api/lectures/pdf?id=${taskId}`}
+        href={pdfTab(`/api/lectures/pdf?id=${taskId}`, title)}
         target="_blank"
         rel="noreferrer"
         aria-label="Export this lecture as a PDF"
