@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { pdfTab } from "@/lib/pdfTab";
 import { useRouter } from "next/navigation";
 import { createPaper, deletePaper, lookupPaperDetails, updatePaper } from "@/app/projectActions";
 import { setPaperTags } from "@/app/nexusActions";
@@ -149,7 +150,7 @@ export function PaperLibrary({
             <button onClick={() => setSelected(new Set())} className="text-[12px] font-medium text-n-500 hover:text-n-800">Clear</button>
             <span className="ml-auto flex items-center gap-2">
               <a
-                href={`/api/project/papers/pdf?ids=${ids}${courseQuery}`}
+                href={pdfTab(`/api/project/papers/pdf?ids=${ids}${courseQuery}`, "Papers")}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-600"

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { resolveEventTimes } from "@/lib/events";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { lookupPaper, makeCiteKey, PAPER_STATUSES, type PaperMeta } from "@/lib/papers";
-import { carryOverTasks, draftAgenda } from "@/lib/project";
+import { carryOverTasks, draftAgenda, movedPrepDueDates } from "@/lib/project";
 import { pushToCalendar, removeFromCalendar } from "@/app/actions";
 import { isTaskDone } from "@/lib/progress";
 import { shortAuthors } from "@/lib/papers";
@@ -90,15 +90,33 @@ export async function createMeeting(input: MeetingInput) {
 }
 
 export async function updateMeeting(id: string, input: MeetingInput) {
-  const existing = await db.meeting.findUnique({ where: { id } });
+  const existing = await db.meeting.findUnique({
+    where: { id },
+    include: { prep: { include: { task: { include: { items: { select: { doneAt: true } } } } } } },
+  });
   if (!existing) return { ok: false as const, error: "Meeting not found." };
   const t = resolveEventTimes({ date: input.date, startTime: input.startTime, endTime: input.endTime, allDay: false });
   if (!t.ok) return { ok: false as const, error: t.error };
-  await db.meeting.update({
-    where: { id },
-    data: { title: input.title.trim() || "Supervisor meeting", startAt: t.startAt, endAt: t.endAt, location: input.location?.trim() || null },
-  });
+  // Its prep is due for this meeting, so when the meeting moves, every open
+  // prep task is due at the new time. Renaming it leaves them alone.
+  const moving = existing.startAt.getTime() !== t.startAt.getTime();
+  const moved = moving ? movedPrepDueDates(existing.prep.map((p) => p.task), t.startAt) : [];
+  await db.$transaction([
+    db.meeting.update({
+      where: { id },
+      data: { title: input.title.trim() || "Supervisor meeting", startAt: t.startAt, endAt: t.endAt, location: input.location?.trim() || null },
+    }),
+    ...moved.map((m) => db.task.update({ where: { id: m.id }, data: { dueAt: m.dueAt } })),
+  ]);
   let warning: string | null = null;
+  // Prep already on Google Calendar follows its new date there too.
+  if (moved.length && isGoogleConfigured()) {
+    const onCalendar = existing.prep.filter((p) => p.task.calendarEventId && moved.some((m) => m.id === p.taskId));
+    for (const p of onCalendar) {
+      const res = await pushToCalendar(p.taskId);
+      if (!res.ok) warning = `Saved, but a prep task's Google Calendar event wasn't moved: ${res.error}`;
+    }
+  }
   if (input.syncToGoogle && isGoogleConfigured()) {
     const w = await syncMeeting(id);
     if (w) warning = `Saved, but not synced to Google: ${w}`;

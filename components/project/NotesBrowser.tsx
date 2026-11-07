@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { pdfTab } from "@/lib/pdfTab";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildTree, filterItems, visibleRows, type BrowserItem, type FileItem, type NoteItem } from "@/lib/noteTree";
@@ -106,7 +107,7 @@ export function NotesBrowser({
         />
         {notes.length > 0 && (
           <a
-            href={`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`}
+            href={pdfTab(`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`, "Notes")}
             target="_blank"
             rel="noreferrer"
             title={filtered ? "Export the notes shown" : "Export every note"}
@@ -170,13 +171,16 @@ export function NotesBrowser({
 
 /* ── Files ───────────────────────────────────────────────────────────────── */
 
-const fileHref = (f: FileItem) => `/api/uploads/${f.id}`;
+/** A PDF opens in a PDF tab (lib/pdfTab.ts); anything else is a plain download. */
+const fileHref = (f: FileItem) => (f.ext === "pdf" ? pdfTab(`/api/uploads/${f.id}`, f.filename) : `/api/uploads/${f.id}`);
 
 /** A PDF opens in a tab; a deck or document downloads - a browser can't show it. */
 const fileLinkProps = (f: FileItem) =>
   f.ext === "pdf" ? { target: "_blank", rel: "noreferrer" } : { download: f.filename };
 
+/** One colour per kind. "md" is a markdown note (or an uploaded .md file). */
 const BADGE: Record<string, string> = {
+  md: "bg-ok-soft text-ok",
   pdf: "bg-danger-soft text-danger",
   docx: "bg-info-soft text-info",
   pptx: "bg-warn-soft text-warn",
@@ -242,6 +246,7 @@ function Gallery({
               {n.excerpt || "Empty note."}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <FileBadge ext="md" />
               {n.tags.slice(0, 3).map((t) => (
                 <span key={t} className="rounded-full bg-info-soft px-1.5 py-px text-[10.5px] font-medium text-info">
                   #{t}
@@ -288,15 +293,6 @@ function FolderIcon({ open }: { open: boolean }) {
       ) : (
         <path d="M1.5 3.5h4l1 1.2h6v6.3h-11v-7.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
       )}
-    </svg>
-  );
-}
-
-function DocIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden className="shrink-0 text-n-400">
-      <path d="M3 1.5h4l2 2v7H3v-9Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-      <path d="M7 1.5v2h2M4.5 6h3M4.5 8h3" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -424,7 +420,7 @@ function TreeView({
           <>
             {indent && <span aria-hidden className="ml-[17px] h-full w-px shrink-0 bg-n-100" />}
             <span aria-hidden className="w-2.5 shrink-0" />
-            {item.kind === "note" ? <DocIcon /> : <FileBadge ext={item.ext} />}
+            <FileBadge ext={item.kind === "note" ? "md" : item.ext} />
             <span className={clsx("min-w-0 flex-1 truncate", isActive ? "text-rust-700" : "text-n-800 group-hover:text-rust-700")}>
               {item.kind === "note" ? item.title : item.filename}
             </span>

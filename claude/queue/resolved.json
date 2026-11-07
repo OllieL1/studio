@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "id": "cmw6bb3js000015l01s3bhv0v",
+    "number": 1,
+    "title": "on open PDFs from studio, could those tabs get their own icon i.e. different from the main home icon that we have for studio tabs? it should be a minimal simple icon that denotes PDF.",
+    "status": "done",
+    "note": "The PDF tab icon is now the pink 'PDF' pill from the Files tab: soft pink with the letters in the same rose. It wasn't showing before because the icon was only an SVG, and some browsers (Safari among them) skip an SVG icon and fall back to their own PDF glyph. It now ships as PNGs too (16, 32 and 48 px, plus a large one for Safari), which every browser takes, and the URL is versioned so a cached older icon isn't reused. Caveat: I couldn't watch a real tab strip from here - if a PDF tab still shows the browser's own icon after a reload, tell me which browser it is (Safari, Chrome, Edge) and I'll chase it there.",
+    "at": "2026-11-07T13:04:35.578Z"
+  },
+  {
+    "id": "cmw6bcnms000115l0pemzdqqu",
+    "number": 2,
+    "title": "for the animated pop up from alt s, the play button doesnt really make sense to display here. can we make this pop up look sleeker",
+    "status": "done",
+    "note": "The ⌥S pop-up is now a slim pill: a small rust dot that pings when a session starts and then gently pulses, 'Session started' (or 'Already studying' if one was running), a hairline, and the clock. The big rust circle with the play button is gone - there was nothing to press, the session was already going. Same place, same rise-and-sink animation, same timing.",
+    "at": "2026-11-07T11:29:51.178Z"
+  },
+  {
+    "id": "cmw6be3rg000215l0yafrprdd",
+    "number": 3,
+    "title": "if we move a project meeting that has prep items, ensure that we move their due dates to the new meeting i.e. ensure the tasks are tied to that meeting so we dont have to manually update them",
+    "status": "done",
+    "note": "Moving a meeting now makes every open prep task due at the meeting's new time - including ones that had been set for an earlier day, so nothing is left offset. Undated prep gets the meeting time too. Done, cancelled and backlogged prep stays where it was, and prep on Google Calendar has its event moved. It only happens when the date or time changes: renaming a meeting or changing its location leaves the prep dates alone. Action items keep their own dates.",
+    "at": "2026-11-07T13:03:22.023Z"
+  },
+  {
+    "id": "cmw6evn160041153gxxxgblgg",
+    "number": 4,
+    "title": "Instead of the file icon for markdown notes in the files tab of a task/nexus, can we display an md pill similar in style to the PDF bill (but of course different colour)",
+    "status": "done",
+    "note": "Markdown notes now carry a green 'MD' pill in the Files tab and the Nexus, in the same style as the PDF, DOCX and PPTX pills, instead of the little page icon. It's in both views: at the start of the row in Tree, and in the card's footer in Gallery, where file cards already showed theirs. Green, because pink, blue and amber are already PDF, Word and PowerPoint. An uploaded .md file gets the same pill.",
+    "at": "2026-11-07T13:06:07.932Z"
+  },
+  {
+    "id": "cmw6exd690042153gmfgn4yjq",
+    "number": 5,
+    "title": "On the home page, can we ensure that the key states do not get pushed onto two lines? Adjust their font size as required or change the display for smaller viewports? Just want them to read across one line",
+    "status": "done",
+    "note": "The home page's key stats (Today, This week, Streak, Avg focus) now always read on one line each - labels, numbers and the line underneath. Two changes: when there isn't room for them beside Overall progress, they drop below it at full width instead of squeezing into narrow columns (which is what wrapped 'This week', 'Avg focus' and '0 sessions logged'), and they sit two-by-two below about 768px wide. The numbers also scale down a little with their column, so a long one like '38h 05m' shrinks rather than breaking. Checked from phone width up to 1440px with long values filled in.",
+    "at": "2026-11-07T13:09:28.393Z"
+  }
+]
