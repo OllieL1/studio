@@ -62,7 +62,8 @@ export default async function HomePage() {
         </h1>
 
         <Card className="mt-6 p-6">
-          <div className="flex flex-wrap items-end justify-between gap-6">
+          {/* Tops aligned, so "Overall progress" sits level with the stats' labels. */}
+          <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="min-w-[200px] flex-1">
               <Eyebrow>Overall progress</Eyebrow>
               <p className="mt-1.5 flex items-baseline gap-2">
@@ -72,10 +73,6 @@ export default async function HomePage() {
                 <span className="font-num text-[18px] font-medium text-n-400">%</span>
               </p>
               <ProgressBar value={overall} className="mt-3" height={8} />
-              <p className="mt-2 text-[12px] text-n-500">
-                Weighted by credits across {courses.filter((c) => c.progress.tasksTotal > 0).reduce((n, c) => n + c.credits, 0)} credits of active courses ·
-                exams excluded
-              </p>
             </div>
 
             {/* The stats need ~36rem to sit four across on one line each; short of
