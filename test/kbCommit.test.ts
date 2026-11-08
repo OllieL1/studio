@@ -111,20 +111,21 @@ const tests: [string, () => Promise<void>][] = [];
 const test = (n: string, f: () => Promise<void>) => tests.push([n, f]);
 const clearCache = () => db.gitHubCache.deleteMany({ where: { key: { startsWith: `/repos/${REPO}` } } });
 
-test("a new doc lands with a rebuilt INDEX.md, in one commit", async () => {
-  reset({ "README.md": "# KB\n\nWhat this is." });
+test("a new doc lands in one commit, and nothing else is written", async () => {
+  reset({ "README.md": "# KB\n\nWhat this is.", "INDEX.md": "# How to Read\n\nHand-written." });
   const r = await commitKb(KB, [{ path: "work/how.md", content: "# How I work\n\nSmall commits." }], "add", { "work/how.md": null });
   assert.ok(r.ok);
   assert.equal(r.shas["work/how.md"], blobSha("# How I work\n\nSmall commits."));
   assert.equal(commitCount, 1);
   assert.equal(content("work/how.md"), "# How I work\n\nSmall commits.");
-  assert.match(content("INDEX.md")!, /- \[How I work\]\(work\/how\.md\) - Small commits\./);
-  assert.match(content("INDEX.md")!, /- \[KB\]\(README\.md\)/);
+  assert.deepEqual([...filesAt().keys()].sort(), ["INDEX.md", "README.md", "work/how.md"]);
+  // The hand-written index is never rewritten.
+  assert.equal(content("INDEX.md"), "# How to Read\n\nHand-written.");
 });
 
-test("the listing has every doc but the index, and reads one by path", async () => {
+test("the listing has every markdown file, INDEX.md included", async () => {
   const kb = await listKb(KB);
-  assert.deepEqual(kb.docs.map((d) => d.path), ["README.md", "work/how.md"]);
+  assert.deepEqual(kb.docs.map((d) => d.path), ["INDEX.md", "README.md", "work/how.md"]);
   assert.equal(kb.branch, "main");
   const doc = await readKbDoc(KB, "work/how.md");
   assert.equal(doc?.body, "# How I work\n\nSmall commits.");
@@ -165,10 +166,9 @@ test("a push landing mid-commit is retried from the new head, keeping both", asy
   assert.ok(r.ok);
   assert.equal(content("work/how.md"), "mine, again");
   assert.equal(content("other.md"), "# Other\n\nPushed meanwhile.");
-  assert.match(content("INDEX.md")!, /\[Other\]\(other\.md\)/);
 });
 
-test("a move is one commit: old path gone, new one there, index follows", async () => {
+test("a move is one commit: old path gone, new one there", async () => {
   const before = commitCount;
   const sha = filesAt().get("other.md")!;
   const r = await commitKb(KB, [{ path: "other.md", delete: true }, { path: "notes/other.md", content: "# Other\n\nPushed meanwhile." }], "move", { "other.md": sha, "notes/other.md": null });
@@ -176,8 +176,6 @@ test("a move is one commit: old path gone, new one there, index follows", async 
   assert.equal(commitCount, before + 1);
   assert.equal(content("other.md"), null);
   assert.ok(content("notes/other.md"));
-  assert.doesNotMatch(content("INDEX.md")!, /\(other\.md\)/);
-  assert.match(content("INDEX.md")!, /## notes\//);
 });
 
 test("a token that can't write says what it needs", async () => {

@@ -39,7 +39,10 @@ export function ClaudeKb({
   const [naming, setNaming] = useState(false);
   const [changingRepo, setChangingRepo] = useState(false);
   const items = useMemo(() => docs.map((d) => ({ ...d, kind: "note" as const })), [docs]);
+  /** Every folder, for the new-doc suggestions. */
   const folders = useMemo(() => [...new Set(docs.flatMap((d) => d.tags))].sort(), [docs]);
+  /** The chips are the top-level folders; each takes in its subfolders. */
+  const chips = useMemo(() => [...new Set(folders.map((f) => f.split("/")[0]))], [folders]);
 
   return (
     <div className="space-y-3">
@@ -48,7 +51,7 @@ export function ClaudeKb({
           {repo} ↗
         </a>
         <span className="font-num text-n-400">{branch}</span>
-        <span>Each save is a commit; INDEX.md is rewritten to match.</span>
+        <span>⌘S in a doc commits it, with your message.</span>
         {stale && <span className="text-warn">Offline - showing what GitHub said {stale}.</span>}
         <button onClick={() => setChangingRepo((c) => !c)} className="ml-auto font-medium text-n-500 hover:text-rust-600">
           {changingRepo ? "Cancel" : "Change repo"}
@@ -59,7 +62,7 @@ export function ClaudeKb({
 
       <NotesBrowser
         items={items}
-        tags={folders}
+        tags={chips}
         noteHref={docHref}
         view={view}
         onViewChange={setView}
@@ -69,6 +72,7 @@ export function ClaudeKb({
         newLabel="+ New doc"
         folders="paths"
         pdf={false}
+        rememberFilter
         empty={{
           title: "The knowledge base is empty.",
           body: "Add a doc for anything Claude should know before it starts - how you like to work, what a project is, decisions already made. Folders are just slashes in the name.",
@@ -83,7 +87,7 @@ export function ClaudeKb({
             SessionStart hook in <code className="font-num text-n-700">~/.claude/settings.json</code> pulls it and hands Claude{" "}
             <code className="font-num text-n-700">INDEX.md</code> at the start of every session. Claude opens the docs it needs from there.
           </p>
-          <p>The README has the hook. Claude can edit and push the docs too; Studio shows that the next time this tab opens.</p>
+          <p>The README has the hook. Claude can edit and push the docs too; Studio shows that the next time this tab opens. Studio never writes a file you didn&apos;t edit - your INDEX.md files are yours.</p>
         </div>
       </details>
     </div>

@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { describeGitHubError, forgetCached, gh, ghSend, GitHubError, githubToken } from "./github";
 import { blobSha } from "./blobSha";
-import { applyChanges, buildIndex, INDEX_PATH, isDocPath, type KbChange, type KbDoc } from "./kb";
+import { isDocPath, type KbChange, type KbDoc } from "./kb";
 
 /**
  * The Claude knowledge base on GitHub (lib/kb.ts says what it is).
@@ -11,9 +11,9 @@ import { applyChanges, buildIndex, INDEX_PATH, isDocPath, type KbChange, type Kb
  * only the branch head is ever asked again. A KB of fifty docs costs one
  * request per load once it's been seen, and still opens offline.
  *
- * Writes use the Git Data API rather than the contents endpoint, so a save
- * and the regenerated INDEX.md land as one commit, and a move is one commit
- * rather than an add and a delete.
+ * Writes use the Git Data API rather than the contents endpoint, so a move
+ * is one commit rather than an add and a delete. Studio writes only what it's
+ * asked to - the repo's INDEX.md files are hand-written.
  */
 
 const FOREVER = Number.POSITIVE_INFINITY;
@@ -82,9 +82,9 @@ export async function listKb(kb: Kb): Promise<KbListing> {
   return { repo: kb.repo, branch: h.branch, docs, stale: h.stale, fetchedAt: h.fetchedAt };
 }
 
-/** One doc, or null when the path isn't in the repo. */
-export async function readKbDoc(kb: Kb, path: string): Promise<(KbDoc & { branch: string; stale: boolean }) | null> {
-  const h = await head(kb);
+/** One doc, or null when the path isn't in the repo. `fresh` skips the cached branch head. */
+export async function readKbDoc(kb: Kb, path: string, fresh = false): Promise<(KbDoc & { branch: string; stale: boolean }) | null> {
+  const h = await head(kb, fresh);
   const sha = (await files(kb, h.tree)).get(path);
   if (!sha) return null;
   return { path, sha, body: await blob(kb, sha), branch: h.branch, stale: h.stale };
@@ -106,8 +106,7 @@ function writeError(repo: string, e: unknown): string {
 }
 
 /**
- * Commit `changes`, with INDEX.md rebuilt to match, as one commit on the
- * default branch.
+ * Commit `changes` as one commit on the default branch.
  *
  * `expect` is each touched path's blob sha as the caller last saw it (null:
  * it shouldn't exist). If the repo has moved on - Claude edited the doc in a
@@ -136,13 +135,9 @@ export async function commitKb(kb: Kb, changes: KbChange[], message: string, exp
       const shas = Object.fromEntries(changes.flatMap((c) => ("delete" in c ? [] : [[c.path, blobSha(c.content)]])));
       if (real.length === 0) return { ok: true, shas };
 
-      const docs = await bodies(kb, [...all].filter(([p]) => isDocPath(p)));
-      const index = buildIndex(applyChanges(docs, real));
-      const writes: KbChange[] = all.get(INDEX_PATH) === blobSha(index) ? real : [...real, { path: INDEX_PATH, content: index }];
-
       const tree = await ghSend<{ sha: string }>("POST", `/repos/${repo}/git/trees`, {
         base_tree: h.tree,
-        tree: writes.map((c) =>
+        tree: real.map((c) =>
           "delete" in c
             ? { path: c.path, mode: "100644", type: "blob", sha: null }
             : { path: c.path, mode: "100644", type: "blob", content: c.content },

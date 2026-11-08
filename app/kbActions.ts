@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { describeGitHubError, gh } from "@/lib/github";
-import { commitKb, kbBlob, kbRepo, type Kb } from "@/lib/kbData";
+import { commitKb, kbBlob, kbRepo, readKbDoc, type Kb } from "@/lib/kbData";
 import { normalizeDocPath, starterBody } from "@/lib/kb";
 import { parseRepo } from "@/lib/repos";
 
 /**
- * The Claude knowledge base: which repo it is, and every edit - each one a
- * commit to that repo (lib/kbData.ts). Commit messages say "Studio:" so a
- * `git log` tells Studio's edits from a Claude session's.
+ * The Claude knowledge base: which repo it is, and every change - each one a
+ * commit to that repo (lib/kbData.ts). Edits carry the message typed in the
+ * commit dialog; adds, moves and deletes say "Studio:".
  */
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; conflict?: boolean };
@@ -53,14 +53,30 @@ export async function setKbRepo(input: string, rawToken = "", clearToken = false
   return { ok: true };
 }
 
-/**
- * Save a doc's body. `sha` is the version it was opened at; the new one comes
- * back. `overwrite` is "keep mine" after a conflict - it skips the check.
- */
-export async function saveKbDoc(path: string, body: string, sha: string, overwrite = false): Promise<Result<{ sha: string }>> {
+/** A doc as GitHub has it right now - "Use GitHub's version" after a conflict. */
+export async function fetchKbDoc(path: string): Promise<Result<{ sha: string; body: string }>> {
   const r = await kbOrError();
   if (!("kb" in r)) return r;
-  const res = await commitKb(r.kb, [{ path, content: body }], `Studio: edit ${path}`, overwrite ? {} : { [path]: sha });
+  try {
+    const doc = await readKbDoc(r.kb, path, true);
+    return doc ? { ok: true, sha: doc.sha, body: doc.body } : { ok: false, error: `${path} isn't on GitHub any more.` };
+  } catch (e) {
+    return { ok: false, error: describeGitHubError(e) };
+  }
+}
+
+/** The message when none was typed. */
+const defaultMessage = (path: string) => `Edit ${path}`;
+
+/**
+ * Commit a doc's body, with the message typed in the commit dialog. `sha` is
+ * the version it was opened at; the new one comes back. `overwrite` is "keep
+ * mine" after a conflict - it skips the check.
+ */
+export async function saveKbDoc(path: string, body: string, sha: string, message: string, overwrite = false): Promise<Result<{ sha: string }>> {
+  const r = await kbOrError();
+  if (!("kb" in r)) return r;
+  const res = await commitKb(r.kb, [{ path, content: body }], message.trim() || defaultMessage(path), overwrite ? {} : { [path]: sha });
   if (!res.ok) return { ok: false, error: res.error, conflict: !!res.conflict };
   refresh();
   return { ok: true, sha: res.shas[path] };

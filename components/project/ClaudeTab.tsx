@@ -2,7 +2,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { describeGitHubError } from "@/lib/github";
 import { kbHasToken, kbRepo, listKb, type KbListing } from "@/lib/kbData";
-import { folderOf, summaryOf, titleOf, wordCount } from "@/lib/kb";
+import { baseNameOf, folderOf, summaryOf, titleOf, wordCount } from "@/lib/kb";
 import { fmtAgo } from "@/lib/dates";
 import { Card, EmptyState } from "@/components/ui";
 import { ClaudeKb, KbRepoForm } from "./ClaudeKb";
@@ -74,6 +74,7 @@ export async function ClaudeTab() {
           tags: folder ? [folder] : [],
           excerpt: summaryOf(d.body),
           words: wordCount(d.body),
+          file: baseNameOf(d.path),
         };
       })}
     />

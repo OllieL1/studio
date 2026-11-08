@@ -61,6 +61,7 @@ export function NotesBrowser({
   folders = "tags",
   pdf = true,
   newLabel = "+ New note",
+  rememberFilter = false,
 }: {
   items: BrowserItem[];
   /** The tag chips. */
@@ -82,11 +83,30 @@ export function NotesBrowser({
   /** The PDF export - Nexus notes only; the route reads them by id. */
   pdf?: boolean;
   newLabel?: string;
+  /** Keep the chosen tag/folder chip across visits - the Claude tab, where
+   *  one project's folder is usually all that matters. */
+  rememberFilter?: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<string | null>(null);
+  const [tag, setTagState] = useState<string | null>(null);
+  const filterKey = `${storageKey}.filter`;
 
-  const shown = useMemo(() => filterItems(items, query, tag), [items, query, tag]);
+  // Like the view: the default first so server and browser agree, then the
+  // remembered chip - if it still exists.
+  useEffect(() => {
+    if (!rememberFilter) return;
+    const saved = stored.get(filterKey);
+    if (saved && tags.includes(saved)) setTagState(saved);
+  }, [rememberFilter, filterKey, tags]);
+
+  const setTag = (update: (cur: string | null) => string | null) =>
+    setTagState((cur) => {
+      const next = update(cur);
+      if (rememberFilter) stored.set(filterKey, next ?? "");
+      return next;
+    });
+
+  const shown = useMemo(() => filterItems(items, query, tag, folders === "paths"), [items, query, tag, folders]);
   const notes = shown.filter((i): i is NoteItem => i.kind === "note");
   const files = shown.length - notes.length;
   const filtered = query.trim().length > 0 || tag !== null;
@@ -181,8 +201,10 @@ export function NotesBrowser({
 type FolderStyle = "tags" | "paths";
 const folderLabel = (name: string, style: FolderStyle) => (style === "paths" ? `${name}/` : `#${name}`);
 
-/** When it was last touched, or - where that isn't known - how long it is. */
-const noteMeta = (n: NoteItem) => (n.updatedAt ? fmtAgo(n.updatedAt) : `${n.words} word${n.words === 1 ? "" : "s"}`);
+/** When it was last touched, or - where that isn't known - how long it is,
+ *  and the file's name where it has one ("12 words · INDEX.md"). */
+const noteMeta = (n: NoteItem) =>
+  [n.updatedAt ? fmtAgo(n.updatedAt) : `${n.words} word${n.words === 1 ? "" : "s"}`, n.file].filter(Boolean).join(" · ");
 
 /* ── Files ───────────────────────────────────────────────────────────────── */
 

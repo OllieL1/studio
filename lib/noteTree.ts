@@ -18,6 +18,8 @@ export type NoteItem = {
   tags: string[];
   excerpt: string;
   words: number;
+  /** The file's name, shown beside the word count - a knowledge-base doc. */
+  file?: string;
 };
 
 export type FileItem = {
@@ -77,13 +79,22 @@ export function buildTree(items: BrowserItem[]): Tree {
   };
 }
 
-/** The search box and tag chips. A tag filter leaves files out - they have none. */
-export function filterItems(items: BrowserItem[], query: string, tag: string | null): BrowserItem[] {
+/**
+ * The search box and tag chips. A tag filter leaves files out - they have none.
+ * With `nested` the "tags" are folders, and a folder takes in its subfolders:
+ * `msci-project` keeps `msci-project/notes/x.md`.
+ */
+export function filterItems(items: BrowserItem[], query: string, tag: string | null, nested = false): BrowserItem[] {
   const q = query.trim().toLowerCase();
+  const want = tag?.toLowerCase();
+  const matches = (t: string) => {
+    const k = t.toLowerCase();
+    return k === want || (nested && k.startsWith(`${want}/`));
+  };
   return items.filter((item) => {
-    if (tag && (item.kind === "file" || !item.tags.some((t) => t.toLowerCase() === tag.toLowerCase()))) return false;
+    if (tag && (item.kind === "file" || !item.tags.some(matches))) return false;
     if (!q) return true;
-    const hay = item.kind === "file" ? item.filename : `${item.title} ${item.excerpt} ${item.tags.join(" ")}`;
+    const hay = item.kind === "file" ? item.filename : `${item.title} ${item.excerpt} ${item.tags.join(" ")} ${item.file ?? ""}`;
     return hay.toLowerCase().includes(q);
   });
 }

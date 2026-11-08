@@ -233,9 +233,10 @@ any Claude session on any machine can read them, and Claude can edit them too.
 | | |
 |---|---|
 | **Browse** | The Nexus browser: gallery or tree, search, folder chips. Folders are the repo's real directories - type `work/how-i-work` to make one. |
-| **Edit** | The lectures' editor, without `@` mentions (they'd mean nothing to Claude). Each save is a **commit** - after five quiet seconds, on ⌘S, or on leaving the page. Rename (or move, with a `/`) is one commit too. |
-| **INDEX.md** | Rewritten in the same commit as every save: one line per doc - title and first sentence - grouped by folder. Don't edit it; it isn't listed. |
-| **Conflicts** | Each save names the version it was opened at. If the doc changed on GitHub meanwhile (Claude pushed from a session), nothing is overwritten: **Use GitHub's version** or **Keep mine**. |
+| **Filter** | The folder chips are the top-level folders, each taking in its subfolders, and the one chosen is remembered - pick `msci-project` once and the tab opens on it. Each card shows its word count and file name. |
+| **Edit** | The lectures' editor, without `@` mentions (they'd mean nothing to Claude). Nothing is committed until you ask: **⌘S** opens a dialog for the commit message. Following a link away with edits outstanding opens it too - commit and leave, discard and leave, or stay. Until committed, edits are kept in the browser, so a reload or the back button loses nothing; they're back next time the doc opens. Rename (or move, with a `/`) is one commit. |
+| **Your structure** | Studio writes only the file you committed. INDEX.md files are yours - hand-written, listed and edited like any doc. |
+| **Conflicts** | Each commit names the version it was based on. If the doc changed on GitHub meanwhile (Claude pushed from a session), nothing is overwritten: **Use GitHub's version** or **Keep mine**. |
 
 **Setup.** Paste the repo on the tab, with a token of its own: the main GitHub
 token is fine-grained to `uog-cose` and can't see a personal repo. Make a
@@ -246,7 +247,7 @@ change), so after the first visit a load costs one request for the branch head,
 and the tab still opens offline.
 
 **How Claude reads it.** Clone it once per machine, then let a SessionStart
-hook pull it and print the index into every session:
+hook pull it and print the root INDEX.md into every session:
 
 ```bash
 git clone git@github.com:OllieL1/kb.git ~/kb
@@ -263,8 +264,8 @@ git clone git@github.com:OllieL1/kb.git ~/kb
 }
 ```
 
-Only the index goes into context; Claude opens the docs a task needs from
-`~/kb`. In a cloud session, a line in the project's `CLAUDE.md` - "clone
+Only the root index goes into context; it says how to read each folder, and
+Claude opens the docs a task needs from `~/kb`. In a cloud session, a line in the project's `CLAUDE.md` - "clone
 OllieL1/kb and read INDEX.md" - does the same.
 
 ## Spotify
