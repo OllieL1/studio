@@ -46,5 +46,13 @@
     "status": "done",
     "note": "⌥M now switches between Live and Markdown - in task and todo notes, Nexus notes, lectures, and the smaller markdown fields. The old ⌘⇧M / Ctrl-Shift-M wasn't broken in Studio: Chrome and Edge keep that combination for their profile menu, so the page never saw the keypress. ⌘⇧M still works where the browser lets it through, and the Live / Markdown buttons' tooltips now say ⌥M.",
     "at": "2026-11-08T00:43:47.301Z"
+  },
+  {
+    "id": "cmw72zsqz00b615ogaxp7qmoy",
+    "number": 7,
+    "title": "Can we make sure the markdown textarea takes up the full height (or just about) of the screen instead of getting randomly cut off? This will be global across all note taking instances in the site",
+    "status": "done",
+    "note": "The Markdown view's text box now grows with the note instead of stopping at a fixed 60% of the screen and scrolling inside itself - that inner scroll was the 'random' cut-off. The page scrolls instead, so the whole note is always there to read and select. A short note still gets a box that reaches the bottom of the screen, so there's room to write. This is the one editor behind lecture notes, Nexus notes and task and todo notes, so it applies to all of them; the smaller markdown fields (meeting agendas, paper and reading notes) grow the same way but start at their own small size rather than filling the screen.",
+    "at": "2026-11-08T00:44:39.820Z"
   }
 ]

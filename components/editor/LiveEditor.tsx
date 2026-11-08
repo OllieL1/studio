@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { saveNotes } from "@/app/actions";
@@ -641,6 +641,25 @@ export function LiveEditor({
     }
   }, [raw, rawText, render, commit]);
 
+  // The markdown textarea grows with what's in it - the page scrolls, never
+  // the box, so nothing is hidden below a fold inside it. A full editor also
+  // reaches at least to the bottom of the screen; a small field (minRows)
+  // starts at its own size.
+  useLayoutEffect(() => {
+    const el = rawRef.current;
+    if (!raw || !el) return;
+    const fit = () => {
+      // Measured from the top of the page, so scrolling doesn't change it.
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const floor = minRows || nested ? 0 : Math.max(240, window.innerHeight - top - 32);
+      el.style.height = "auto";
+      el.style.height = `${Math.max(el.scrollHeight, floor)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [raw, rawText, minRows, nested]);
+
   /* ── Render ───────────────────────────────────────────────────────────── */
 
   if (raw) {
@@ -652,7 +671,7 @@ export function LiveEditor({
           onChange={(e) => setRawText(e.target.value)}
           onBlur={() => void persist(rawText)}
           spellCheck
-          className="font-num min-h-[60vh] w-full resize-y bg-transparent p-1 text-[13px] leading-[22px] text-n-800 outline-none"
+          className={clsx("font-num block w-full resize-none overflow-hidden bg-transparent p-1 text-[13px] leading-[22px] text-n-800 outline-none", minRows || nested ? "min-h-[66px]" : "min-h-[240px]")}
         />
       </div>
     );
