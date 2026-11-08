@@ -21,9 +21,29 @@ export const nextKind = (k: EnhancementKind, back = false): EnhancementKind =>
 
 const PREFIX = /^\s*(bug|feat|feature|tweak)\s*:\s*/i;
 
+/** Longest a title runs before the rest of its line moves into the body. */
+export const TITLE_MAX = 160;
+
+/**
+ * A first line too long to be a title: the title is its first sentence if
+ * that's short enough, otherwise its first TITLE_MAX characters to a word
+ * break, with "…". Nothing is dropped - whatever the title doesn't hold
+ * leads the body (the whole line, when the title is a cut-off fragment, so
+ * it still reads as written).
+ */
+function splitTitle(line: string): { title: string; overflow: string } {
+  if (line.length <= TITLE_MAX) return { title: line, overflow: "" };
+  const sentence = line.slice(0, TITLE_MAX + 1).match(/^.{20,}?[.?!](?=\s)/);
+  if (sentence) return { title: sentence[0], overflow: line.slice(sentence[0].length).trim() };
+  const cut = line.lastIndexOf(" ", TITLE_MAX);
+  return { title: `${line.slice(0, cut > 40 ? cut : TITLE_MAX).trimEnd()}…`, overflow: line };
+}
+
 /**
  * What was typed in the composer: an optional "bug:" / "feat:" / "tweak:"
  * prefix sets the kind, the first line is the title, the rest is the body.
+ * A long first line is split (splitTitle), never truncated - #8 lost its
+ * second half to a 300-character cut on 8 Nov 2026.
  */
 export function parseEnhancement(text: string, fallback: EnhancementKind = "feature") {
   let kind = fallback;
@@ -34,7 +54,9 @@ export function parseEnhancement(text: string, fallback: EnhancementKind = "feat
     text = text.slice(m[0].length);
   }
   const [first = "", ...rest] = text.split("\n");
-  return { kind, title: first.trim(), body: rest.join("\n").trim() };
+  const { title, overflow } = splitTitle(first.trim());
+  const body = [overflow, rest.join("\n").trim()].filter(Boolean).join("\n\n");
+  return { kind, title, body };
 }
 
 /** The kind a prefix being typed asks for, if any - so the chip can follow along. */
