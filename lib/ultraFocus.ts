@@ -1,8 +1,8 @@
 /**
- * Pausing and ultra focus - pure, so the timer bar, the proxy (proxy.ts) and
+ * Pausing and Rapt Mode (called "ultra focus" in the code) - pure, so the timer bar, the proxy (proxy.ts) and
  * the server actions share one set of rules, and the tests can pin them.
  *
- * Ultra focus locks Studio to one course - its page, its lectures and
+ * Rapt Mode locks Studio to one course - its page, its lectures and
  * tasks - or to the project, until a chosen time. The only ways out are
  * that time arriving or the session ending. It's enforced on the server, in
  * the proxy, so a reload, a typed address or a bookmark can't step round it.
@@ -21,9 +21,33 @@ export function pausedTotalAfterResume(t: TimerClock, now = new Date()): number 
   return t.pausedMs + (t.pausedAt ? Math.max(0, now.getTime() - t.pausedAt.getTime()) : 0);
 }
 
-/** How long ultra focus can be set for, in minutes. */
-export const LOCK_PRESETS = [25, 50, 90, 120] as const;
+/** Rapt Mode's quick picks, in minutes; anything else is typed (parseDuration). */
+export const LOCK_PRESETS = [25, 50, 90] as const;
+export const LOCK_MIN_MINUTES = 5;
 export const LOCK_MAX_MINUTES = 240;
+
+/**
+ * A typed length in minutes, or null if it isn't one. Takes the ways a time
+ * gets written in a hurry: "75", "75m", "75 min", "2h", "1.5h", "1h 15",
+ * "1h15m", "1 hour 15 minutes", "1:15".
+ */
+export function parseDuration(text: string): number | null {
+  const t = text.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!t) return null;
+  const clock = t.match(/^(\d+):(\d{1,2})$/);
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
+  const hm = t.match(/^(\d+(?:\.\d+)?) ?(?:h|hr|hrs|hour|hours)(?: ?(\d+) ?(?:m|min|mins|minute|minutes)?)?$/);
+  if (hm) return Math.round(Number(hm[1]) * 60 + Number(hm[2] ?? 0));
+  const m = t.match(/^(\d+) ?(?:m|min|mins|minute|minutes)?$/);
+  if (m) return Number(m[1]);
+  return null;
+}
+
+/** "25m", "90m", "1h 15m" - how a length reads back. */
+export function fmtLockLength(min: number): string {
+  if (min < 60 || LOCK_PRESETS.includes(min as (typeof LOCK_PRESETS)[number])) return `${min}m`;
+  return min % 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min / 60}h`;
+}
 
 export type Lock = { courseId: string; until: Date };
 

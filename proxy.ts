@@ -7,7 +7,7 @@ import { activeLock, lockAllows, lockHome } from "@/lib/ultraFocus";
 /**
  * Two jobs, both before a page renders.
  *
- * Ultra focus (lib/ultraFocus.ts): while Studio is locked to a course, any
+ * Rapt Mode (lib/ultraFocus.ts): while Studio is locked to a course, any
  * page outside it - home, the calendar, Livio, another course - redirects to
  * the locked course's page. Here rather than in the browser so a reload, a
  * typed address or a bookmark gets the same answer. Client-side navigations

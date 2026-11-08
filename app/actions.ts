@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notionDoneSync } from "@/lib/notionSync";
 import { db } from "@/lib/db";
-import { activeLock, LOCK_MAX_MINUTES, pausedTotalAfterResume, studiedMs } from "@/lib/ultraFocus";
+import { activeLock, LOCK_MAX_MINUTES, LOCK_MIN_MINUTES, pausedTotalAfterResume, studiedMs } from "@/lib/ultraFocus";
 import { DEFAULT_ITEMS, isStudyLocation } from "@/lib/types";
 import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
@@ -283,7 +283,7 @@ export async function resumeTimer() {
 }
 
 /**
- * Ultra focus: lock Studio to one course (or the project) for `minutes`.
+ * Rapt Mode (ultra focus): lock Studio to one course (or the project) for `minutes`.
  * Starts the session if none is running, and resumes it if it's paused -
  * this is the moment to study. There's no "unlock": it ends when the time
  * is up or the session does (stopping or discarding deletes the timer, and
@@ -293,13 +293,13 @@ export async function startUltraFocus(courseId: string, minutes: number) {
   const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true } });
   if (!course) return { ok: false as const, error: "That course doesn't exist." };
   const m = Math.round(minutes);
-  if (!Number.isFinite(m) || m < 5 || m > LOCK_MAX_MINUTES) {
-    return { ok: false as const, error: `Pick between 5 minutes and ${LOCK_MAX_MINUTES / 60} hours.` };
+  if (!Number.isFinite(m) || m < LOCK_MIN_MINUTES || m > LOCK_MAX_MINUTES) {
+    return { ok: false as const, error: `Pick between ${LOCK_MIN_MINUTES} minutes and ${LOCK_MAX_MINUTES / 60} hours.` };
   }
   const now = new Date();
   const lockUntil = new Date(now.getTime() + m * 60_000);
   const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
-  if (activeLock(t, now)) return { ok: false as const, error: "Ultra focus is already on." };
+  if (activeLock(t, now)) return { ok: false as const, error: "Rapt Mode is already on." };
   if (!t) {
     await db.activeTimer.create({ data: { id: "singleton", startedAt: now, lockCourseId: course.id, lockUntil } });
   } else {

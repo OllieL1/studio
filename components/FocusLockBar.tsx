@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * What stands in for the nav while ultra focus is on: what Studio is locked
+ * What stands in for the nav while Rapt Mode (ultra focus) is on: what Studio is locked
  * to, and how long is left. Nothing to click but the way back to the locked
  * page. When the time runs out it refreshes, the server sees no lock, and
  * the full Studio comes back.
@@ -50,7 +50,7 @@ export function FocusLockBar({
             <circle cx="8" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.4" />
             <circle cx="8" cy="8" r="1" fill="currentColor" />
           </svg>
-          Ultra focus
+          Rapt Mode
           <span className="font-num text-[13px] font-semibold text-n-800 tabular-nums">{fmtLeft(left)}</span>
           left
         </span>

@@ -64,7 +64,7 @@ export default async function RootLayout({
     getDueSoon(),
   ]);
   const calendarConnected = !!googleAuth;
-  // Ultra focus: the locked course, if a lock is on. The proxy keeps every
+  // Rapt Mode (ultra focus): the locked course, if a lock is on. The proxy keeps every
   // other page out of reach; this strips the shell down to the page itself.
   const lock = activeLock(timer);
   const lockCourse = lock ? courses.find((c) => c.id === lock.courseId) : undefined;
@@ -99,7 +99,7 @@ export default async function RootLayout({
             {children}
           </main>
           {/* Search, quick-add, the last lecture and the queue all lead
-              elsewhere - none of them while ultra focus is on. */}
+              elsewhere - none of them while Rapt Mode is on. */}
           {!lock && (
             <>
               <CommandPalette />

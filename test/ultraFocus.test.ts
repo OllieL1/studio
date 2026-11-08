@@ -1,6 +1,6 @@
 /** Pausing and ultra focus: studied time excludes pauses; the lock keeps you on one course's pages. */
 import assert from "node:assert/strict";
-import { activeLock, lockAllows, lockHome, pausedTotalAfterResume, studiedMs } from "../lib/ultraFocus";
+import { activeLock, fmtLockLength, lockAllows, lockHome, parseDuration, pausedTotalAfterResume, studiedMs } from "../lib/ultraFocus";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -44,6 +44,23 @@ test("the project lock allows everything under /project", () => {
   for (const p of ["/project", "/project/nexus/n1", "/project/meetings/m1", "/courses/p1"]) assert.equal(lockAllows(p, c), "yes", p);
   assert.equal(lockAllows("/projects", c), "no");
   assert.equal(lockAllows("/", c), "no");
+});
+
+test("typed lengths, however they're written", () => {
+  const cases: [string, number | null][] = [
+    ["75", 75], ["75m", 75], ["75 min", 75], ["75 minutes", 75],
+    ["2h", 120], ["2 hours", 120], ["1.5h", 90], ["1h 15", 75], ["1h15", 75], ["1h 15m", 75], ["1 hour 15 minutes", 75], ["1:15", 75],
+    [" 1H 5M ", 65],
+    ["", null], ["h", null], ["abc", null], ["1h x", null], ["-5", null], ["15 h 2 h", null],
+  ];
+  for (const [input, want] of cases) assert.equal(parseDuration(input), want, JSON.stringify(input));
+});
+
+test("lengths read back simply", () => {
+  assert.equal(fmtLockLength(25), "25m");
+  assert.equal(fmtLockLength(90), "90m");
+  assert.equal(fmtLockLength(75), "1h 15m");
+  assert.equal(fmtLockLength(120), "2h");
 });
 
 let failed = 0;

@@ -20,9 +20,10 @@ type CourseLink = { id: string; name: string; shortName: string; colour: string;
  * closing the tab, reloading or a crash can't lose or drift the session.
  *
  * Pausing stops the clock without ending the session; the pause comes off
- * what's logged. Ultra focus, full screen and pause sit behind one modes
- * button (SessionModes.tsx). Under ultra focus the discard button goes: the
- * way out is ending the session properly, or the time running out.
+ * what's logged. Rapt Mode, full screen and pause sit behind one modes
+ * button (SessionModes.tsx). Under Rapt Mode the bar's discard button goes;
+ * the way out is the time running out or ending the session from the stop
+ * dialog, which can log it or discard it.
  */
 export function TimerBar({
   startedAt,
