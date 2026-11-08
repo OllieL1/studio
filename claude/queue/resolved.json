@@ -54,5 +54,13 @@
     "status": "done",
     "note": "The Markdown view's text box now grows with the note instead of stopping at a fixed 60% of the screen and scrolling inside itself - that inner scroll was the 'random' cut-off. The page scrolls instead, so the whole note is always there to read and select. A short note still gets a box that reaches the bottom of the screen, so there's room to write. This is the one editor behind lecture notes, Nexus notes and task and todo notes, so it applies to all of them; the smaller markdown fields (meeting agendas, paper and reading notes) grow the same way but start at their own small size rather than filling the screen.",
     "at": "2026-11-08T00:44:39.820Z"
+  },
+  {
+    "id": "cmw73s1xc000015gsg524drgt",
+    "number": 8,
+    "title": "Allow the creation of a focus mode. This is where I am studying and I want to go into ultra focus mode. Studio becomes ultra minimal and only gives me access to the task I have picked i.e. only the project page, or only a course page with its lecture. Upon selection of the task, I select an amount o",
+    "status": "done",
+    "note": "Focus mode is in, behind one new button on the timer bar - the three dots where the full-screen button was. Click it and three options fan out above the bar: Ultra focus, Full screen and Pause.\n\nUltra focus: pick what to lock to (the Project or any course) and for how long (25m, 50m, 1h30 or 2h), then Start ultra focus. Studio jumps to that page and strips down to it: the nav, search (⌘K), quick-add, the due-soon banner, the last-lecture shortcut and the ⌥Q queue all disappear, and a slim bar at the top shows what you're locked to and the time left. A course lock allows its page and its own lectures and tasks; the Project lock allows everything under Project. Anything else - home, the calendar, another course, Livio - sends you straight back, whether you click a link, type the address or reload; that's checked on the server, so there's no way round it in the browser. It lifts on its own when the time runs out, or when you end the session with the stop button. The discard button is hidden while it's on, so ending means logging the session.\n\nPause: stops the clock without ending the session. The timer shows PAUSED and the dot becomes a play button to resume (or use Resume in the menu, or ⌥S). Paused time is never counted - it comes off the session when you log it.\n\nFull screen is the same studying view as before, just moved into the menu.\n\nCaveat: pausing doesn't stop the ultra-focus countdown - the lock is wall-clock time.",
+    "at": "2026-11-08T00:55:04.049Z"
   }
 ]
