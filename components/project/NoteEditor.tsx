@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { isModeToggle, MODE_SHORTCUT } from "@/lib/editor/shortcuts";
 import { pdfTab } from "@/lib/pdfTab";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -14,7 +15,7 @@ import { clsx } from "@/lib/clsx";
  * the lectures use - so `[` inserts blocks and `@` mentions papers, tags,
  * tasks and meetings.
  *
- * It borrows the lectures' two shortcuts as well: ⌘⇧M flips between Live and
+ * It borrows the lectures' two shortcuts as well: ⌥M flips between Live and
  * Markdown, and ⌘. is focus mode - the note alone, full screen, with the
  * title and controls tucked into a strip that appears when the pointer
  * nears the top.
@@ -54,9 +55,8 @@ export function NoteEditor({
         e.preventDefault();
         toggleMinimal();
       }
-      // ⌘⇧M, not ⌘/ - that's quick-add everywhere. By physical key, since
-      // Shift changes e.key.
-      if (mod && e.shiftKey && e.code === "KeyM") {
+      // ⌥M (or ⌘⇧M where the browser allows) - lib/editor/shortcuts.ts.
+      if (isModeToggle(e)) {
         e.preventDefault();
         setRaw((r) => !r);
       }
@@ -121,7 +121,7 @@ export function NoteEditor({
           key={label}
           onClick={() => setRaw(mode)}
           aria-pressed={raw === mode}
-          title={`${label} (⌘⇧M)`}
+          title={`${label} (${MODE_SHORTCUT})`}
           className={clsx(
             "flex h-full items-center rounded-[5px] px-2 text-[11px] font-semibold transition-colors duration-[120ms]",
             raw === mode ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50 hover:text-n-800",

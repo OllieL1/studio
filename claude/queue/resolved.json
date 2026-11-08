@@ -38,5 +38,13 @@
     "status": "done",
     "note": "The home page's key stats (Today, This week, Streak, Avg focus) now always read on one line each - labels, numbers and the line underneath. Two changes: when there isn't room for them beside Overall progress, they drop below it at full width instead of squeezing into narrow columns (which is what wrapped 'This week', 'Avg focus' and '0 sessions logged'), and they sit two-by-two below about 768px wide. The numbers also scale down a little with their column, so a long one like '38h 05m' shrinks rather than breaking. Checked from phone width up to 1440px with long values filled in.",
     "at": "2026-11-07T13:09:28.393Z"
+  },
+  {
+    "id": "cmw72yq3f00b515og02v8ash7",
+    "number": 6,
+    "title": "The keyboards shortcut does not seem to be working for changing between live and markdown in the task md file.",
+    "status": "done",
+    "note": "⌥M now switches between Live and Markdown - in task and todo notes, Nexus notes, lectures, and the smaller markdown fields. The old ⌘⇧M / Ctrl-Shift-M wasn't broken in Studio: Chrome and Edge keep that combination for their profile menu, so the page never saw the keypress. ⌘⇧M still works where the browser lets it through, and the Live / Markdown buttons' tooltips now say ⌥M.",
+    "at": "2026-11-08T00:43:47.301Z"
   }
 ]
