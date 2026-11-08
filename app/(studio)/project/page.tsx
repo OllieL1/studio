@@ -27,6 +27,7 @@ import { WeightEditor } from "@/components/WeightEditor";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
 import { GitHubTab, GitHubTabSkeleton } from "@/components/project/GitHubTab";
+import { ClaudeTab } from "@/components/project/ClaudeTab";
 import { syncLinkedIssues } from "@/lib/githubData";
 import { parseRepo } from "@/lib/repos";
 
@@ -37,6 +38,7 @@ const TABS = [
   { key: "meetings", label: "Meetings" },
   { key: "research", label: "Research" },
   { key: "nexus", label: "Nexus" },
+  { key: "claude", label: "Claude" },
   { key: "tasks", label: "Tasks" },
   { key: "github", label: "GitHub" },
 ] as const;
@@ -239,6 +241,12 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
       )}
 
       {tab === "nexus" && nexus && <NexusGallery notes={nexus} tags={tagNames} />}
+
+      {tab === "claude" && (
+        <Suspense fallback={<GitHubTabSkeleton />}>
+          <ClaudeTab />
+        </Suspense>
+      )}
 
       {tab === "tasks" && <ProjectTasks courseId={course.id} tasks={tasks} googleConnected={googleConnected} />}
 

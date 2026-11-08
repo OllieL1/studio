@@ -223,6 +223,50 @@ Linking an already-closed issue ticks nothing, and a task you untick stays
 unticked. A reopened issue never unticks a task. The check runs after the home
 and project pages have been sent, and when a task page opens.
 
+## The Claude knowledge base
+
+**Project → Claude** is a set of markdown docs for Claude to read at the start
+of a session - how you work, what each project is, decisions already made.
+They live in their **own private repo** (not this one, not the database), so
+any Claude session on any machine can read them, and Claude can edit them too.
+
+| | |
+|---|---|
+| **Browse** | The Nexus browser: gallery or tree, search, folder chips. Folders are the repo's real directories - type `work/how-i-work` to make one. |
+| **Edit** | The lectures' editor, without `@` mentions (they'd mean nothing to Claude). Each save is a **commit** - after five quiet seconds, on ⌘S, or on leaving the page. Rename (or move, with a `/`) is one commit too. |
+| **INDEX.md** | Rewritten in the same commit as every save: one line per doc - title and first sentence - grouped by folder. Don't edit it; it isn't listed. |
+| **Conflicts** | Each save names the version it was opened at. If the doc changed on GitHub meanwhile (Claude pushed from a session), nothing is overwritten: **Use GitHub's version** or **Keep mine**. |
+
+**Setup.** Paste the repo on the tab, with a token of its own: the main GitHub
+token is fine-grained to `uog-cose` and can't see a personal repo. Make a
+fine-grained token with *you* as resource owner, **only** the KB repo selected,
+and **Contents: Read and write**. It's stored in `Preference.kbToken`, so it
+follows the stick. Reads are cached by sha (commits, trees and blobs never
+change), so after the first visit a load costs one request for the branch head,
+and the tab still opens offline.
+
+**How Claude reads it.** Clone it once per machine, then let a SessionStart
+hook pull it and print the index into every session:
+
+```bash
+git clone git@github.com:OllieL1/kb.git ~/kb
+```
+
+```jsonc
+// ~/.claude/settings.json
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "git -C ~/kb pull -q --ff-only 2>/dev/null; cat ~/kb/INDEX.md 2>/dev/null" }] }
+    ]
+  }
+}
+```
+
+Only the index goes into context; Claude opens the docs a task needs from
+`~/kb`. In a cloud session, a line in the project's `CLAUDE.md` - "clone
+OllieL1/kb and read INDEX.md" - does the same.
+
 ## Spotify
 
 What's playing sits beside the timer. Read-only — it can't control playback.

@@ -57,6 +57,9 @@ type Props = {
   autoFocus?: boolean;
   onSavedChange?: (saved: boolean) => void;
   placeholder?: string;
+  /** `@` opens the mention menu. Off where the markdown is read outside
+   *  Studio (the Claude knowledge base), and a mention would mean nothing. */
+  mentions?: boolean;
 };
 
 export function LiveEditor({
@@ -73,6 +76,7 @@ export function LiveEditor({
   minRows,
   eager = false,
   autoFocus = false,
+  mentions = true,
 }: Props) {
   // One split, used for both: splitting twice would mint different ids and the
   // server-rendered HTML would key against blocks that no longer exist.
@@ -558,7 +562,7 @@ export function LiveEditor({
     if (typed === "[" && atWordStart) {
       setMenu({ blockId: b.id, start: caret - 1, query: "" });
     }
-    if (typed === "@" && atWordStart) {
+    if (typed === "@" && atWordStart && mentions) {
       setMention({ blockId: b.id, start: caret - 1, query: "" });
     }
   };

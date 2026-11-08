@@ -13,7 +13,8 @@ export type NoteItem = {
   id: string;
   title: string;
   pinned: boolean;
-  updatedAt: Date;
+  /** Null where it isn't known - a knowledge-base doc read from git. */
+  updatedAt: Date | null;
   tags: string[];
   excerpt: string;
   words: number;
@@ -37,7 +38,7 @@ export type Tree = {
 };
 
 const newestFirst = (a: NoteItem, b: NoteItem) =>
-  Number(b.pinned) - Number(a.pinned) || +b.updatedAt - +a.updatedAt;
+  Number(b.pinned) - Number(a.pinned) || +(b.updatedAt ?? 0) - +(a.updatedAt ?? 0);
 
 /** Tags as folders, A → Z; pinned then most recent inside each. */
 export function buildTree(items: BrowserItem[]): Tree {
@@ -89,17 +90,19 @@ export function filterItems(items: BrowserItem[], query: string, tag: string | n
 
 export type TreeRow =
   | { type: "folder"; key: string; tag: string; count: number; open: boolean }
-  | { type: "item"; key: string; item: BrowserItem; depth: 0 | 1 };
+  | { type: "item"; key: string; item: BrowserItem; depth: 0 | 1; /** The folder row's key, inside one. */ parent?: string };
 
 /** The tree as the rows on screen, top to bottom - what ↑↓ walk through.
- *  A note in two folders gets a row in each, so keys include the folder. */
+ *  A note in two folders gets a row in each, so keys include the folder.
+ *  Folder names can hold "/" (a knowledge-base path), so an item row names
+ *  its folder rather than leaving it to be cut out of the key. */
 export function visibleRows(tree: Tree, collapsed: ReadonlySet<string>): TreeRow[] {
   const rows: TreeRow[] = [];
   for (const f of tree.folders) {
     const key = `#${f.tag.toLowerCase()}`;
     const open = !collapsed.has(key);
     rows.push({ type: "folder", key, tag: f.tag, count: f.items.length, open });
-    if (open) for (const item of f.items) rows.push({ type: "item", key: `${key}/${item.id}`, item, depth: 1 });
+    if (open) for (const item of f.items) rows.push({ type: "item", key: `${key}/${item.id}`, item, depth: 1, parent: key });
   }
   for (const item of tree.root) rows.push({ type: "item", key: `/${item.kind}:${item.id}`, item, depth: 0 });
   return rows;

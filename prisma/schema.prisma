@@ -514,6 +514,13 @@ model Preference {
   sleepFrom Int     @default(0)
   sleepTo   Int     @default(480)
 
+  /// The Claude knowledge base: "owner/name" of the GitHub repo the Project
+  /// page's Claude tab reads and commits to (lib/kbData.ts), and a token for
+  /// it alone. Separate from GitHubAuth because that one is fine-grained to
+  /// the uni org and can't see a personal repo; null falls back to it.
+  kbRepo  String?
+  kbToken String?
+
   updatedAt DateTime @updatedAt
 }
 

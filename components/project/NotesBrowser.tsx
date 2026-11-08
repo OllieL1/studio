@@ -58,6 +58,9 @@ export function NotesBrowser({
   actions,
   onRemoveFile,
   empty,
+  folders = "tags",
+  pdf = true,
+  newLabel = "+ New note",
 }: {
   items: BrowserItem[];
   /** The tag chips. */
@@ -73,6 +76,12 @@ export function NotesBrowser({
   actions?: React.ReactNode;
   onRemoveFile?: (file: FileItem) => void;
   empty: { title: string; body: string };
+  /** What the tree's folders are: tags (#name), or real directories (name/)
+   *  for the knowledge base, where an item's one "tag" is its folder. */
+  folders?: FolderStyle;
+  /** The PDF export - Nexus notes only; the route reads them by id. */
+  pdf?: boolean;
+  newLabel?: string;
 }) {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string | null>(null);
@@ -95,7 +104,7 @@ export function NotesBrowser({
           disabled={creating}
           className="flex h-8 items-center rounded-md bg-rust-500 px-3 text-[12.5px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600 disabled:opacity-50"
         >
-          {creating ? "Creating…" : "+ New note"}
+          {creating ? "Creating…" : newLabel}
         </button>
         {actions}
         <input
@@ -105,7 +114,7 @@ export function NotesBrowser({
           aria-label="Search"
           className="h-8 w-[220px] rounded-md border border-n-200 bg-n-0 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
         />
-        {notes.length > 0 && (
+        {pdf && notes.length > 0 && (
           <a
             href={pdfTab(`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`, "Notes")}
             target="_blank"
@@ -129,7 +138,7 @@ export function NotesBrowser({
                   : "border-n-200 text-n-600 hover:bg-n-50",
               )}
             >
-              #{t}
+              {folderLabel(t, folders)}
             </button>
           ))}
         </div>
@@ -161,13 +170,19 @@ export function NotesBrowser({
           />
         </Card>
       ) : view === "gallery" ? (
-        <Gallery items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} />
+        <Gallery items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} folders={folders} />
       ) : (
-        <TreeView items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} storageKey={storageKey} />
+        <TreeView items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} storageKey={storageKey} folders={folders} />
       )}
     </div>
   );
 }
+
+type FolderStyle = "tags" | "paths";
+const folderLabel = (name: string, style: FolderStyle) => (style === "paths" ? `${name}/` : `#${name}`);
+
+/** When it was last touched, or - where that isn't known - how long it is. */
+const noteMeta = (n: NoteItem) => (n.updatedAt ? fmtAgo(n.updatedAt) : `${n.words} word${n.words === 1 ? "" : "s"}`);
 
 /* ── Files ───────────────────────────────────────────────────────────────── */
 
@@ -218,10 +233,12 @@ function Gallery({
   items,
   noteHref,
   onRemoveFile,
+  folders,
 }: {
   items: BrowserItem[];
   noteHref: (id: string) => string;
   onRemoveFile?: (f: FileItem) => void;
+  folders: FolderStyle;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -249,10 +266,10 @@ function Gallery({
               <FileBadge ext="md" />
               {n.tags.slice(0, 3).map((t) => (
                 <span key={t} className="rounded-full bg-info-soft px-1.5 py-px text-[10.5px] font-medium text-info">
-                  #{t}
+                  {folderLabel(t, folders)}
                 </span>
               ))}
-              <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtAgo(n.updatedAt)}</span>
+              <span className="font-num ml-auto text-[10.5px] text-n-400">{noteMeta(n)}</span>
             </div>
           </Link>
         ) : (
@@ -306,11 +323,13 @@ function TreeView({
   noteHref,
   onRemoveFile,
   storageKey,
+  folders,
 }: {
   items: BrowserItem[];
   noteHref: (id: string) => string;
   onRemoveFile?: (f: FileItem) => void;
   storageKey: string;
+  folders: FolderStyle;
 }) {
   const collapsedKey = `${storageKey}.collapsed`;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -359,10 +378,10 @@ function TreeView({
         return;
       case "ArrowLeft":
         if (row?.type === "folder" && row.open) { e.preventDefault(); toggle(row.key, false); }
-        else if (row?.type === "item" && row.depth === 1) {
+        else if (row?.type === "item" && row.parent) {
           // From inside a folder, ← goes up to the folder.
           e.preventDefault();
-          setActive(row.key.slice(0, row.key.indexOf("/")));
+          setActive(row.parent);
         }
         return;
       case "Enter":
@@ -408,7 +427,7 @@ function TreeView({
                 ▶
               </span>
               <FolderIcon open={row.open} />
-              <span className="min-w-0 flex-1 truncate font-medium text-n-700">#{row.tag}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-n-700">{folderLabel(row.tag, folders)}</span>
               <span className="font-num text-[11px] text-n-400">{row.count}</span>
             </button>
           );
@@ -428,7 +447,7 @@ function TreeView({
               <span aria-label="Pinned" title="Pinned" className="shrink-0 text-[10px] text-rust-500">●</span>
             )}
             <span className="font-num shrink-0 text-[11px] text-n-400">
-              {item.kind === "note" ? fmtAgo(item.updatedAt) : fmtBytes(item.size)}
+              {item.kind === "note" ? noteMeta(item) : fmtBytes(item.size)}
             </span>
             {item.kind === "file" && onRemoveFile && <RemoveButton file={item} onRemove={onRemoveFile} />}
           </>
