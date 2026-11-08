@@ -20,6 +20,8 @@ export type NoteItem = {
   words: number;
   /** The file's name, shown beside the word count - a knowledge-base doc. */
   file?: string;
+  /** Uncommitted edits to it - a knowledge-base doc with a draft. */
+  change?: { state: "modified" | "added" | "behind"; added: number; removed: number };
 };
 
 export type FileItem = {
@@ -100,7 +102,7 @@ export function filterItems(items: BrowserItem[], query: string, tag: string | n
 }
 
 export type TreeRow =
-  | { type: "folder"; key: string; tag: string; count: number; open: boolean }
+  | { type: "folder"; key: string; tag: string; count: number; open: boolean; /** Something inside is uncommitted. */ changed: boolean }
   | { type: "item"; key: string; item: BrowserItem; depth: 0 | 1; /** The folder row's key, inside one. */ parent?: string };
 
 /** The tree as the rows on screen, top to bottom - what ↑↓ walk through.
@@ -112,7 +114,7 @@ export function visibleRows(tree: Tree, collapsed: ReadonlySet<string>): TreeRow
   for (const f of tree.folders) {
     const key = `#${f.tag.toLowerCase()}`;
     const open = !collapsed.has(key);
-    rows.push({ type: "folder", key, tag: f.tag, count: f.items.length, open });
+    rows.push({ type: "folder", key, tag: f.tag, count: f.items.length, open, changed: f.items.some((i) => !!i.change) });
     if (open) for (const item of f.items) rows.push({ type: "item", key: `${key}/${item.id}`, item, depth: 1, parent: key });
   }
   for (const item of tree.root) rows.push({ type: "item", key: `/${item.kind}:${item.id}`, item, depth: 0 });

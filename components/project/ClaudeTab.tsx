@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { describeGitHubError } from "@/lib/github";
-import { kbHasToken, kbRepo, listKb, type KbListing } from "@/lib/kbData";
+import { kbHasToken, kbRepo, listChanges, listKbWithFiles, type KbChangeSummary, type KbListing } from "@/lib/kbData";
 import { baseNameOf, folderOf, summaryOf, titleOf, wordCount } from "@/lib/kb";
 import { fmtAgo } from "@/lib/dates";
 import { Card, EmptyState } from "@/components/ui";
@@ -47,8 +47,11 @@ export async function ClaudeTab() {
   }
 
   let kb: KbListing;
+  let changes: KbChangeSummary[];
   try {
-    kb = await listKb(kbConfig);
+    const listing = await listKbWithFiles(kbConfig);
+    kb = listing;
+    changes = await listChanges(kbConfig, listing.files);
   } catch (e) {
     return (
       <Card className="p-5">
@@ -58,25 +61,36 @@ export async function ClaudeTab() {
     );
   }
 
+  const byPath = new Map(changes.map((c) => [c.path, c]));
+  const card = (path: string, body: string) => {
+    const folder = folderOf(path);
+    const c = byPath.get(path);
+    return {
+      id: path,
+      title: titleOf(path, body),
+      pinned: false,
+      updatedAt: null,
+      tags: folder ? [folder] : [],
+      excerpt: summaryOf(body),
+      words: wordCount(body),
+      file: baseNameOf(path),
+      change: c ? { state: c.state, added: c.added, removed: c.removed } : undefined,
+    };
+  };
+  const onGitHub = new Set(kb.docs.map((d) => d.path));
+
   return (
     <ClaudeKb
       repo={kb.repo}
+      changes={changes}
       hasToken={!!kbConfig.token}
       branch={kb.branch}
       stale={kb.stale ? fmtAgo(kb.fetchedAt) : null}
-      docs={kb.docs.map((d) => {
-        const folder = folderOf(d.path);
-        return {
-          id: d.path,
-          title: titleOf(d.path, d.body),
-          pinned: false,
-          updatedAt: null,
-          tags: folder ? [folder] : [],
-          excerpt: summaryOf(d.body),
-          words: wordCount(d.body),
-          file: baseNameOf(d.path),
-        };
-      })}
+      docs={[
+        // A draft shows what you'll commit; a new doc is only a draft so far.
+        ...kb.docs.map((d) => card(d.path, byPath.get(d.path)?.after ?? d.body)),
+        ...changes.filter((c) => !onGitHub.has(c.path)).map((c) => card(c.path, c.after)),
+      ]}
     />
   );
 }

@@ -60,6 +60,9 @@ type Props = {
   /** `@` opens the mention menu. Off where the markdown is read outside
    *  Studio (the Claude knowledge base), and a mention would mean nothing. */
   mentions?: boolean;
+  /** Every change as it happens, unsaved - for something drawn live from
+   *  the text (the knowledge base's diff). Saving still goes through onSave. */
+  onChange?: (markdown: string) => void;
 };
 
 export function LiveEditor({
@@ -77,6 +80,7 @@ export function LiveEditor({
   eager = false,
   autoFocus = false,
   mentions = true,
+  onChange,
 }: Props) {
   // One split, used for both: splitting twice would mint different ids and the
   // server-rendered HTML would key against blocks that no longer exist.
@@ -113,6 +117,9 @@ export function LiveEditor({
   const enterRow = useCallback((id: string, caret: number) => rowHandlers.current.enter(id, caret), []);
 
   const markdown = useMemo(() => (raw ? rawText : joinBlocks(blocks)), [raw, rawText, blocks]);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => onChangeRef.current?.(markdown), [markdown]);
 
   /**
    * The blocks array lives in a ref as well as in state.

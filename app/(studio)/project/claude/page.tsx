@@ -2,7 +2,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { describeGitHubError } from "@/lib/github";
-import { kbRepo, readKbDoc } from "@/lib/kbData";
+import { getDraft, kbBlob, kbBranch, kbRepo, listChanges, readKbDoc } from "@/lib/kbData";
 import { splitBlocks } from "@/lib/editor/blocks";
 import { renderMarkdown } from "@/lib/markdown";
 import { Card, EmptyState } from "@/components/ui";
@@ -10,7 +10,11 @@ import { KbEditor } from "@/components/project/KbEditor";
 
 export const dynamic = "force-dynamic";
 
-/** One doc in the Claude knowledge base, by its path in the repo (`?path=`). */
+/**
+ * One doc in the Claude knowledge base, by its path in the repo (`?path=`):
+ * what GitHub has, with the uncommitted draft over it when there is one. A
+ * new doc is only a draft until its first commit.
+ */
 export default async function KbDocPage({ searchParams }: { searchParams: Promise<{ path?: string }> }) {
   const { path } = await searchParams;
   const kb = await kbRepo();
@@ -23,9 +27,16 @@ export default async function KbDocPage({ searchParams }: { searchParams: Promis
     </Link>
   );
 
+  const draft = await getDraft(kb, path);
   let doc: Awaited<ReturnType<typeof readKbDoc>>;
+  let baseBody: string;
+  let changes: Awaited<ReturnType<typeof listChanges>>;
+  let branch: string;
   try {
     doc = await readKbDoc(kb, path);
+    branch = doc?.branch ?? (await kbBranch(kb));
+    baseBody = draft ? (draft.base ? await kbBlob(kb, draft.base) : "") : (doc?.body ?? "");
+    changes = await listChanges(kb);
   } catch (e) {
     return (
       <div className="space-y-5">
@@ -34,7 +45,7 @@ export default async function KbDocPage({ searchParams }: { searchParams: Promis
       </div>
     );
   }
-  if (!doc) {
+  if (!doc && !draft) {
     return (
       <div className="space-y-5">
         {back}
@@ -43,12 +54,24 @@ export default async function KbDocPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  const initialHtml = splitBlocks(doc.body).map((b) => (b.text.trim() ? renderMarkdown(b.text) : ""));
+  const text = draft?.body ?? doc!.body;
+  const initialHtml = splitBlocks(text).map((b) => (b.text.trim() ? renderMarkdown(b.text) : ""));
   return (
     <div className="space-y-5">
       {back}
-      {doc.stale && <p className="text-[12px] text-warn">Offline - this is the last copy Studio saw. Saving needs GitHub.</p>}
-      <KbEditor key={doc.path} doc={{ path: doc.path, sha: doc.sha, body: doc.body }} initialHtml={initialHtml} repo={repo} branch={doc.branch} />
+      {doc?.stale && <p className="text-[12px] text-warn">Offline - this is the last copy Studio saw. Your edits still save; committing needs GitHub.</p>}
+      <KbEditor
+        key={path}
+        path={path}
+        repo={repo}
+        branch={branch}
+        committed={doc ? { sha: doc.sha, body: doc.body } : null}
+        base={draft ? draft.base : (doc?.sha ?? null)}
+        baseBody={baseBody}
+        text={text}
+        initialHtml={initialHtml}
+        others={changes.filter((c) => c.path !== path).map(({ path, state, added, removed }) => ({ path, state, added, removed }))}
+      />
     </div>
   );
 }

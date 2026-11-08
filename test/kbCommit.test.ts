@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { db } from "../lib/db";
-import { commitKb, listKb, readKbDoc, type Kb } from "../lib/kbData";
+import { commitKb, listChanges, listKb, readKbDoc, saveDraft, type Kb } from "../lib/kbData";
 import { blobSha } from "../lib/blobSha";
 
 const REPO = "__studio-test__/kb";
@@ -109,7 +109,10 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
 const tests: [string, () => Promise<void>][] = [];
 const test = (n: string, f: () => Promise<void>) => tests.push([n, f]);
-const clearCache = () => db.gitHubCache.deleteMany({ where: { key: { startsWith: `/repos/${REPO}` } } });
+const clearCache = async () => {
+  await db.gitHubCache.deleteMany({ where: { key: { startsWith: `/repos/${REPO}` } } });
+  await db.kbDraft.deleteMany({ where: { repo: REPO } });
+};
 
 test("a new doc lands in one commit, and nothing else is written", async () => {
   reset({ "README.md": "# KB\n\nWhat this is.", "INDEX.md": "# How to Read\n\nHand-written." });
@@ -137,7 +140,7 @@ test("a doc that changed on GitHub isn't overwritten", async () => {
   pushElsewhere("work/how.md", "# How I work\n\nClaude's edit.");
   const before = ref;
   const r = await commitKb(KB, [{ path: "work/how.md", content: "mine" }], "edit", { "work/how.md": opened });
-  assert.ok(!r.ok && r.conflict === "work/how.md");
+  assert.ok(!r.ok && r.conflicts?.[0] === "work/how.md");
   assert.equal(ref, before);
   assert.equal(content("work/how.md"), "# How I work\n\nClaude's edit.");
 });
@@ -183,6 +186,45 @@ test("a token that can't write says what it needs", async () => {
   const r = await commitKb(KB, [{ path: "x.md", content: "x" }], "add", { "x.md": null });
   assert.ok(!r.ok && /Contents: read and write/.test(r.error));
   refuseWrites = null;
+});
+
+test("several docs go in one commit; every conflict is named, and nothing lands", async () => {
+  reset({ "a.md": "A", "b.md": "B", "c.md": "C" });
+  const sha = (p: string) => filesAt().get(p)!;
+  const shas = { a: sha("a.md"), b: sha("b.md"), c: sha("c.md") };
+  pushElsewhere("b.md", "B from Claude");
+  pushElsewhere("c.md", "C from Claude");
+  const before = ref;
+  const r = await commitKb(KB, [{ path: "a.md", content: "A2" }, { path: "b.md", content: "B2" }, { path: "c.md", content: "C2" }], "all", { "a.md": shas.a, "b.md": shas.b, "c.md": shas.c });
+  assert.ok(!r.ok);
+  assert.deepEqual(r.conflicts, ["b.md", "c.md"]);
+  assert.equal(ref, before);
+  const ok = await commitKb(KB, [{ path: "a.md", content: "A2" }, { path: "b.md", content: "B2" }], "two", { "a.md": shas.a });
+  assert.ok(ok.ok);
+  assert.equal(commits.get(ref)!.parents[0], before, "one commit on top");
+  assert.equal(content("a.md"), "A2");
+  assert.equal(content("b.md"), "B2");
+});
+
+test("drafts: listed with their state and +/−, dropped when typed back to the original", async () => {
+  reset({ "a.md": "one\ntwo\n", "b.md": "B" });
+  await clearCache();
+  const a = filesAt().get("a.md")!;
+  const b = filesAt().get("b.md")!;
+  pushElsewhere("b.md", "B from Claude"); // Claude pushes after b's edit started
+  // The branch head is cached; a real visit asks again after 20s.
+  await db.gitHubCache.deleteMany({ where: { key: { startsWith: `/repos/${REPO}` } } });
+  await saveDraft(KB, "a.md", a, "one\n2\nthree\n");
+  await saveDraft(KB, "new.md", null, "# New\n");
+  await saveDraft(KB, "b.md", b, "B edited");
+  const list = await listChanges(KB);
+  assert.deepEqual(list.map((c) => [c.path, c.state, c.added, c.removed]), [
+    ["a.md", "modified", 2, 1],
+    ["b.md", "behind", 1, 1],
+    ["new.md", "added", 1, 0],
+  ]);
+  await saveDraft(KB, "a.md", a, "one\ntwo\n");
+  assert.deepEqual((await listChanges(KB)).map((c) => c.path), ["b.md", "new.md"]);
 });
 
 (async () => {

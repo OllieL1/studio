@@ -1,13 +1,21 @@
 "use client";
 
 import type { Route } from "next";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { createKbDoc, setKbRepo } from "@/app/kbActions";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { createKbDoc, discardKbDraft, setKbRepo } from "@/app/kbActions";
 import { docHref } from "@/lib/kb";
 import { repoUrl } from "@/lib/repos";
 import type { NoteItem } from "@/lib/noteTree";
+import type { ChangeState } from "@/lib/kbData";
 import { NotesBrowser, useStoredView } from "./NotesBrowser";
+import { DiffStatsLabel, KbDiff, useDiff } from "./KbDiff";
+import { KbCommitDialog } from "./KbCommitDialog";
+import { clsx } from "@/lib/clsx";
+
+/** An uncommitted doc, with both sides of its diff. */
+export type KbChangeRow = { path: string; state: ChangeState; added: number; removed: number; before: string; after: string };
 
 export type KbCard = Omit<NoteItem, "kind">;
 
@@ -19,18 +27,23 @@ const button =
 /**
  * The knowledge base as a gallery or a tree - Nexus's browser, with the
  * repo's real folders where Nexus has tags. Every doc's id is its path.
+ *
+ * Uncommitted docs are marked in both views (+added −removed) and listed in
+ * a bar above, each opening to its diff. ⌘S here commits them all at once.
  */
 export function ClaudeKb({
   repo,
   branch,
   stale,
   docs,
+  changes,
   hasToken,
 }: {
   repo: string;
   branch: string;
   stale: string | null;
   docs: KbCard[];
+  changes: KbChangeRow[];
   /** Whether the repo has its own token, rather than the main GitHub one. */
   hasToken: boolean;
 }) {
@@ -43,6 +56,19 @@ export function ClaudeKb({
   const folders = useMemo(() => [...new Set(docs.flatMap((d) => d.tags))].sort(), [docs]);
   /** The chips are the top-level folders; each takes in its subfolders. */
   const chips = useMemo(() => [...new Set(folders.map((f) => f.split("/")[0]))], [folders]);
+  const [committing, setCommitting] = useState(false);
+
+  // ⌘S anywhere on the tab: commit everything uncommitted, together.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (changes.length) setCommitting(true);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [changes.length]);
 
   return (
     <div className="space-y-3">
@@ -51,13 +77,25 @@ export function ClaudeKb({
           {repo} ↗
         </a>
         <span className="font-num text-n-400">{branch}</span>
-        <span>⌘S in a doc commits it, with your message.</span>
+        <span>Edits stay uncommitted until ⌘S.</span>
         {stale && <span className="text-warn">Offline - showing what GitHub said {stale}.</span>}
         <button onClick={() => setChangingRepo((c) => !c)} className="ml-auto font-medium text-n-500 hover:text-rust-600">
           {changingRepo ? "Cancel" : "Change repo"}
         </button>
       </div>
       {changingRepo && <div className="max-w-[460px]"><KbRepoForm current={repo} hasToken={hasToken} onDone={() => setChangingRepo(false)} /></div>}
+      {changes.length > 0 && <UncommittedBar changes={changes} onCommit={() => setCommitting(true)} />}
+      {committing && (
+        <KbCommitDialog
+          files={changes}
+          ticked={changes.map((c) => c.path)}
+          repo={repo}
+          branch={branch}
+          onCommitted={() => { setCommitting(false); router.refresh(); }}
+          onTookTheirs={() => router.refresh()}
+          onClose={() => setCommitting(false)}
+        />
+      )}
       {naming && <NewDocForm folders={folders} onCancel={() => setNaming(false)} onCreated={(path) => router.push(docHref(path) as Route)} />}
 
       <NotesBrowser
@@ -75,7 +113,7 @@ export function ClaudeKb({
         rememberFilter
         empty={{
           title: "The knowledge base is empty.",
-          body: "Add a doc for anything Claude should know before it starts - how you like to work, what a project is, decisions already made. Folders are just slashes in the name.",
+          body: "Add a doc for anything Claude should know before it starts - how you like to work, what a project is, decisions already made. Folders are just slashes in the name. Nothing is committed until ⌘S.",
         }}
       />
 
@@ -94,7 +132,67 @@ export function ClaudeKb({
   );
 }
 
-/** "Name or path" → a new doc, committed straight away and opened. */
+/**
+ * Every uncommitted doc, like the top of a GitHub PR's "Files changed": a
+ * row each with its +/−, opening to the diff.
+ */
+function UncommittedBar({ changes, onCommit }: { changes: KbChangeRow[]; onCommit: () => void }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const total = changes.reduce((t, c) => ({ added: t.added + c.added, removed: t.removed + c.removed }), { added: 0, removed: 0 });
+  return (
+    <div className="card overflow-hidden p-0">
+      <div className="flex items-center gap-2 border-b border-n-100 px-3 py-2">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-warn" />
+        <span className="text-[12.5px] font-semibold text-n-800">
+          Uncommitted · {changes.length} {changes.length === 1 ? "doc" : "docs"}
+        </span>
+        <DiffStatsLabel {...total} />
+        <button
+          onClick={onCommit}
+          className="ml-auto flex h-7 shrink-0 items-center rounded-md bg-rust-500 px-2.5 text-[11.5px] font-semibold text-white hover:bg-rust-600"
+        >
+          Commit all · ⌘S
+        </button>
+      </div>
+      <ul>
+        {changes.map((c) => (
+          <ChangeRow key={c.path} change={c} open={open === c.path} onToggle={() => setOpen((o) => (o === c.path ? null : c.path))} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ChangeRow({ change, open, onToggle }: { change: KbChangeRow; open: boolean; onToggle: () => void }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const { hunks } = useDiff(change.before, open ? change.after : change.before);
+  const discard = () => {
+    if (!confirm(change.state === "added" ? `Discard ${change.path}? It was never committed, so it goes entirely.` : `Discard your uncommitted changes to ${change.path}?`)) return;
+    startTransition(async () => {
+      await discardKbDraft(change.path);
+      router.refresh();
+    });
+  };
+  return (
+    <li className="border-b border-n-100 last:border-b-0">
+      <div className="group flex h-8 items-center gap-2 px-3 text-[12.5px] hover:bg-n-25">
+        <button onClick={onToggle} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span aria-hidden className={clsx("w-2.5 shrink-0 text-[9px] text-n-400 transition-transform duration-[120ms]", open && "rotate-90")}>▶</span>
+          <span className="font-num min-w-0 truncate text-n-800" title={change.path}>{change.path}</span>
+          {change.state === "added" && <span className="shrink-0 text-[10.5px] font-semibold text-ok-ink">new</span>}
+          {change.state === "behind" && <span className="shrink-0 text-[10.5px] font-semibold text-danger-ink" title="Changed on GitHub since you started - committing will ask which to keep">behind GitHub</span>}
+        </button>
+        <DiffStatsLabel added={change.added} removed={change.removed} />
+        <Link href={docHref(change.path) as Route} className="shrink-0 text-[11.5px] font-medium text-n-500 hover:text-rust-600">Open</Link>
+        <button onClick={discard} disabled={pending} className="shrink-0 text-[11.5px] font-medium text-n-400 hover:text-danger">Discard</button>
+      </div>
+      {open && <KbDiff hunks={hunks} className="max-h-[50vh] overflow-y-auto border-t border-n-100 py-1" />}
+    </li>
+  );
+}
+
+/** "Name or path" → a new doc, uncommitted until its first ⌘S, and opened. */
 function NewDocForm({ folders, onCancel, onCreated }: { folders: string[]; onCancel: () => void; onCreated: (path: string) => void }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +222,7 @@ function NewDocForm({ folders, onCancel, onCreated }: { folders: string[]; onCan
       />
       <datalist id="kb-folders">{folders.map((f) => <option key={f} value={`${f}/`} />)}</datalist>
       <button type="submit" disabled={pending || !name.trim()} className="flex h-8 shrink-0 items-center rounded-md bg-rust-500 px-3 text-[12.5px] font-semibold text-white hover:bg-rust-600 disabled:opacity-50">
-        {pending ? "Committing…" : "Create"}
+        {pending ? "Creating…" : "Create"}
       </button>
       <button type="button" onClick={onCancel} className={button}>Cancel</button>
       {error && <p className="w-full text-[12px] text-danger">{error}</p>}

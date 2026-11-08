@@ -77,6 +77,11 @@ test("a folder filter takes in subfolders, only when nested", () => {
   assert.deepEqual(filterItems(items, "", "msci-project").map((i) => i.id), ["a"]);
 });
 
+test("a folder knows when something inside is uncommitted", () => {
+  const rows = visibleRows(buildTree([{ ...note("a", ["x"]), change: { state: "modified", added: 1, removed: 0 } }, note("b", ["y"])]), new Set());
+  assert.deepEqual(rows.filter((r) => r.type === "folder").map((r) => r.type === "folder" && r.changed), [true, false]);
+});
+
 test("unknown dates sort as oldest", () => {
   const t = buildTree([{ ...note("x"), updatedAt: null }, note("y", [], 3)]);
   assert.deepEqual(t.root.map((i) => i.id), ["y", "x"]);

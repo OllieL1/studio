@@ -2,6 +2,7 @@ import { db } from "./db";
 import { describeGitHubError, forgetCached, gh, ghSend, GitHubError, githubToken } from "./github";
 import { blobSha } from "./blobSha";
 import { isDocPath, type KbChange, type KbDoc } from "./kb";
+import { diffLines, diffStats } from "./diff";
 
 /**
  * The Claude knowledge base on GitHub (lib/kb.ts says what it is).
@@ -94,7 +95,7 @@ export async function readKbDoc(kb: Kb, path: string, fresh = false): Promise<(K
 
 export type CommitResult =
   | { ok: true; shas: Record<string, string> }
-  | { ok: false; error: string; conflict?: string };
+  | { ok: false; error: string; conflicts?: string[] };
 
 /** Why a write failed, in words that say what to do about it. */
 function writeError(repo: string, e: unknown): string {
@@ -120,15 +121,21 @@ export async function commitKb(kb: Kb, changes: KbChange[], message: string, exp
       const h = await head(kb, true);
       const all = await files(kb, h.tree);
 
+      const conflicts: { path: string; why: string }[] = [];
       for (const [path, sha] of Object.entries(expect)) {
         const now = all.get(path) ?? null;
         const change = changes.find((c) => c.path === path);
         // Already exactly what we're about to write - another tab got there first.
         const same = change && !("delete" in change) && now === blobSha(change.content);
         if (now !== sha && !same) {
-          const error = sha === null ? `${path} already exists.` : now === null ? `${path} isn't on GitHub any more.` : `${path} changed on GitHub since it was opened.`;
-          return { ok: false, error, conflict: path };
+          conflicts.push({ path, why: sha === null ? "already exists" : now === null ? "isn't on GitHub any more" : "changed on GitHub since you started editing" });
         }
+      }
+      if (conflicts.length) {
+        const error = conflicts.length === 1
+          ? `${conflicts[0].path} ${conflicts[0].why}.`
+          : `${conflicts.length} docs changed on GitHub since you started editing them.`;
+        return { ok: false, error, conflicts: conflicts.map((c) => c.path) };
       }
 
       const real = changes.filter((c) => ("delete" in c ? all.has(c.path) : all.get(c.path) !== blobSha(c.content)));
@@ -162,3 +169,87 @@ export async function commitKb(kb: Kb, changes: KbChange[], message: string, exp
 
 /** A doc's current body, by the sha the caller holds - for a move. */
 export const kbBlob = blob;
+
+/* ── Drafts ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Save an uncommitted edit. `base` is the version it started from (null: a
+ * new doc). Typing back to exactly that version drops the draft - there's
+ * nothing left to commit.
+ */
+export async function saveDraft(kb: Kb, path: string, base: string | null, body: string): Promise<void> {
+  if (base && (await blob(kb, base).catch(() => null)) === body) {
+    await db.kbDraft.deleteMany({ where: { repo: kb.repo, path } });
+    return;
+  }
+  await db.kbDraft.upsert({
+    where: { repo_path: { repo: kb.repo, path } },
+    create: { repo: kb.repo, path, base, body },
+    update: { body },
+  });
+}
+
+export async function getDraft(kb: Kb, path: string) {
+  return db.kbDraft.findUnique({ where: { repo_path: { repo: kb.repo, path } } });
+}
+
+/**
+ * - modified: edited from the version on GitHub now
+ * - added: a new doc, not on GitHub yet
+ * - behind: GitHub has moved on since the edit started (Claude pushed) -
+ *   committing will ask which to keep
+ */
+export type ChangeState = "modified" | "added" | "behind";
+
+export type KbChangeSummary = {
+  path: string;
+  state: ChangeState;
+  added: number;
+  removed: number;
+  /** What the edit started from ("" for a new doc), and what it is now. */
+  before: string;
+  after: string;
+};
+
+/**
+ * Every uncommitted doc, with its diff stats - for the tree's markers, the
+ * Uncommitted bar and the commit dialog. `files` is the repo as it stands
+ * (path → sha), when the caller already has it.
+ */
+export async function listChanges(kb: Kb, files?: Map<string, string>): Promise<KbChangeSummary[]> {
+  const drafts = await db.kbDraft.findMany({ where: { repo: kb.repo }, orderBy: { path: "asc" } });
+  if (drafts.length === 0) return [];
+  const now = files ?? (await filesAtHead(kb));
+  const out: KbChangeSummary[] = [];
+  for (const d of drafts) {
+    const before = d.base ? await blob(kb, d.base).catch(() => null) : "";
+    if (before == null) continue; // the base is unreadable - offline, first visit
+    if (d.base && before === d.body) {
+      await db.kbDraft.deleteMany({ where: { repo: kb.repo, path: d.path } });
+      continue;
+    }
+    const current = now.get(d.path) ?? null;
+    const state: ChangeState = d.base === null ? (current ? "behind" : "added") : current === d.base ? "modified" : "behind";
+    const stats = diffStats(diffLines(before, d.body));
+    out.push({ path: d.path, state, ...stats, before, after: d.body });
+  }
+  return out;
+}
+
+/** The branch commits go to - the repo's default. */
+export async function kbBranch(kb: Kb): Promise<string> {
+  return (await head(kb)).branch;
+}
+
+export async function filesAtHead(kb: Kb): Promise<Map<string, string>> {
+  const h = await head(kb);
+  return files(kb, h.tree);
+}
+
+/** The repo listing and the tree of files it came from, for the tab. */
+export async function listKbWithFiles(kb: Kb): Promise<KbListing & { files: Map<string, string> }> {
+  const h = await head(kb);
+  const all = await files(kb, h.tree);
+  const docs = await bodies(kb, [...all].filter(([p]) => isDocPath(p)).sort(([a], [b]) => a.localeCompare(b)));
+  return { repo: kb.repo, branch: h.branch, docs, stale: h.stale, fetchedAt: h.fetchedAt, files: all };
+}

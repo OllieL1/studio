@@ -206,6 +206,23 @@ const folderLabel = (name: string, style: FolderStyle) => (style === "paths" ? `
 const noteMeta = (n: NoteItem) =>
   [n.updatedAt ? fmtAgo(n.updatedAt) : `${n.words} word${n.words === 1 ? "" : "s"}`, n.file].filter(Boolean).join(" · ");
 
+/** Uncommitted: a dot and GitHub's +added −removed; a new doc or one
+ *  GitHub has moved on from says so. */
+function ChangeMark({ change }: { change: NonNullable<NoteItem["change"]> }) {
+  return (
+    <span
+      className="font-num flex shrink-0 items-center gap-1 text-[10.5px] font-semibold"
+      title={change.state === "added" ? "New - not committed yet" : change.state === "behind" ? "Uncommitted, and changed on GitHub since - committing will ask which to keep" : "Uncommitted changes"}
+    >
+      <span aria-hidden className={clsx("h-1.5 w-1.5 rounded-full", change.state === "behind" ? "bg-danger" : "bg-warn")} />
+      {change.state === "added" && <span className="text-ok-ink">new</span>}
+      {change.state === "behind" && <span className="text-danger-ink">behind</span>}
+      {change.added > 0 && <span className="text-ok-ink">+{change.added}</span>}
+      {change.removed > 0 && <span className="text-danger-ink">−{change.removed}</span>}
+    </span>
+  );
+}
+
 /* ── Files ───────────────────────────────────────────────────────────────── */
 
 /** A PDF opens in a PDF tab (lib/pdfTab.ts); anything else is a plain download. */
@@ -280,6 +297,7 @@ function Gallery({
                   ●
                 </span>
               )}
+              {n.change && <ChangeMark change={n.change} />}
             </div>
             <p className="mt-1.5 line-clamp-3 flex-1 text-[12px] leading-[18px] text-n-500">
               {n.excerpt || "Empty note."}
@@ -450,6 +468,7 @@ function TreeView({
               </span>
               <FolderIcon open={row.open} />
               <span className="min-w-0 flex-1 truncate font-medium text-n-700">{folderLabel(row.tag, folders)}</span>
+              {row.changed && <span aria-label="Uncommitted changes inside" title="Uncommitted changes inside" className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />}
               <span className="font-num text-[11px] text-n-400">{row.count}</span>
             </button>
           );
@@ -468,6 +487,7 @@ function TreeView({
             {item.kind === "note" && item.pinned && (
               <span aria-label="Pinned" title="Pinned" className="shrink-0 text-[10px] text-rust-500">●</span>
             )}
+            {item.kind === "note" && item.change && <ChangeMark change={item.change} />}
             <span className="font-num shrink-0 text-[11px] text-n-400">
               {item.kind === "note" ? noteMeta(item) : fmtBytes(item.size)}
             </span>

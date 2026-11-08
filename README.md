@@ -234,9 +234,12 @@ any Claude session on any machine can read them, and Claude can edit them too.
 |---|---|
 | **Browse** | The Nexus browser: gallery or tree, search, folder chips. Folders are the repo's real directories - type `work/how-i-work` to make one. |
 | **Filter** | The folder chips are the top-level folders, each taking in its subfolders, and the one chosen is remembered - pick `msci-project` once and the tab opens on it. Each card shows its word count and file name. |
-| **Edit** | The lectures' editor, without `@` mentions (they'd mean nothing to Claude). Nothing is committed until you ask: **⌘S** opens a dialog for the commit message. Following a link away with edits outstanding opens it too - commit and leave, discard and leave, or stay. Until committed, edits are kept in the browser, so a reload or the back button loses nothing; they're back next time the doc opens. Rename (or move, with a `/`) is one commit. |
-| **Your structure** | Studio writes only the file you committed. INDEX.md files are yours - hand-written, listed and edited like any doc. |
-| **Conflicts** | Each commit names the version it was based on. If the doc changed on GitHub meanwhile (Claude pushed from a session), nothing is overwritten: **Use GitHub's version** or **Keep mine**. |
+| **Edit** | The lectures' editor, without `@` mentions (they'd mean nothing to Claude). What you type is a **draft** (`KbDraft`), saved as you go exactly like a note - so it survives leaving the page and follows the stick. Nothing reaches GitHub until you commit. |
+| **Live diff** | Above the editor, GitHub style: hunks, line numbers, green and red, the changed words marked. It updates as you type; **Discard** goes back to GitHub's version. |
+| **Uncommitted** | Changed docs carry a dot and **+added −removed** in the tree and gallery (folders get a dot too), and a bar above the browser lists them, each opening to its diff. |
+| **Committing** | **⌘S** opens one dialog: every uncommitted doc with a tick, and a message. From a doc only that doc is ticked; on the tab, all are. Whatever's ticked goes in **one commit**. New docs are drafts too, so a doc and its first content land together. Renames and deletes commit straight away. |
+| **Your structure** | Studio writes only the files you commit. INDEX.md files are yours - hand-written, listed and edited like any doc. |
+| **Conflicts** | Each draft remembers the version it started from. If GitHub has moved on (Claude pushed from a session) the doc is marked **behind GitHub**, and committing it commits nothing until you pick **Use GitHub's** or **Keep mine** for it. |
 
 **Setup.** Paste the repo on the tab, with a token of its own: the main GitHub
 token is fine-grained to `uog-cose` and can't see a personal repo. Make a

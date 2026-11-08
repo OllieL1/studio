@@ -804,3 +804,17 @@ model Enhancement {
 
   @@index([status, position])
 }
+
+/// An uncommitted edit to a knowledge-base doc (Project → Claude), saved as
+/// it's typed like any note - so it follows the stick - and committed to the
+/// repo only on ⌘S, together with whichever other drafts are ticked.
+model KbDraft {
+  repo String
+  path String
+  /// The blob sha the edit started from. Null: a new doc, not on GitHub yet.
+  base String?
+  body String
+  updatedAt DateTime @updatedAt
+
+  @@id([repo, path])
+}
