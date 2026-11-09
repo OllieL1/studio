@@ -253,3 +253,18 @@ export async function listKbWithFiles(kb: Kb): Promise<KbListing & { files: Map<
   const docs = await bodies(kb, [...all].filter(([p]) => isDocPath(p)).sort(([a], [b]) => a.localeCompare(b)));
   return { repo: kb.repo, branch: h.branch, docs, stale: h.stale, fetchedAt: h.fetchedAt, files: all };
 }
+
+/** When a doc was last committed - what its PDF says it was updated. Null when
+ *  GitHub can't say (offline, or the doc is a draft not committed yet). */
+export async function kbDocCommittedAt({ repo, token }: Kb, path: string): Promise<Date | null> {
+  try {
+    const r = await gh<{ commit: { committer: { date: string } | null } }[]>(
+      `/repos/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`,
+      { maxAge: 300, token },
+    );
+    const date = r.data[0]?.commit.committer?.date;
+    return date ? new Date(date) : null;
+  } catch {
+    return null;
+  }
+}

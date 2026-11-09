@@ -1,6 +1,6 @@
-/** The Claude knowledge base: doc paths, titles, summaries, and git blob ids. */
+/** The knowledge base (KB): doc paths, titles, summaries, and git blob ids. */
 import assert from "node:assert/strict";
-import { baseNameOf, docHref, folderOf, isDocPath, normalizeDocPath, starterBody, summaryOf, titleOf } from "../lib/kb";
+import { baseNameOf, docHref, folderOf, isDocPath, normalizeDocPath, starterBody, summaryOf, titleOf, pdfBodyOf } from "../lib/kb";
 import { blobSha } from "../lib/blobSha";
 
 const tests: [string, () => void][] = [];
@@ -62,6 +62,14 @@ test("blob ids match git's", () => {
   assert.equal(blobSha(""), "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391");
   // Multi-byte: the header counts bytes, not characters.
   assert.equal(blobSha("é\n"), "c6003325155f475bd7c87731607525dce73be9cf");
+});
+
+test("a PDF body drops the opening # heading - the PDF prints the title itself", () => {
+  assert.equal(pdfBodyOf("# Title\n\nBody\n"), "Body\n");
+  assert.equal(pdfBodyOf("\n# Title\nBody"), "Body");
+  assert.equal(pdfBodyOf("Intro\n\n# Later\n"), "Intro\n\n# Later\n");
+  assert.equal(pdfBodyOf("## Sub\nBody"), "## Sub\nBody");
+  assert.equal(pdfBodyOf("#\nBody"), "#\nBody");
 });
 
 let failed = 0;

@@ -78,5 +78,13 @@
     "status": "done",
     "note": "Renamed: the Project tab is now KB, and a doc's back link says ← KB. The addresses moved with it (/project?tab=kb, /project/kb?path=…); the old ?tab=claude and /project/claude links still work and land in the same place, so bookmarks and open tabs are fine. The code follows suit - KbTab and KbBrowser instead of ClaudeTab and ClaudeKb. Your remembered view and folder filter carry over.",
     "at": "2026-11-09T00:13:48.166Z"
+  },
+  {
+    "id": "cmw8ht07z00g615s0f928um7j",
+    "number": 11,
+    "title": "Ensure we add the ability for PDF export for each note just like each of the other notes uses. It can just use our existing PDF renderer.",
+    "status": "done",
+    "note": "Each KB doc has a PDF button in its toolbar, next to GitHub ↗. It opens the PDF in its own tab, through the same renderer as Nexus notes: the title once (taken from the doc's # heading), the word count and last update, the repo and the doc's path along the top of each page. It's the doc as it is in Studio - uncommitted changes included, down to what you typed a second ago (that's saved first). Per doc only; there's no bundle export.",
+    "at": "2026-11-09T00:15:51.465Z"
   }
 ]

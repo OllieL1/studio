@@ -62,6 +62,12 @@ export function titleOf(path: string, body: string): string {
   return H1.exec(body)?.[1].trim() || fileNameOf(path);
 }
 
+/** The body for a PDF, which prints the title itself: without the `# Heading`
+ *  when the doc opens with one, so it isn't there twice. */
+export function pdfBodyOf(body: string): string {
+  return body.replace(/^\s*#[ \t]+.*(\n|$)/, "").replace(/^\s*\n/, "");
+}
+
 /** A starter body for a new doc, headed with its name. */
 export const starterBody = (path: string) => `# ${fileNameOf(path)}\n\n`;
 

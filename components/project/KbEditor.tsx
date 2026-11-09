@@ -4,7 +4,8 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deleteKbDoc, moveKbDoc, saveKbDraft, takeGitHubVersion } from "@/app/kbActions";
-import { docHref } from "@/lib/kb";
+import { docHref, titleOf } from "@/lib/kb";
+import { pdfTab } from "@/lib/pdfTab";
 import { isModeToggle, MODE_SHORTCUT } from "@/lib/editor/shortcuts";
 import { LiveEditor } from "../editor/LiveEditor";
 import { clsx } from "@/lib/clsx";
@@ -128,6 +129,19 @@ export function KbEditor({
   }, []);
 
   const go = (href: string) => router.push(href as Route);
+
+  /** The PDF of what's on screen: the last keystrokes are saved first, so it
+   *  matches. The tab opens straight away - a popup opened after a wait is
+   *  blocked - and is pointed at the PDF once the save lands. */
+  const exportPdf = async () => {
+    const tab = window.open("", "_blank");
+    try {
+      await saveKbDraft(path, textRef.current, base.current);
+    } catch { /* the PDF is of the last save */ }
+    const href = pdfTab(`/api/project/kb/pdf?path=${encodeURIComponent(path)}`, titleOf(path, textRef.current));
+    if (tab) tab.location.href = href;
+    else window.open(href, "_blank");
+  };
 
   const openCommit = useCallback(() => {
     if (textRef.current === before && others.length === 0) {
@@ -258,6 +272,7 @@ export function KbEditor({
             GitHub ↗
           </a>
         )}
+        <button onClick={() => void exportPdf()} className={btn} title="Export this doc to PDF - as it is in Studio, uncommitted changes included">PDF</button>
         <button onClick={remove} disabled={busy} className={clsx(btn, "text-n-500 hover:bg-danger-soft hover:text-danger")}>Delete</button>
       </div>
       {error && <p className="text-[12px] text-danger">{error}</p>}
