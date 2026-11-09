@@ -28,6 +28,7 @@ export function PushcutPanel({
     startTransition(async () => {
       const res = await fn();
       setMsg(res.ok ? { tone: "ok", text: okText } : { tone: "bad", text: res.error });
+      if (!res.ok) setEnabled(on);
       if (res.ok) {
         setStartUrl("");
         setEndUrl("");
@@ -35,8 +36,15 @@ export function PushcutPanel({
       }
     });
 
-  const save = (extra: { clearStart?: boolean; clearEnd?: boolean } = {}) =>
-    run(() => savePushcut({ on: enabled, startUrl, endUrl, ...extra }), "Saved.");
+  const save = (extra: { clearStart?: boolean; clearEnd?: boolean; on?: boolean } = {}) =>
+    run(() => savePushcut({ startUrl, endUrl, ...extra, on: extra.on ?? enabled }), extra.on === undefined ? "Saved." : extra.on ? "On - sessions now switch your phone's Focus." : "Off.");
+
+  // The switch saves itself: it is the one setting that makes sessions fire,
+  // and it used to wait for Save, which was easy to miss.
+  const toggle = (next: boolean) => {
+    setEnabled(next);
+    save({ on: next });
+  };
 
   const field = (label: string, value: string, set: (v: string) => void, masked: string | null, clear: () => void, test: () => void) => (
     <div>
@@ -72,7 +80,7 @@ export function PushcutPanel({
           </p>
         </div>
         <label className="flex shrink-0 items-center gap-2 text-[12.5px] font-semibold text-n-700">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <input type="checkbox" checked={enabled} disabled={pending} onChange={(e) => toggle(e.target.checked)} />
           On
         </label>
       </div>
