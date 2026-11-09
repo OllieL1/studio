@@ -223,9 +223,9 @@ Linking an already-closed issue ticks nothing, and a task you untick stays
 unticked. A reopened issue never unticks a task. The check runs after the home
 and project pages have been sent, and when a task page opens.
 
-## The Claude knowledge base
+## The knowledge base (KB)
 
-**Project → Claude** is a set of markdown docs for Claude to read at the start
+**Project → KB** is a set of markdown docs for Claude to read at the start
 of a session - how you work, what each project is, decisions already made.
 They live in their **own private repo** (not this one, not the database), so
 any Claude session on any machine can read them, and Claude can edit them too.

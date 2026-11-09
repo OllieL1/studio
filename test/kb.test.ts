@@ -1,6 +1,6 @@
-/** The Claude knowledge base: doc paths, titles, summaries, and git blob ids. */
+/** The knowledge base (KB): doc paths, titles, summaries, and git blob ids. */
 import assert from "node:assert/strict";
-import { baseNameOf, docHref, folderOf, isDocPath, normalizeDocPath, starterBody, summaryOf, titleOf } from "../lib/kb";
+import { baseNameOf, docHref, folderOf, isDocPath, normalizeDocPath, starterBody, summaryOf, titleOf, pdfBodyOf, foldersOf, completeFolder } from "../lib/kb";
 import { blobSha } from "../lib/blobSha";
 
 const tests: [string, () => void][] = [];
@@ -53,7 +53,7 @@ test("the summary is plain text after the title", () => {
 });
 
 test("doc links carry any character through the query string", () => {
-  assert.equal(docHref("a b/c&d.md"), "/project/claude?path=a%20b%2Fc%26d.md");
+  assert.equal(docHref("a b/c&d.md"), "/project/kb?path=a%20b%2Fc%26d.md");
 });
 
 test("blob ids match git's", () => {
@@ -62,6 +62,32 @@ test("blob ids match git's", () => {
   assert.equal(blobSha(""), "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391");
   // Multi-byte: the header counts bytes, not characters.
   assert.equal(blobSha("é\n"), "c6003325155f475bd7c87731607525dce73be9cf");
+});
+
+test("a PDF body drops the opening # heading - the PDF prints the title itself", () => {
+  assert.equal(pdfBodyOf("# Title\n\nBody\n"), "Body\n");
+  assert.equal(pdfBodyOf("\n# Title\nBody"), "Body");
+  assert.equal(pdfBodyOf("Intro\n\n# Later\n"), "Intro\n\n# Later\n");
+  assert.equal(pdfBodyOf("## Sub\nBody"), "## Sub\nBody");
+  assert.equal(pdfBodyOf("#\nBody"), "#\nBody");
+});
+
+test("folders include the ones that hold only folders", () => {
+  assert.deepEqual(foldersOf(["README.md", "a/b/c.md", "a/d.md", "e/f.md"]), ["a", "a/b", "e"]);
+});
+
+test("Tab completes one folder at a time, as far as the matches agree", () => {
+  const folders = ["all", "msci-project", "msci-project/notes", "msci-project/decisions", "misc"];
+  assert.equal(completeFolder("ms", folders), "msci-project/");
+  assert.equal(completeFolder("MS", folders), "msci-project/");
+  assert.equal(completeFolder("m", folders), null); // msci-project, misc: nothing to add
+  assert.equal(completeFolder("mi", folders), "misc/");
+  assert.equal(completeFolder("msci-project", folders), "msci-project/");
+  assert.equal(completeFolder("msci-project/", folders), null); // notes, decisions: nothing shared
+  assert.equal(completeFolder("msci-project/n", folders), "msci-project/notes/");
+  assert.equal(completeFolder("msci-project/notes/", folders), null);
+  assert.equal(completeFolder("x", folders), null);
+  assert.equal(completeFolder("", folders), null);
 });
 
 let failed = 0;

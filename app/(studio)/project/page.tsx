@@ -27,7 +27,7 @@ import { WeightEditor } from "@/components/WeightEditor";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
 import { GitHubTab, GitHubTabSkeleton } from "@/components/project/GitHubTab";
-import { ClaudeTab } from "@/components/project/ClaudeTab";
+import { KbTab } from "@/components/project/KbTab";
 import { syncLinkedIssues } from "@/lib/githubData";
 import { parseRepo } from "@/lib/repos";
 
@@ -38,13 +38,15 @@ const TABS = [
   { key: "meetings", label: "Meetings" },
   { key: "research", label: "Research" },
   { key: "nexus", label: "Nexus" },
-  { key: "claude", label: "Claude" },
+  { key: "kb", label: "KB" },
   { key: "tasks", label: "Tasks" },
   { key: "github", label: "GitHub" },
 ] as const;
 
 export default async function ProjectPage({ searchParams }: { searchParams: Promise<{ tab?: string; paper?: string }> }) {
-  const { tab: tabParam, paper: focusCiteKey } = await searchParams;
+  const { tab: rawTab, paper: focusCiteKey } = await searchParams;
+  // The KB tab was "claude" until it was renamed - old links still land on it.
+  const tabParam = rawTab === "claude" ? "kb" : rawTab;
   const tab = TABS.some((t) => t.key === tabParam) ? tabParam! : "overview";
   const data = await getProject();
 
@@ -242,9 +244,9 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
 
       {tab === "nexus" && nexus && <NexusGallery notes={nexus} tags={tagNames} />}
 
-      {tab === "claude" && (
+      {tab === "kb" && (
         <Suspense fallback={<GitHubTabSkeleton />}>
-          <ClaudeTab />
+          <KbTab />
         </Suspense>
       )}
 

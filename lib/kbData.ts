@@ -5,7 +5,7 @@ import { isDocPath, type KbChange, type KbDoc } from "./kb";
 import { diffLines, diffStats } from "./diff";
 
 /**
- * The Claude knowledge base on GitHub (lib/kb.ts says what it is).
+ * The knowledge base (KB) on GitHub (lib/kb.ts says what it is).
  *
  * Reads go through the GitHub cache, and nearly all of it is addressed by
  * sha - a commit, a tree, a blob never change - so it's cached for good and
@@ -100,7 +100,7 @@ export type CommitResult =
 /** Why a write failed, in words that say what to do about it. */
 function writeError(repo: string, e: unknown): string {
   if (e instanceof GitHubError && (e.kind === "forbidden" || e.kind === "not-found")) {
-    return `GitHub won't let this token write to ${repo}. It needs Contents: read and write on this repo (fine-grained) or the repo scope (classic) - set one with "Change repo" on the Claude tab.`;
+    return `GitHub won't let this token write to ${repo}. It needs Contents: read and write on this repo (fine-grained) or the repo scope (classic) - set one with "Change repo" on the KB tab.`;
   }
   if (e instanceof GitHubError && e.status === 409) return `${repo} is empty - add a README on GitHub first, so there's a branch to commit to.`;
   return describeGitHubError(e);
@@ -252,4 +252,19 @@ export async function listKbWithFiles(kb: Kb): Promise<KbListing & { files: Map<
   const all = await files(kb, h.tree);
   const docs = await bodies(kb, [...all].filter(([p]) => isDocPath(p)).sort(([a], [b]) => a.localeCompare(b)));
   return { repo: kb.repo, branch: h.branch, docs, stale: h.stale, fetchedAt: h.fetchedAt, files: all };
+}
+
+/** When a doc was last committed - what its PDF says it was updated. Null when
+ *  GitHub can't say (offline, or the doc is a draft not committed yet). */
+export async function kbDocCommittedAt({ repo, token }: Kb, path: string): Promise<Date | null> {
+  try {
+    const r = await gh<{ commit: { committer: { date: string } | null } }[]>(
+      `/repos/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`,
+      { maxAge: 300, token },
+    );
+    const date = r.data[0]?.commit.committer?.date;
+    return date ? new Date(date) : null;
+  } catch {
+    return null;
+  }
 }

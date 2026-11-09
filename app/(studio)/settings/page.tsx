@@ -14,6 +14,8 @@ import { githubToken } from "@/lib/github";
 import { projectRepo } from "@/lib/githubData";
 import { EnhancementsPanel } from "@/components/EnhancementsPanel";
 import { listEnhancements } from "@/app/enhancementActions";
+import { PushcutPanel } from "@/components/PushcutPanel";
+import { maskPushcutUrl } from "@/lib/pushcutUrl";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,9 @@ export default async function SettingsPage({
   const linked = await db.task.count({ where: { calendarEventId: { not: null } } });
   const prefs = await getPreferences();
   const enhancements = await listEnhancements();
+  const pushcut = await db.preference
+    .findUnique({ where: { id: "singleton" }, select: { pushcutOn: true, pushcutStartUrl: true, pushcutEndUrl: true } })
+    .catch(() => null);
   const [ghAuth, ghToken, ghProject, repos] = await Promise.all([
     db.gitHubAuth.findUnique({ where: { id: "singleton" }, select: { login: true, name: true, scopes: true } }),
     githubToken(),
@@ -71,6 +76,12 @@ export default async function SettingsPage({
       </Card>
 
       <EnhancementsPanel rows={enhancements} />
+
+      <PushcutPanel
+        on={pushcut?.pushcutOn ?? false}
+        startMasked={maskPushcutUrl(pushcut?.pushcutStartUrl)}
+        endMasked={maskPushcutUrl(pushcut?.pushcutEndUrl)}
+      />
 
       {google && MESSAGES[google] && (
         <div

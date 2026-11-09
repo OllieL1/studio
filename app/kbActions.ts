@@ -8,7 +8,7 @@ import { normalizeDocPath, starterBody } from "@/lib/kb";
 import { parseRepo } from "@/lib/repos";
 
 /**
- * The Claude knowledge base: which repo it is, its drafts, and its commits.
+ * The knowledge base (KB): which repo it is, its drafts, and its commits.
  *
  * Edits and new docs are drafts (KbDraft) until ⌘S commits the ticked ones
  * together, with the message typed in the commit dialog. Moves and deletes
@@ -23,11 +23,11 @@ function refresh() {
 
 async function kbOrError(): Promise<{ kb: Kb } | { ok: false; error: string }> {
   const kb = await kbRepo();
-  return kb ? { kb } : { ok: false, error: "No knowledge-base repo set - add one on the Claude tab." };
+  return kb ? { kb } : { ok: false, error: "No knowledge-base repo set - add one on the KB tab." };
 }
 
 /**
- * Point the Claude tab at a repo, with a token of its own or none (the main
+ * Point the KB tab at a repo, with a token of its own or none (the main
  * GitHub token). A blank token keeps the one already saved; `clearToken`
  * drops it. Checked against GitHub first, so a typo says so now. A blank
  * repo clears the lot.

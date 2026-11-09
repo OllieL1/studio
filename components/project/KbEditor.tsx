@@ -4,12 +4,14 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deleteKbDoc, moveKbDoc, saveKbDraft, takeGitHubVersion } from "@/app/kbActions";
-import { docHref } from "@/lib/kb";
+import { docHref, titleOf } from "@/lib/kb";
+import { pdfTab } from "@/lib/pdfTab";
 import { isModeToggle, MODE_SHORTCUT } from "@/lib/editor/shortcuts";
 import { LiveEditor } from "../editor/LiveEditor";
 import { clsx } from "@/lib/clsx";
 import { DiffStatsLabel, KbDiff, useDiff } from "./KbDiff";
 import { KbCommitDialog, type CommitFile } from "./KbCommitDialog";
+import { FolderPathInput } from "./FolderPathInput";
 
 const DIFF_OPEN_KEY = "studio.kb.diffOpen";
 const stored = {
@@ -44,6 +46,7 @@ export function KbEditor({
   text: initialText,
   initialHtml,
   others,
+  folders,
 }: {
   path: string;
   repo: string;
@@ -58,6 +61,8 @@ export function KbEditor({
   initialHtml: string[];
   /** The other uncommitted docs, for the commit dialog. */
   others: CommitFile[];
+  /** Every folder in the KB, for completing a rename. */
+  folders: string[];
 }) {
   const router = useRouter();
   const base = useRef(initialBase);
@@ -129,6 +134,19 @@ export function KbEditor({
 
   const go = (href: string) => router.push(href as Route);
 
+  /** The PDF of what's on screen: the last keystrokes are saved first, so it
+   *  matches. The tab opens straight away - a popup opened after a wait is
+   *  blocked - and is pointed at the PDF once the save lands. */
+  const exportPdf = async () => {
+    const tab = window.open("", "_blank");
+    try {
+      await saveKbDraft(path, textRef.current, base.current);
+    } catch { /* the PDF is of the last save */ }
+    const href = pdfTab(`/api/project/kb/pdf?path=${encodeURIComponent(path)}`, titleOf(path, textRef.current));
+    if (tab) tab.location.href = href;
+    else window.open(href, "_blank");
+  };
+
   const openCommit = useCallback(() => {
     if (textRef.current === before && others.length === 0) {
       setNothing(true);
@@ -169,7 +187,7 @@ export function KbEditor({
     startTransition(async () => {
       const res = await takeGitHubVersion(path);
       if (!res.ok) return setError(res.error);
-      if (!res.sha) return go("/project?tab=claude");
+      if (!res.sha) return go("/project?tab=kb");
       adopt(res.sha, res.body);
       router.refresh();
     });
@@ -190,7 +208,7 @@ export function KbEditor({
     startTransition(async () => {
       const res = await deleteKbDoc(path);
       if (!res.ok) return setError(res.error);
-      go("/project?tab=claude");
+      go("/project?tab=kb");
     });
   };
 
@@ -204,13 +222,15 @@ export function KbEditor({
       <div className="flex flex-wrap items-center gap-2">
         {renaming ? (
           <form onSubmit={(e) => { e.preventDefault(); rename(); }} className="flex min-w-0 flex-1 items-center gap-2">
-            <input
+            <FolderPathInput
               autoFocus
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={setName}
+              folders={folders}
               onKeyDown={(e) => { if (e.key === "Escape") { setName(path); setRenaming(false); } }}
               aria-label="Path"
-              className="font-num h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-2 text-[15px] text-n-900 outline-none focus:border-rust-400"
+              wrapperClassName="min-w-0 flex-1"
+              className="font-num h-9 min-w-0 rounded-md border border-n-200 bg-n-0 px-2 text-[15px] text-n-900 outline-none focus:border-rust-400"
             />
             <button type="submit" disabled={busy} className={btn}>{busy ? "Moving…" : "Move"}</button>
           </form>
@@ -258,6 +278,7 @@ export function KbEditor({
             GitHub ↗
           </a>
         )}
+        <button onClick={() => void exportPdf()} className={btn} title="Export this doc to PDF - as it is in Studio, uncommitted changes included">PDF</button>
         <button onClick={remove} disabled={busy} className={clsx(btn, "text-n-500 hover:bg-danger-soft hover:text-danger")}>Delete</button>
       </div>
       {error && <p className="text-[12px] text-danger">{error}</p>}
@@ -311,7 +332,7 @@ export function KbEditor({
           }}
           onTookTheirs={(p, doc) => {
             if (p !== path) return;
-            if (!doc.sha) return go("/project?tab=claude");
+            if (!doc.sha) return go("/project?tab=kb");
             adopt(doc.sha, doc.body);
           }}
           onClose={() => setDialog(false)}

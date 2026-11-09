@@ -15,6 +15,7 @@ import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
 import { buildListening } from "@/lib/music";
 import { backupNow } from "@/lib/backup";
+import { firePushcut } from "@/lib/pushcut";
 import { deleteUpload } from "@/lib/uploads";
 import { cleanHour, isThemeMode, DEFAULT_DARK_FROM, DEFAULT_DARK_TO } from "@/lib/theme";
 import { isHttpUrl, linkFallbackLabel, serializeMention } from "@/lib/mentions";
@@ -261,13 +262,15 @@ export async function startTimer() {
   const timer = await db.activeTimer.create({
     data: { id: "singleton", startedAt: new Date() },
   });
+  after(() => firePushcut("start"));
   refresh();
   return { startedAt: timer.startedAt };
 }
 
 /** Stop the clock without ending the session - a break. */
 export async function pauseTimer() {
-  await db.activeTimer.updateMany({ where: { id: "singleton", pausedAt: null }, data: { pausedAt: new Date() } });
+  const { count } = await db.activeTimer.updateMany({ where: { id: "singleton", pausedAt: null }, data: { pausedAt: new Date() } });
+  if (count > 0) after(() => firePushcut("end"));
   refresh();
 }
 
@@ -279,6 +282,7 @@ export async function resumeTimer() {
     where: { id: "singleton" },
     data: { pausedAt: null, pausedMs: pausedTotalAfterResume(t) },
   });
+  after(() => firePushcut("start"));
   refresh();
 }
 
@@ -302,6 +306,7 @@ export async function startUltraFocus(courseId: string, minutes: number) {
   if (activeLock(t, now)) return { ok: false as const, error: "Rapt Mode is already on." };
   if (!t) {
     await db.activeTimer.create({ data: { id: "singleton", startedAt: now, lockCourseId: course.id, lockUntil } });
+    after(() => firePushcut("start"));
   } else {
     await db.activeTimer.update({
       where: { id: "singleton" },
@@ -311,6 +316,7 @@ export async function startUltraFocus(courseId: string, minutes: number) {
         ...(t.pausedAt ? { pausedAt: null, pausedMs: pausedTotalAfterResume(t, now) } : {}),
       },
     });
+    if (t.pausedAt) after(() => firePushcut("start"));
   }
   refresh();
   return { ok: true as const };
@@ -318,7 +324,8 @@ export async function startUltraFocus(courseId: string, minutes: number) {
 
 /** Abandon a running timer without recording anything. */
 export async function cancelTimer() {
-  await db.activeTimer.deleteMany({ where: { id: "singleton" } });
+  const { count } = await db.activeTimer.deleteMany({ where: { id: "singleton" } });
+  if (count > 0) after(() => firePushcut("end"));
   // A discarded session's music samples go with it.
   await db.listeningSample.deleteMany({});
   refresh();
@@ -396,6 +403,7 @@ export async function stopTimer(input: StopTimerInput) {
     await tx.activeTimer.deleteMany({ where: { id: "singleton" } });
     return created;
   });
+  after(() => firePushcut("end"));
 
   // The session is safely saved. Music is extra: if Spotify is slow or down,
   // the session still stands — it's just logged without a soundtrack.
