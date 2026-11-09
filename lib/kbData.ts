@@ -5,7 +5,7 @@ import { isDocPath, type KbChange, type KbDoc } from "./kb";
 import { diffLines, diffStats } from "./diff";
 
 /**
- * The Claude knowledge base on GitHub (lib/kb.ts says what it is).
+ * The knowledge base (KB) on GitHub (lib/kb.ts says what it is).
  *
  * Reads go through the GitHub cache, and nearly all of it is addressed by
  * sha - a commit, a tree, a blob never change - so it's cached for good and
@@ -100,7 +100,7 @@ export type CommitResult =
 /** Why a write failed, in words that say what to do about it. */
 function writeError(repo: string, e: unknown): string {
   if (e instanceof GitHubError && (e.kind === "forbidden" || e.kind === "not-found")) {
-    return `GitHub won't let this token write to ${repo}. It needs Contents: read and write on this repo (fine-grained) or the repo scope (classic) - set one with "Change repo" on the Claude tab.`;
+    return `GitHub won't let this token write to ${repo}. It needs Contents: read and write on this repo (fine-grained) or the repo scope (classic) - set one with "Change repo" on the KB tab.`;
   }
   if (e instanceof GitHubError && e.status === 409) return `${repo} is empty - add a README on GitHub first, so there's a branch to commit to.`;
   return describeGitHubError(e);

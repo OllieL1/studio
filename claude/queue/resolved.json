@@ -70,5 +70,13 @@
     "status": "done",
     "note": "Built: Project → Claude, a knowledge base kept in its own private repo (OllieL1/kb), so any Claude session on any machine can read it, and Claude can edit and push it too. Studio shows those changes the next time the tab opens.\n\nBrowsing: the Nexus browser (gallery or tree), with the repo's real folders in place of tags. The folder chips are the top-level folders, each including its subfolders, and your pick is remembered: choose msci-project once and the tab opens on it. Cards show the word count and file name (\"12 words · INDEX.md\").\n\nEditing: what you type is a draft, saved as you go exactly like a note, so it survives leaving the page and follows the stick. Nothing reaches GitHub until you commit. A live, GitHub-style diff above the editor shows what's uncommitted, and Discard goes back to GitHub's version. Changed docs show a dot and +added −removed in the tree and gallery, folders get a dot too, and an \"Uncommitted\" bar above the browser lists them, each opening to its diff.\n\nCommitting: ⌘S opens one dialog listing every uncommitted doc with a tick, plus a message box. From inside a doc only that doc is ticked; on the tab, all of them are. Everything ticked goes in one commit. New docs are drafts too, so a doc and its first content land in the same commit. Renames and deletes commit straight away. If Claude changed a doc on GitHub after you started editing it, the doc is marked \"behind GitHub\", and nothing is committed until you choose Use GitHub's or Keep mine for it.\n\nStudio writes only the files you commit. Your INDEX.md files are yours.\n\nGetting it into sessions: ~/kb is cloned on WSL; add the SessionStart hook from the README (\"The Claude knowledge base\") to pull it and print INDEX.md.\n\nCaveat: if you're editing the same doc in two windows at once, the one that saved last wins its draft, just as with notes.",
     "at": "2026-11-08T21:11:23.936Z"
+  },
+  {
+    "id": "cmw8hqtom00fy15s0m0aia4ks",
+    "number": 10,
+    "title": "Can we rename the tab to KB instead of Claude?",
+    "status": "done",
+    "note": "Renamed: the Project tab is now KB, and a doc's back link says ← KB. The addresses moved with it (/project?tab=kb, /project/kb?path=…); the old ?tab=claude and /project/claude links still work and land in the same place, so bookmarks and open tabs are fine. The code follows suit - KbTab and KbBrowser instead of ClaudeTab and ClaudeKb. Your remembered view and folder filter carry over.",
+    "at": "2026-11-09T00:13:48.166Z"
   }
 ]

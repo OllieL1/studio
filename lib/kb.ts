@@ -1,7 +1,7 @@
 /**
- * The Claude knowledge base - markdown docs in a private GitHub repo, which
- * the Project page's Claude tab browses and edits, and Claude sessions read
- * from a clone (README → "The Claude knowledge base").
+ * The knowledge base (KB) - markdown docs in a private GitHub repo, which
+ * the Project page's KB tab browses and edits, and Claude sessions read
+ * from a clone (README → "The knowledge base (KB)").
  *
  * The repo, not Studio, is the source of truth: Claude can edit the docs in
  * a session and push, and Studio shows that on the next load. Its structure
@@ -51,7 +51,7 @@ const fileNameOf = (path: string) => baseNameOf(path).replace(/\.md$/i, "");
 
 /** Where a doc opens in Studio. A query string, not a catch-all route, so
  *  any character in a path arrives exactly as it was. */
-export const docHref = (path: string) => `/project/claude?path=${encodeURIComponent(path)}`;
+export const docHref = (path: string) => `/project/kb?path=${encodeURIComponent(path)}`;
 
 /* ── Content ─────────────────────────────────────────────────────────────── */
 

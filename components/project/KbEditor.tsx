@@ -169,7 +169,7 @@ export function KbEditor({
     startTransition(async () => {
       const res = await takeGitHubVersion(path);
       if (!res.ok) return setError(res.error);
-      if (!res.sha) return go("/project?tab=claude");
+      if (!res.sha) return go("/project?tab=kb");
       adopt(res.sha, res.body);
       router.refresh();
     });
@@ -190,7 +190,7 @@ export function KbEditor({
     startTransition(async () => {
       const res = await deleteKbDoc(path);
       if (!res.ok) return setError(res.error);
-      go("/project?tab=claude");
+      go("/project?tab=kb");
     });
   };
 
@@ -311,7 +311,7 @@ export function KbEditor({
           }}
           onTookTheirs={(p, doc) => {
             if (p !== path) return;
-            if (!doc.sha) return go("/project?tab=claude");
+            if (!doc.sha) return go("/project?tab=kb");
             adopt(doc.sha, doc.body);
           }}
           onClose={() => setDialog(false)}

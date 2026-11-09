@@ -5,24 +5,24 @@ import { kbHasToken, kbRepo, listChanges, listKbWithFiles, type KbChangeSummary,
 import { baseNameOf, folderOf, summaryOf, titleOf, wordCount } from "@/lib/kb";
 import { fmtAgo } from "@/lib/dates";
 import { Card, EmptyState } from "@/components/ui";
-import { ClaudeKb, KbRepoForm } from "./ClaudeKb";
+import { KbBrowser, KbRepoForm } from "./KbBrowser";
 
 /**
- * The Claude knowledge base: the markdown docs Claude reads at the start of a
+ * The knowledge base (KB): the markdown docs Claude reads at the start of a
  * session, kept in their own private repo and edited here (lib/kb.ts).
  *
  * Streams behind its own Suspense boundary like the GitHub tab - the first
  * visit fetches every doc once; after that it's one request for the branch
  * head, and the rest comes from the cache by sha.
  */
-export async function ClaudeTab() {
+export async function KbTab() {
   const kbConfig = await kbRepo();
   if (!kbConfig) {
     return (
       <Card className="p-5">
         <EmptyState
           title="No knowledge base yet."
-          body="Point this at a private GitHub repo of markdown docs - the context you want every Claude session to start with. Studio edits them here and commits each save; Claude reads them from a clone."
+          body="Point this at a private GitHub repo of markdown docs - the context you want every Claude session to start with. Studio edits them here and commits on ⌘S; Claude reads them from a clone."
         />
         <div className="mx-auto mt-2 max-w-[460px]"><KbRepoForm current={null} hasToken={false} /></div>
       </Card>
@@ -80,7 +80,7 @@ export async function ClaudeTab() {
   const onGitHub = new Set(kb.docs.map((d) => d.path));
 
   return (
-    <ClaudeKb
+    <KbBrowser
       repo={kb.repo}
       changes={changes}
       hasToken={!!kbConfig.token}

@@ -83,7 +83,7 @@ export function NotesBrowser({
   /** The PDF export - Nexus notes only; the route reads them by id. */
   pdf?: boolean;
   newLabel?: string;
-  /** Keep the chosen tag/folder chip across visits - the Claude tab, where
+  /** Keep the chosen tag/folder chip across visits - the KB tab, where
    *  one project's folder is usually all that matters. */
   rememberFilter?: boolean;
 }) {

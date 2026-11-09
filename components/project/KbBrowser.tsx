@@ -31,7 +31,7 @@ const button =
  * Uncommitted docs are marked in both views (+added −removed) and listed in
  * a bar above, each opening to its diff. ⌘S here commits them all at once.
  */
-export function ClaudeKb({
+export function KbBrowser({
   repo,
   branch,
   stale,
@@ -104,6 +104,7 @@ export function ClaudeKb({
         noteHref={docHref}
         view={view}
         onViewChange={setView}
+        // Named from when this was the Claude tab - kept so the remembered view and folder survive.
         storageKey="studio.view.claude"
         onNew={() => setNaming(true)}
         creating={false}

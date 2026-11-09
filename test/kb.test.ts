@@ -53,7 +53,7 @@ test("the summary is plain text after the title", () => {
 });
 
 test("doc links carry any character through the query string", () => {
-  assert.equal(docHref("a b/c&d.md"), "/project/claude?path=a%20b%2Fc%26d.md");
+  assert.equal(docHref("a b/c&d.md"), "/project/kb?path=a%20b%2Fc%26d.md");
 });
 
 test("blob ids match git's", () => {
