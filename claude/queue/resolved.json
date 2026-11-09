@@ -86,5 +86,13 @@
     "status": "done",
     "note": "Each KB doc has a PDF button in its toolbar, next to GitHub ↗. It opens the PDF in its own tab, through the same renderer as Nexus notes: the title once (taken from the doc's # heading), the word count and last update, the repo and the doc's path along the top of each page. It's the doc as it is in Studio - uncommitted changes included, down to what you typed a second ago (that's saved first). Per doc only; there's no bundle export.",
     "at": "2026-11-09T00:15:51.465Z"
+  },
+  {
+    "id": "cmw8hx9pk00gk15s0y006mlee",
+    "number": 12,
+    "title": "Add autocomplete when typing out a new note for the tag names i.e. if I start typing ms then I should be able to press tab to autocomplete msci-project/",
+    "status": "done",
+    "note": "The new-doc box completes folder names as you type. Start a name with ms and the rest - ci-project/ - shows in grey after the caret; Tab (or → at the end) takes it. It goes one folder at a time like a shell: after msci-project/, typing n completes msci-project/notes/ and so on. When two folders share the start (misc and msci-project after m), Tab fills in as far as they agree, and if they split straight away it does nothing and Tab moves on as normal. Case doesn't matter - MS completes too. The Rename box on a doc completes the same way, so moving a doc into a folder is quick. The old dropdown of folders is gone - the completion replaces it.",
+    "at": "2026-11-09T00:18:10.185Z"
   }
 ]

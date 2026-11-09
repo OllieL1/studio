@@ -2,7 +2,8 @@ import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { describeGitHubError } from "@/lib/github";
-import { getDraft, kbBlob, kbBranch, kbRepo, listChanges, readKbDoc } from "@/lib/kbData";
+import { filesAtHead, getDraft, kbBlob, kbBranch, kbRepo, listChanges, readKbDoc } from "@/lib/kbData";
+import { foldersOf } from "@/lib/kb";
 import { splitBlocks } from "@/lib/editor/blocks";
 import { renderMarkdown } from "@/lib/markdown";
 import { Card, EmptyState } from "@/components/ui";
@@ -32,11 +33,13 @@ export default async function KbDocPage({ searchParams }: { searchParams: Promis
   let baseBody: string;
   let changes: Awaited<ReturnType<typeof listChanges>>;
   let branch: string;
+  let folders: string[];
   try {
     doc = await readKbDoc(kb, path);
     branch = doc?.branch ?? (await kbBranch(kb));
     baseBody = draft ? (draft.base ? await kbBlob(kb, draft.base) : "") : (doc?.body ?? "");
     changes = await listChanges(kb);
+    folders = foldersOf([...(await filesAtHead(kb)).keys(), ...changes.map((c) => c.path)]);
   } catch (e) {
     return (
       <div className="space-y-5">
@@ -70,6 +73,7 @@ export default async function KbDocPage({ searchParams }: { searchParams: Promis
         baseBody={baseBody}
         text={text}
         initialHtml={initialHtml}
+        folders={folders}
         others={changes.filter((c) => c.path !== path).map(({ path, state, added, removed }) => ({ path, state, added, removed }))}
       />
     </div>

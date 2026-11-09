@@ -89,3 +89,38 @@ export const wordCount = (body: string) => body.split(/\s+/).filter(Boolean).len
 
 /** One file a commit writes or removes. */
 export type KbChange = { path: string; content: string } | { path: string; delete: true };
+
+/* ── Folder completion ───────────────────────────────────────────────────── */
+
+/** Every folder the paths are in, ancestors included: `a/b/c.md` → `a`, `a/b`. */
+export function foldersOf(paths: Iterable<string>): string[] {
+  const out = new Set<string>();
+  for (const p of paths) {
+    const parts = p.split("/").slice(0, -1);
+    for (let i = 1; i <= parts.length; i++) out.add(parts.slice(0, i).join("/"));
+  }
+  return [...out].sort();
+}
+
+/**
+ * What Tab turns a half-typed path into, or null when there's nothing to add.
+ * One folder at a time, as a shell does: `ms` → `msci-project/`, and only
+ * then its subfolders. When several fit, as far as they agree. Case doesn't
+ * matter for the match; the folder's own spelling wins.
+ */
+export function completeFolder(typed: string, folders: string[]): string | null {
+  if (!typed) return null;
+  const depth = typed.split("/").length;
+  const lower = typed.toLowerCase();
+  const fits = folders
+    .filter((f) => f.split("/").length === depth && f.toLowerCase().startsWith(lower))
+    .map((f) => `${f}/`);
+  if (fits.length === 0) return null;
+  let common = fits[0];
+  for (const f of fits.slice(1)) {
+    let i = 0;
+    while (i < common.length && i < f.length && common[i].toLowerCase() === f[i].toLowerCase()) i++;
+    common = common.slice(0, i);
+  }
+  return common.length > typed.length ? common : null;
+}

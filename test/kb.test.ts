@@ -1,6 +1,6 @@
 /** The knowledge base (KB): doc paths, titles, summaries, and git blob ids. */
 import assert from "node:assert/strict";
-import { baseNameOf, docHref, folderOf, isDocPath, normalizeDocPath, starterBody, summaryOf, titleOf, pdfBodyOf } from "../lib/kb";
+import { baseNameOf, docHref, folderOf, isDocPath, normalizeDocPath, starterBody, summaryOf, titleOf, pdfBodyOf, foldersOf, completeFolder } from "../lib/kb";
 import { blobSha } from "../lib/blobSha";
 
 const tests: [string, () => void][] = [];
@@ -70,6 +70,24 @@ test("a PDF body drops the opening # heading - the PDF prints the title itself",
   assert.equal(pdfBodyOf("Intro\n\n# Later\n"), "Intro\n\n# Later\n");
   assert.equal(pdfBodyOf("## Sub\nBody"), "## Sub\nBody");
   assert.equal(pdfBodyOf("#\nBody"), "#\nBody");
+});
+
+test("folders include the ones that hold only folders", () => {
+  assert.deepEqual(foldersOf(["README.md", "a/b/c.md", "a/d.md", "e/f.md"]), ["a", "a/b", "e"]);
+});
+
+test("Tab completes one folder at a time, as far as the matches agree", () => {
+  const folders = ["all", "msci-project", "msci-project/notes", "msci-project/decisions", "misc"];
+  assert.equal(completeFolder("ms", folders), "msci-project/");
+  assert.equal(completeFolder("MS", folders), "msci-project/");
+  assert.equal(completeFolder("m", folders), null); // msci-project, misc: nothing to add
+  assert.equal(completeFolder("mi", folders), "misc/");
+  assert.equal(completeFolder("msci-project", folders), "msci-project/");
+  assert.equal(completeFolder("msci-project/", folders), null); // notes, decisions: nothing shared
+  assert.equal(completeFolder("msci-project/n", folders), "msci-project/notes/");
+  assert.equal(completeFolder("msci-project/notes/", folders), null);
+  assert.equal(completeFolder("x", folders), null);
+  assert.equal(completeFolder("", folders), null);
 });
 
 let failed = 0;

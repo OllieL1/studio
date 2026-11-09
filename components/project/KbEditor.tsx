@@ -11,6 +11,7 @@ import { LiveEditor } from "../editor/LiveEditor";
 import { clsx } from "@/lib/clsx";
 import { DiffStatsLabel, KbDiff, useDiff } from "./KbDiff";
 import { KbCommitDialog, type CommitFile } from "./KbCommitDialog";
+import { FolderPathInput } from "./FolderPathInput";
 
 const DIFF_OPEN_KEY = "studio.kb.diffOpen";
 const stored = {
@@ -45,6 +46,7 @@ export function KbEditor({
   text: initialText,
   initialHtml,
   others,
+  folders,
 }: {
   path: string;
   repo: string;
@@ -59,6 +61,8 @@ export function KbEditor({
   initialHtml: string[];
   /** The other uncommitted docs, for the commit dialog. */
   others: CommitFile[];
+  /** Every folder in the KB, for completing a rename. */
+  folders: string[];
 }) {
   const router = useRouter();
   const base = useRef(initialBase);
@@ -218,13 +222,15 @@ export function KbEditor({
       <div className="flex flex-wrap items-center gap-2">
         {renaming ? (
           <form onSubmit={(e) => { e.preventDefault(); rename(); }} className="flex min-w-0 flex-1 items-center gap-2">
-            <input
+            <FolderPathInput
               autoFocus
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={setName}
+              folders={folders}
               onKeyDown={(e) => { if (e.key === "Escape") { setName(path); setRenaming(false); } }}
               aria-label="Path"
-              className="font-num h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-2 text-[15px] text-n-900 outline-none focus:border-rust-400"
+              wrapperClassName="min-w-0 flex-1"
+              className="font-num h-9 min-w-0 rounded-md border border-n-200 bg-n-0 px-2 text-[15px] text-n-900 outline-none focus:border-rust-400"
             />
             <button type="submit" disabled={busy} className={btn}>{busy ? "Moving…" : "Move"}</button>
           </form>

@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createKbDoc, discardKbDraft, setKbRepo } from "@/app/kbActions";
-import { docHref } from "@/lib/kb";
+import { docHref, foldersOf } from "@/lib/kb";
 import { repoUrl } from "@/lib/repos";
 import type { NoteItem } from "@/lib/noteTree";
 import type { ChangeState } from "@/lib/kbData";
 import { NotesBrowser, useStoredView } from "./NotesBrowser";
 import { DiffStatsLabel, KbDiff, useDiff } from "./KbDiff";
 import { KbCommitDialog } from "./KbCommitDialog";
+import { FolderPathInput } from "./FolderPathInput";
 import { clsx } from "@/lib/clsx";
 
 /** An uncommitted doc, with both sides of its diff. */
@@ -52,8 +53,8 @@ export function KbBrowser({
   const [naming, setNaming] = useState(false);
   const [changingRepo, setChangingRepo] = useState(false);
   const items = useMemo(() => docs.map((d) => ({ ...d, kind: "note" as const })), [docs]);
-  /** Every folder, for the new-doc suggestions. */
-  const folders = useMemo(() => [...new Set(docs.flatMap((d) => d.tags))].sort(), [docs]);
+  /** Every folder, ancestors included - for completing a new doc's path. */
+  const folders = useMemo(() => foldersOf(docs.map((d) => d.id)), [docs]);
   /** The chips are the top-level folders; each takes in its subfolders. */
   const chips = useMemo(() => [...new Set(folders.map((f) => f.split("/")[0]))], [folders]);
   const [committing, setCommitting] = useState(false);
@@ -211,17 +212,17 @@ function NewDocForm({ folders, onCancel, onCreated }: { folders: string[]; onCan
       onSubmit={(e) => { e.preventDefault(); submit(); }}
       className="card flex flex-wrap items-center gap-2 p-3"
     >
-      <input
+      <FolderPathInput
         autoFocus
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={setName}
+        folders={folders}
         onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
-        placeholder={folders[0] ? `Name, or ${folders[0]}/name` : "Name, or folder/name"}
+        placeholder={folders[0] ? `Name, or ${folders[0]}/name - Tab completes folders` : "Name, or folder/name"}
         aria-label="New doc's name"
-        list="kb-folders"
+        wrapperClassName="min-w-0 flex-1"
         className={input}
       />
-      <datalist id="kb-folders">{folders.map((f) => <option key={f} value={`${f}/`} />)}</datalist>
       <button type="submit" disabled={pending || !name.trim()} className="flex h-8 shrink-0 items-center rounded-md bg-rust-500 px-3 text-[12.5px] font-semibold text-white hover:bg-rust-600 disabled:opacity-50">
         {pending ? "Creating…" : "Create"}
       </button>
