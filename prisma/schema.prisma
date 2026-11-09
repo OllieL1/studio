@@ -521,6 +521,14 @@ model Preference {
   kbRepo  String?
   kbToken String?
 
+  /// Phone Focus mode, via Pushcut (lib/pushcut.ts): a session starting or
+  /// resuming calls the start URL, one ending or pausing calls the end URL.
+  /// Each is a Pushcut "execute" link that runs an iOS Shortcut. The URLs hold
+  /// a secret, so they stay here and are only ever shown masked.
+  pushcutOn       Boolean @default(false)
+  pushcutStartUrl String?
+  pushcutEndUrl   String?
+
   updatedAt DateTime @updatedAt
 }
 
