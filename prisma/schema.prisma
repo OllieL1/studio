@@ -264,6 +264,17 @@ model ActiveTimer {
   startedAt DateTime
   /// Optional pre-filled name typed before/while the timer runs.
   draftName String?
+
+  /// Set while the session is paused; the clock stands still from here.
+  pausedAt DateTime?
+  /// Time spent paused in earlier, finished pauses (ms). Not studying time,
+  /// so it comes off the session when it's logged.
+  pausedMs Int       @default(0)
+
+  /// Ultra focus: Studio is locked to this course's pages (the project's,
+  /// if it's the project) until `lockUntil`, or until the session ends.
+  lockCourseId String?
+  lockUntil    DateTime?
 }
 
 /// Google OAuth tokens (id is always "singleton").
@@ -502,6 +513,13 @@ model Preference {
   sleepOn   Boolean @default(true)
   sleepFrom Int     @default(0)
   sleepTo   Int     @default(480)
+
+  /// The Claude knowledge base: "owner/name" of the GitHub repo the Project
+  /// page's Claude tab reads and commits to (lib/kbData.ts), and a token for
+  /// it alone. Separate from GitHubAuth because that one is fine-grained to
+  /// the uni org and can't see a personal repo; null falls back to it.
+  kbRepo  String?
+  kbToken String?
 
   updatedAt DateTime @updatedAt
 }
@@ -785,4 +803,18 @@ model Enhancement {
   updatedAt  DateTime  @updatedAt
 
   @@index([status, position])
+}
+
+/// An uncommitted edit to a knowledge-base doc (Project → Claude), saved as
+/// it's typed like any note - so it follows the stick - and committed to the
+/// repo only on ⌘S, together with whichever other drafts are ticked.
+model KbDraft {
+  repo String
+  path String
+  /// The blob sha the edit started from. Null: a new doc, not on GitHub yet.
+  base String?
+  body String
+  updatedAt DateTime @updatedAt
+
+  @@id([repo, path])
 }

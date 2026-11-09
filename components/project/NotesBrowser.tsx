@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { pdfTab } from "@/lib/pdfTab";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildTree, filterItems, visibleRows, type BrowserItem, type FileItem, type NoteItem } from "@/lib/noteTree";
@@ -57,6 +58,10 @@ export function NotesBrowser({
   actions,
   onRemoveFile,
   empty,
+  folders = "tags",
+  pdf = true,
+  newLabel = "+ New note",
+  rememberFilter = false,
 }: {
   items: BrowserItem[];
   /** The tag chips. */
@@ -72,11 +77,36 @@ export function NotesBrowser({
   actions?: React.ReactNode;
   onRemoveFile?: (file: FileItem) => void;
   empty: { title: string; body: string };
+  /** What the tree's folders are: tags (#name), or real directories (name/)
+   *  for the knowledge base, where an item's one "tag" is its folder. */
+  folders?: FolderStyle;
+  /** The PDF export - Nexus notes only; the route reads them by id. */
+  pdf?: boolean;
+  newLabel?: string;
+  /** Keep the chosen tag/folder chip across visits - the Claude tab, where
+   *  one project's folder is usually all that matters. */
+  rememberFilter?: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<string | null>(null);
+  const [tag, setTagState] = useState<string | null>(null);
+  const filterKey = `${storageKey}.filter`;
 
-  const shown = useMemo(() => filterItems(items, query, tag), [items, query, tag]);
+  // Like the view: the default first so server and browser agree, then the
+  // remembered chip - if it still exists.
+  useEffect(() => {
+    if (!rememberFilter) return;
+    const saved = stored.get(filterKey);
+    if (saved && tags.includes(saved)) setTagState(saved);
+  }, [rememberFilter, filterKey, tags]);
+
+  const setTag = (update: (cur: string | null) => string | null) =>
+    setTagState((cur) => {
+      const next = update(cur);
+      if (rememberFilter) stored.set(filterKey, next ?? "");
+      return next;
+    });
+
+  const shown = useMemo(() => filterItems(items, query, tag, folders === "paths"), [items, query, tag, folders]);
   const notes = shown.filter((i): i is NoteItem => i.kind === "note");
   const files = shown.length - notes.length;
   const filtered = query.trim().length > 0 || tag !== null;
@@ -94,7 +124,7 @@ export function NotesBrowser({
           disabled={creating}
           className="flex h-8 items-center rounded-md bg-rust-500 px-3 text-[12.5px] font-semibold text-white transition-colors duration-[120ms] hover:bg-rust-600 disabled:opacity-50"
         >
-          {creating ? "Creating…" : "+ New note"}
+          {creating ? "Creating…" : newLabel}
         </button>
         {actions}
         <input
@@ -104,9 +134,9 @@ export function NotesBrowser({
           aria-label="Search"
           className="h-8 w-[220px] rounded-md border border-n-200 bg-n-0 px-2.5 text-[12.5px] outline-none focus:border-rust-400"
         />
-        {notes.length > 0 && (
+        {pdf && notes.length > 0 && (
           <a
-            href={`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`}
+            href={pdfTab(`/api/project/notes/pdf?ids=${notes.map((n) => n.id).join(",")}`, "Notes")}
             target="_blank"
             rel="noreferrer"
             title={filtered ? "Export the notes shown" : "Export every note"}
@@ -128,7 +158,7 @@ export function NotesBrowser({
                   : "border-n-200 text-n-600 hover:bg-n-50",
               )}
             >
-              #{t}
+              {folderLabel(t, folders)}
             </button>
           ))}
         </div>
@@ -160,23 +190,51 @@ export function NotesBrowser({
           />
         </Card>
       ) : view === "gallery" ? (
-        <Gallery items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} />
+        <Gallery items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} folders={folders} />
       ) : (
-        <TreeView items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} storageKey={storageKey} />
+        <TreeView items={shown} noteHref={noteHref} onRemoveFile={onRemoveFile} storageKey={storageKey} folders={folders} />
       )}
     </div>
   );
 }
 
+type FolderStyle = "tags" | "paths";
+const folderLabel = (name: string, style: FolderStyle) => (style === "paths" ? `${name}/` : `#${name}`);
+
+/** When it was last touched, or - where that isn't known - how long it is,
+ *  and the file's name where it has one ("12 words · INDEX.md"). */
+const noteMeta = (n: NoteItem) =>
+  [n.updatedAt ? fmtAgo(n.updatedAt) : `${n.words} word${n.words === 1 ? "" : "s"}`, n.file].filter(Boolean).join(" · ");
+
+/** Uncommitted: a dot and GitHub's +added −removed; a new doc or one
+ *  GitHub has moved on from says so. */
+function ChangeMark({ change }: { change: NonNullable<NoteItem["change"]> }) {
+  return (
+    <span
+      className="font-num flex shrink-0 items-center gap-1 text-[10.5px] font-semibold"
+      title={change.state === "added" ? "New - not committed yet" : change.state === "behind" ? "Uncommitted, and changed on GitHub since - committing will ask which to keep" : "Uncommitted changes"}
+    >
+      <span aria-hidden className={clsx("h-1.5 w-1.5 rounded-full", change.state === "behind" ? "bg-danger" : "bg-warn")} />
+      {change.state === "added" && <span className="text-ok-ink">new</span>}
+      {change.state === "behind" && <span className="text-danger-ink">behind</span>}
+      {change.added > 0 && <span className="text-ok-ink">+{change.added}</span>}
+      {change.removed > 0 && <span className="text-danger-ink">−{change.removed}</span>}
+    </span>
+  );
+}
+
 /* ── Files ───────────────────────────────────────────────────────────────── */
 
-const fileHref = (f: FileItem) => `/api/uploads/${f.id}`;
+/** A PDF opens in a PDF tab (lib/pdfTab.ts); anything else is a plain download. */
+const fileHref = (f: FileItem) => (f.ext === "pdf" ? pdfTab(`/api/uploads/${f.id}`, f.filename) : `/api/uploads/${f.id}`);
 
 /** A PDF opens in a tab; a deck or document downloads - a browser can't show it. */
 const fileLinkProps = (f: FileItem) =>
   f.ext === "pdf" ? { target: "_blank", rel: "noreferrer" } : { download: f.filename };
 
+/** One colour per kind. "md" is a markdown note (or an uploaded .md file). */
 const BADGE: Record<string, string> = {
+  md: "bg-ok-soft text-ok",
   pdf: "bg-danger-soft text-danger",
   docx: "bg-info-soft text-info",
   pptx: "bg-warn-soft text-warn",
@@ -214,10 +272,12 @@ function Gallery({
   items,
   noteHref,
   onRemoveFile,
+  folders,
 }: {
   items: BrowserItem[];
   noteHref: (id: string) => string;
   onRemoveFile?: (f: FileItem) => void;
+  folders: FolderStyle;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -237,17 +297,19 @@ function Gallery({
                   ●
                 </span>
               )}
+              {n.change && <ChangeMark change={n.change} />}
             </div>
             <p className="mt-1.5 line-clamp-3 flex-1 text-[12px] leading-[18px] text-n-500">
               {n.excerpt || "Empty note."}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <FileBadge ext="md" />
               {n.tags.slice(0, 3).map((t) => (
                 <span key={t} className="rounded-full bg-info-soft px-1.5 py-px text-[10.5px] font-medium text-info">
-                  #{t}
+                  {folderLabel(t, folders)}
                 </span>
               ))}
-              <span className="font-num ml-auto text-[10.5px] text-n-400">{fmtAgo(n.updatedAt)}</span>
+              <span className="font-num ml-auto text-[10.5px] text-n-400">{noteMeta(n)}</span>
             </div>
           </Link>
         ) : (
@@ -292,15 +354,6 @@ function FolderIcon({ open }: { open: boolean }) {
   );
 }
 
-function DocIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden className="shrink-0 text-n-400">
-      <path d="M3 1.5h4l2 2v7H3v-9Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-      <path d="M7 1.5v2h2M4.5 6h3M4.5 8h3" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 /**
  * An explorer: tags as folders, notes and files as rows. With the tree
  * focused, ↑↓ (or j/k) move, ←→ fold and unfold, Enter opens.
@@ -310,11 +363,13 @@ function TreeView({
   noteHref,
   onRemoveFile,
   storageKey,
+  folders,
 }: {
   items: BrowserItem[];
   noteHref: (id: string) => string;
   onRemoveFile?: (f: FileItem) => void;
   storageKey: string;
+  folders: FolderStyle;
 }) {
   const collapsedKey = `${storageKey}.collapsed`;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -363,10 +418,10 @@ function TreeView({
         return;
       case "ArrowLeft":
         if (row?.type === "folder" && row.open) { e.preventDefault(); toggle(row.key, false); }
-        else if (row?.type === "item" && row.depth === 1) {
+        else if (row?.type === "item" && row.parent) {
           // From inside a folder, ← goes up to the folder.
           e.preventDefault();
-          setActive(row.key.slice(0, row.key.indexOf("/")));
+          setActive(row.parent);
         }
         return;
       case "Enter":
@@ -412,7 +467,8 @@ function TreeView({
                 ▶
               </span>
               <FolderIcon open={row.open} />
-              <span className="min-w-0 flex-1 truncate font-medium text-n-700">#{row.tag}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-n-700">{folderLabel(row.tag, folders)}</span>
+              {row.changed && <span aria-label="Uncommitted changes inside" title="Uncommitted changes inside" className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />}
               <span className="font-num text-[11px] text-n-400">{row.count}</span>
             </button>
           );
@@ -424,15 +480,16 @@ function TreeView({
           <>
             {indent && <span aria-hidden className="ml-[17px] h-full w-px shrink-0 bg-n-100" />}
             <span aria-hidden className="w-2.5 shrink-0" />
-            {item.kind === "note" ? <DocIcon /> : <FileBadge ext={item.ext} />}
+            <FileBadge ext={item.kind === "note" ? "md" : item.ext} />
             <span className={clsx("min-w-0 flex-1 truncate", isActive ? "text-rust-700" : "text-n-800 group-hover:text-rust-700")}>
               {item.kind === "note" ? item.title : item.filename}
             </span>
             {item.kind === "note" && item.pinned && (
               <span aria-label="Pinned" title="Pinned" className="shrink-0 text-[10px] text-rust-500">●</span>
             )}
+            {item.kind === "note" && item.change && <ChangeMark change={item.change} />}
             <span className="font-num shrink-0 text-[11px] text-n-400">
-              {item.kind === "note" ? fmtAgo(item.updatedAt) : fmtBytes(item.size)}
+              {item.kind === "note" ? noteMeta(item) : fmtBytes(item.size)}
             </span>
             {item.kind === "file" && onRemoveFile && <RemoveButton file={item} onRemove={onRemoveFile} />}
           </>

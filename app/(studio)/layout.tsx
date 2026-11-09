@@ -17,6 +17,8 @@ import { isStudyLocation, visibleCourseWhere } from "@/lib/types";
 import { getPreferences } from "@/lib/preferences";
 import { isGoogleConfigured } from "@/lib/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { FocusLockBar } from "@/components/FocusLockBar";
+import { activeLock, lockHome } from "@/lib/ultraFocus";
 
 /**
  * The browser paints its own canvas before our first byte lands, and it picks
@@ -62,6 +64,10 @@ export default async function RootLayout({
     getDueSoon(),
   ]);
   const calendarConnected = !!googleAuth;
+  // Rapt Mode (ultra focus): the locked course, if a lock is on. The proxy keeps every
+  // other page out of reach; this strips the shell down to the page itself.
+  const lock = activeLock(timer);
+  const lockCourse = lock ? courses.find((c) => c.id === lock.courseId) : undefined;
 
   return (
     // The theme is decided here, on the server, so the first paint is already
@@ -81,18 +87,35 @@ export default async function RootLayout({
           darkTo={prefs.darkTo}
         >
         <div className="relative z-10 flex min-h-screen flex-col">
-          <Nav courses={courses} repos={repos} />
-          <DueSoonBanner initial={dueSoon} />
+          {lock && lockCourse ? (
+            <FocusLockBar until={lock.until.toISOString()} course={lockCourse} home={lockHome(lockCourse)} />
+          ) : (
+            <>
+              <Nav courses={courses} repos={repos} />
+              <DueSoonBanner initial={dueSoon} />
+            </>
+          )}
           <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-32 pt-8 sm:px-8">
             {children}
           </main>
-          <CommandPalette />
-          <LastLecture />
-          <GlobalQuickAdd courses={courses} calendarConnected={calendarConnected} />
-          <SessionHotkey startedAt={timer?.startedAt.toISOString() ?? null} />
-          <EnhancementHotkey />
+          {/* Search, quick-add, the last lecture and the queue all lead
+              elsewhere - none of them while Rapt Mode is on. */}
+          {!lock && (
+            <>
+              <CommandPalette />
+              <LastLecture />
+              <GlobalQuickAdd courses={courses} calendarConnected={calendarConnected} />
+              <EnhancementHotkey />
+            </>
+          )}
+          <SessionHotkey
+            clock={timer ? { startedAt: timer.startedAt.toISOString(), pausedAt: timer.pausedAt?.toISOString() ?? null, pausedMs: timer.pausedMs } : null}
+          />
           <TimerBar
             startedAt={timer?.startedAt.toISOString() ?? null}
+            pausedAt={timer?.pausedAt?.toISOString() ?? null}
+            pausedMs={timer?.pausedMs ?? 0}
+            locked={!!lock}
             draftName={timer?.draftName ?? null}
             courses={courses}
             lastLocation={isStudyLocation(lastSession?.location) ? lastSession.location : null}

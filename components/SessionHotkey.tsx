@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { startTimer } from "@/app/actions";
+import { resumeTimer, startTimer } from "@/app/actions";
+import { studiedMs } from "@/lib/ultraFocus";
 import { fmtClock } from "@/lib/dates";
 import { Portal } from "@/lib/hooks/useModal";
 
@@ -10,7 +11,8 @@ import { Portal } from "@/lib/hooks/useModal";
 const HOLD_MS = 2400;
 const OUT_MS = 240;
 
-type Notice = { startMs: number; fresh: boolean; leaving: boolean };
+type Notice = { startMs: number; label: string; fresh: boolean; leaving: boolean };
+type Clock = { startedAt: string; pausedAt: string | null; pausedMs: number };
 
 /**
  * ⌥S starts a study session from anywhere - mid-sentence in a lecture too,
@@ -19,21 +21,22 @@ type Notice = { startMs: number; fresh: boolean; leaving: boolean };
  * timer bar, so starting from there still shows something happened.
  *
  * With a session already running it never stops it (stopping needs the stop
- * dialog); it just shows how long it's been going.
+ * dialog); it just shows how long it's been going. A paused session it
+ * resumes - ⌥S is "study now".
  */
-export function SessionHotkey({ startedAt }: { startedAt: string | null }) {
+export function SessionHotkey({ clock }: { clock: Clock | null }) {
   const router = useRouter();
   const [notice, setNotice] = useState<Notice | null>(null);
   const busy = useRef(false);
   const timers = useRef<number[]>([]);
   // Read at keypress time, so the listener needn't re-bind on every refresh.
-  const running = useRef(startedAt);
-  running.current = startedAt;
+  const running = useRef(clock);
+  running.current = clock;
 
   useEffect(() => {
-    const show = (startMs: number, fresh: boolean) => {
+    const show = (startMs: number, label: string, fresh: boolean) => {
       timers.current.forEach(clearTimeout);
-      setNotice({ startMs, fresh, leaving: false });
+      setNotice({ startMs, label, fresh, leaving: false });
       timers.current = [
         window.setTimeout(() => setNotice((n) => n && { ...n, leaving: true }), HOLD_MS),
         window.setTimeout(() => setNotice(null), HOLD_MS + OUT_MS),
@@ -46,8 +49,20 @@ export function SessionHotkey({ startedAt }: { startedAt: string | null }) {
       e.preventDefault();
       if (busy.current) return;
 
-      if (running.current) {
-        show(new Date(running.current).getTime(), false);
+      const c = running.current;
+      if (c) {
+        // The clock less its pauses, as a start time the notice can tick from.
+        const studied = studiedMs({ startedAt: new Date(c.startedAt), pausedAt: null, pausedMs: c.pausedMs });
+        if (!c.pausedAt) return show(Date.now() - studied, "Already studying", false);
+        busy.current = true;
+        try {
+          const paused = Date.now() - new Date(c.pausedAt).getTime();
+          await resumeTimer();
+          show(Date.now() - (studied - paused), "Resumed", true);
+          router.refresh();
+        } finally {
+          busy.current = false;
+        }
         return;
       }
       busy.current = true;
@@ -56,7 +71,8 @@ export function SessionHotkey({ startedAt }: { startedAt: string | null }) {
         const startMs = new Date(startedAt).getTime();
         // A start time from just now means this press started it; an older
         // one means another tab already had.
-        show(startMs, Date.now() - startMs < 5000);
+        const fresh = Date.now() - startMs < 5000;
+        show(startMs, fresh ? "Session started" : "Already studying", fresh);
         router.refresh();
       } finally {
         busy.current = false;
@@ -74,7 +90,7 @@ export function SessionHotkey({ startedAt }: { startedAt: string | null }) {
   return <StartedNotice {...notice} />;
 }
 
-function StartedNotice({ startMs, fresh, leaving }: Notice) {
+function StartedNotice({ startMs, label, fresh, leaving }: Notice) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -87,23 +103,19 @@ function StartedNotice({ startMs, fresh, leaving }: Notice) {
       {/* Above lecture focus mode (z-60) and its status pill (z-65), below
           dialogs (z-70); clear of the timer bar it's talking about. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-[66] flex justify-center px-4" role="status" aria-live="polite">
+        {/* A slim pill - a live dot, what happened, the clock. No play
+            button: there's nothing to press, the session's already going. */}
         <div
-          className={`${leaving ? "animate-sink-out" : "animate-rise-in"} flex items-center gap-3 rounded-full border border-rust-200 bg-n-0/95 py-2 pl-2 pr-5 backdrop-blur-md`}
+          className={`${leaving ? "animate-sink-out" : "animate-rise-in"} flex h-9 items-center gap-2.5 rounded-full border border-n-200 bg-n-0/90 pl-3.5 pr-4 backdrop-blur-md`}
           style={{ boxShadow: "var(--shadow-pop)" }}
         >
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-rust-500">
-            {fresh && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-rust-400 opacity-40 [animation-iteration-count:1]" />}
-            <svg width="12" height="13" viewBox="0 0 12 13" fill="none" aria-hidden className="relative">
-              <path d="M1.5 1.8v9.4a.6.6 0 0 0 .92.5l7.4-4.7a.6.6 0 0 0 0-1L2.42 1.3a.6.6 0 0 0-.92.5Z" fill="white" />
-            </svg>
+          <span aria-hidden className="relative flex h-2 w-2">
+            {fresh && <span className="absolute inset-0 animate-ping rounded-full bg-rust-400 opacity-60 [animation-iteration-count:2]" />}
+            <span className="animate-pulse-dot relative h-2 w-2 rounded-full bg-rust-500" />
           </span>
-          <span className="text-[13px] font-semibold text-n-800">{fresh ? "Session started" : "Already studying"}</span>
-          <span className="flex items-center gap-2">
-            <span aria-hidden className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-rust-500" />
-            <span className="font-num text-[17px] font-semibold leading-none tracking-tight text-n-900 tabular-nums">
-              {fmtClock(elapsed)}
-            </span>
-          </span>
+          <span className="text-[12.5px] font-semibold text-n-800">{label}</span>
+          <span aria-hidden className="h-3.5 w-px bg-n-200" />
+          <span className="font-num text-[13px] font-semibold leading-none text-n-600 tabular-nums">{fmtClock(elapsed)}</span>
         </div>
       </div>
     </Portal>

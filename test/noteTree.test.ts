@@ -66,6 +66,27 @@ test("collapsed folders hide their rows; keys stay unique", () => {
   assert.equal(shut[0].type === "folder" && shut[0].open, false);
 });
 
+test("an item inside a folder names it, even when the folder has slashes", () => {
+  const rows = visibleRows(buildTree([note("notes/a/plan.md", ["notes/a"]), note("top.md")]), new Set());
+  assert.deepEqual(rows.map((r) => (r.type === "item" ? r.parent ?? null : "folder")), ["folder", "#notes/a", null]);
+});
+
+test("a folder filter takes in subfolders, only when nested", () => {
+  const items = [note("a", ["msci-project"]), note("b", ["msci-project/notes"]), note("c", ["msci-projects"]), note("d")];
+  assert.deepEqual(filterItems(items, "", "msci-project", true).map((i) => i.id), ["a", "b"]);
+  assert.deepEqual(filterItems(items, "", "msci-project").map((i) => i.id), ["a"]);
+});
+
+test("a folder knows when something inside is uncommitted", () => {
+  const rows = visibleRows(buildTree([{ ...note("a", ["x"]), change: { state: "modified", added: 1, removed: 0 } }, note("b", ["y"])]), new Set());
+  assert.deepEqual(rows.filter((r) => r.type === "folder").map((r) => r.type === "folder" && r.changed), [true, false]);
+});
+
+test("unknown dates sort as oldest", () => {
+  const t = buildTree([{ ...note("x"), updatedAt: null }, note("y", [], 3)]);
+  assert.deepEqual(t.root.map((i) => i.id), ["y", "x"]);
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log(`  \x1b[32m✓\x1b[0m ${name}`); }

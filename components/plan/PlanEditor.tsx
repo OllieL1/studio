@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtWeight } from "@/lib/format";
+import { pdfTab } from "@/lib/pdfTab";
 import { Fragment, useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -395,7 +396,7 @@ export function PlanEditor({
             {preview ? "Hide calendar view" : "Calendar view"}
           </button>
           <a
-            href={`/api/plan/pdf?from=${fromISO}&days=${dayCount}`}
+            href={pdfTab(`/api/plan/pdf?from=${fromISO}&days=${dayCount}`, "Plan")}
             target="_blank"
             rel="noreferrer"
             className="flex h-9 items-center gap-2 rounded-[10px] border border-n-200 bg-n-0 px-3 text-[13px] font-semibold text-n-700 transition-colors duration-[120ms] hover:bg-n-50"

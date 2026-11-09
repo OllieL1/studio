@@ -147,6 +147,26 @@ export function carryOverTasks(last: { actions: CarryTask[]; prep: CarryTask[] }
   return out;
 }
 
+/**
+ * When a meeting moves, its prep moves with it - the tasks are due *for*
+ * that meeting, so every open one is due at the meeting's new time, even if
+ * it had been set for an earlier day. Done, cancelled and backlogged tasks
+ * stay where they are. Returns only the tasks whose date actually changes.
+ */
+export function movedPrepDueDates(
+  prep: (CarryTask & { dueAt: Date | null })[],
+  to: Date,
+): { id: string; dueAt: Date }[] {
+  const out: { id: string; dueAt: Date }[] = [];
+  for (const t of prep) {
+    if (t.cancelled || t.backlog) continue;
+    const done = t.items.length === 0 ? t.doneAt !== null : t.items.every((i) => i.doneAt !== null);
+    if (done) continue;
+    if (t.dueAt?.getTime() !== to.getTime()) out.push({ id: t.id, dueAt: to });
+  }
+  return out;
+}
+
 /* ── Agenda draft ────────────────────────────────────────────────────────── */
 
 export type AgendaInput = {

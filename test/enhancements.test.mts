@@ -23,6 +23,26 @@ test("a prefix sets the kind; first line is the title, the rest the body", () =>
   assert.equal(prefixKind("bugs are bad"), null);
 });
 
+test("a long first line is split, never cut: every word survives", () => {
+  const long = "Allow the creation of a focus mode. This is where I am studying and I want to go into ultra focus mode. Studio becomes ultra minimal and only gives me access to the task I have picked i.e. only the project page, or only a course page with its lecture. Upon selection of the task, I select an amount of time that I want to be in the ultra focus mode.";
+  const r = parseEnhancement(`feat: ${long}\nAnd a second line.`);
+  assert.equal(r.title, "Allow the creation of a focus mode.");
+  assert.ok(r.body.startsWith("This is where I am studying"));
+  assert.ok(r.body.includes("an amount of time that I want to be in the ultra focus mode."));
+  assert.ok(r.body.endsWith("And a second line."));
+  assert.equal(r.title.length + 1 + r.body.length - "\n\nAnd a second line.".length, long.length);
+
+  // No early sentence break: the title is a word-boundary cut with "…",
+  // and the body carries the whole line so it reads as written.
+  const run = "word ".repeat(80).trim();
+  const r2 = parseEnhancement(run);
+  assert.ok(r2.title.endsWith("…") && r2.title.length <= 161);
+  assert.equal(r2.body, run);
+
+  // Short lines are untouched.
+  assert.deepEqual(parseEnhancement("Short. Two sentences."), { kind: "feature", title: "Short. Two sentences.", body: "" });
+});
+
 test("Tab cycles kinds both ways", () => {
   assert.equal(nextKind("bug"), "feature");
   assert.equal(nextKind("tweak"), "bug");

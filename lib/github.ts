@@ -1,7 +1,8 @@
 import { db } from "./db";
 
 /**
- * GitHub, read-only.
+ * GitHub - read-only, except for the Claude knowledge base, which commits
+ * through `ghSend` (lib/kbData.ts). Nothing else in Studio writes to GitHub.
  *
  * Hand-rolled against the REST API, like Google and Spotify: a dozen GET
  * endpoints don't justify Octokit.
@@ -79,14 +80,22 @@ export type Fetched<T> = {
   stale: boolean;
 };
 
-async function request(path: string, token: string, etag?: string | null): Promise<Response> {
+async function request(
+  path: string,
+  token: string,
+  etag?: string | null,
+  send?: { method: "POST" | "PATCH" | "PUT" | "DELETE"; body: unknown },
+): Promise<Response> {
   try {
     return await fetch(`${API}${path}`, {
+      method: send?.method ?? "GET",
+      body: send ? JSON.stringify(send.body) : undefined,
       headers: {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${token}`,
         "X-GitHub-Api-Version": "2022-11-28",
         ...(etag ? { "If-None-Match": etag } : {}),
+        ...(send ? { "Content-Type": "application/json" } : {}),
       },
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -117,13 +126,15 @@ const inflight = new Map<string, Promise<Fetched<unknown>>>();
  * `maxAge` is how long a cached answer is trusted without asking again;
  * `0` always asks (conditionally), which is what the Refresh button does.
  */
-export async function gh<T>(path: string, { maxAge = 60 }: { maxAge?: number } = {}): Promise<Fetched<T>> {
+export async function gh<T>(path: string, { maxAge = 60, token }: { maxAge?: number; token?: string } = {}): Promise<Fetched<T>> {
   const key = path;
   const pending = inflight.get(key);
   if (pending) return pending as Promise<Fetched<T>>;
 
   const run = (async (): Promise<Fetched<T>> => {
-    const auth = await githubToken();
+    // Paths name their repo, so answers fetched with another token (the
+    // knowledge base's own) never collide in the cache.
+    const auth = token ? { token } : await githubToken();
     if (!auth) throw new GitHubError("unconfigured", "No GitHub token.");
 
     const cached = await db.gitHubCache.findUnique({ where: { key } });
@@ -191,6 +202,23 @@ export async function ghAll<T>(path: string, { maxAge = 60, maxPages = 5 }: { ma
     if (r.data.length < 100) break;
   }
   return { data: out, fetchedAt: oldest ?? new Date(), stale };
+}
+
+/**
+ * A write, or a GET that must be current - never cached, never served stale.
+ * A write that fails offline fails; there's no queue to replay it from.
+ */
+export async function ghSend<T>(method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", path: string, body?: unknown, token?: string): Promise<T> {
+  const auth = token ? { token } : await githubToken();
+  if (!auth) throw new GitHubError("unconfigured", "No GitHub token.");
+  const res = await request(path, auth.token, null, method === "GET" ? undefined : { method, body: body ?? {} });
+  if (!res.ok) throw await failure(res);
+  return (await res.json()) as T;
+}
+
+/** Drop one cached answer, so the next `gh` asks again - after a write changed it. */
+export async function forgetCached(path: string): Promise<void> {
+  await db.gitHubCache.deleteMany({ where: { key: path } });
 }
 
 /** Check a token before saving it: who it belongs to and what it can do. */

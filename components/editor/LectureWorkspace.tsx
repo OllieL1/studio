@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isModeToggle, MODE_SHORTCUT } from "@/lib/editor/shortcuts";
+import { pdfTab } from "@/lib/pdfTab";
 import { LiveEditor } from "./LiveEditor";
 import { Attachments, useUploader, type AttachedFile } from "./Attachments";
 import { LectureChecklist } from "../LectureChecklist";
@@ -102,9 +104,8 @@ export function LectureWorkspace({
         e.preventDefault();
         setShowTime((s) => !s);
       }
-      // ⌘⇧M, not ⌘/ - that's quick-add everywhere. By physical key, since
-      // Shift changes e.key.
-      if (mod && e.shiftKey && e.code === "KeyM") {
+      // ⌥M (or ⌘⇧M where the browser allows) - lib/editor/shortcuts.ts.
+      if (isModeToggle(e)) {
         e.preventDefault();
         setRaw((r) => !r);
       }
@@ -180,7 +181,7 @@ export function LectureWorkspace({
           key={label}
           onClick={() => setRaw(value)}
           aria-pressed={raw === value}
-          title={`${label} (⌘⇧M)`}
+          title={`${label} (${MODE_SHORTCUT})`}
           className={clsx(
             "flex h-full items-center rounded-[5px] px-2 text-[11px] font-semibold transition-colors duration-[120ms]",
             raw === value ? "bg-rust-500 text-white" : "text-n-500 hover:bg-n-50 hover:text-n-800",
@@ -243,7 +244,7 @@ export function LectureWorkspace({
         </svg>
       </button>
       <a
-        href={`/api/lectures/pdf?id=${taskId}`}
+        href={pdfTab(`/api/lectures/pdf?id=${taskId}`, title)}
         target="_blank"
         rel="noreferrer"
         aria-label="Export this lecture as a PDF"

@@ -448,6 +448,14 @@ samp {
 .animate-rise-in { animation: rise-in 420ms var(--ease-out-expo) both; }
 .animate-sink-out { animation: sink-out 240ms ease-in both; }
 
+/* The timer's modes (components/SessionModes.tsx): each option rises and
+   settles into place, a beat after the one before (animation-delay inline). */
+@keyframes fan-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fan-in { animation: fan-in 320ms var(--ease-out-expo) both; }
+
 /* ── Studying mode (components/FocusMode.tsx) ───────────────────────────────
    Sized from the window, so one layout serves a phone and a wall-mounted
    monitor. A short landscape screen - a phone on its side - has no height to

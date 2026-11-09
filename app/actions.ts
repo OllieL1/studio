@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notionDoneSync } from "@/lib/notionSync";
 import { db } from "@/lib/db";
+import { activeLock, LOCK_MAX_MINUTES, LOCK_MIN_MINUTES, pausedTotalAfterResume, studiedMs } from "@/lib/ultraFocus";
 import { DEFAULT_ITEMS, isStudyLocation } from "@/lib/types";
 import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
@@ -264,6 +265,57 @@ export async function startTimer() {
   return { startedAt: timer.startedAt };
 }
 
+/** Stop the clock without ending the session - a break. */
+export async function pauseTimer() {
+  await db.activeTimer.updateMany({ where: { id: "singleton", pausedAt: null }, data: { pausedAt: new Date() } });
+  refresh();
+}
+
+/** Start the clock again; the pause is banked and never counted as study. */
+export async function resumeTimer() {
+  const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
+  if (!t?.pausedAt) return;
+  await db.activeTimer.update({
+    where: { id: "singleton" },
+    data: { pausedAt: null, pausedMs: pausedTotalAfterResume(t) },
+  });
+  refresh();
+}
+
+/**
+ * Rapt Mode (ultra focus): lock Studio to one course (or the project) for `minutes`.
+ * Starts the session if none is running, and resumes it if it's paused -
+ * this is the moment to study. There's no "unlock": it ends when the time
+ * is up or the session does (stopping or discarding deletes the timer, and
+ * the lock with it). proxy.ts enforces it.
+ */
+export async function startUltraFocus(courseId: string, minutes: number) {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true } });
+  if (!course) return { ok: false as const, error: "That course doesn't exist." };
+  const m = Math.round(minutes);
+  if (!Number.isFinite(m) || m < LOCK_MIN_MINUTES || m > LOCK_MAX_MINUTES) {
+    return { ok: false as const, error: `Pick between ${LOCK_MIN_MINUTES} minutes and ${LOCK_MAX_MINUTES / 60} hours.` };
+  }
+  const now = new Date();
+  const lockUntil = new Date(now.getTime() + m * 60_000);
+  const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
+  if (activeLock(t, now)) return { ok: false as const, error: "Rapt Mode is already on." };
+  if (!t) {
+    await db.activeTimer.create({ data: { id: "singleton", startedAt: now, lockCourseId: course.id, lockUntil } });
+  } else {
+    await db.activeTimer.update({
+      where: { id: "singleton" },
+      data: {
+        lockCourseId: course.id,
+        lockUntil,
+        ...(t.pausedAt ? { pausedAt: null, pausedMs: pausedTotalAfterResume(t, now) } : {}),
+      },
+    });
+  }
+  refresh();
+  return { ok: true as const };
+}
+
 /** Abandon a running timer without recording anything. */
 export async function cancelTimer() {
   await db.activeTimer.deleteMany({ where: { id: "singleton" } });
@@ -316,10 +368,8 @@ export async function stopTimer(input: StopTimerInput) {
   if (!timer) return { ok: false as const, error: "No timer is running." };
 
   const endedAt = new Date();
-  const rawMinutes = Math.max(
-    0,
-    Math.round((endedAt.getTime() - timer.startedAt.getTime()) / 60000),
-  );
+  // Pauses are breaks, not study: they come off the session.
+  const rawMinutes = Math.round(studiedMs(timer, endedAt) / 60000);
 
   // Adjustment is down-only (AIM.md). Clamp rather than reject, so a stale
   // form can never inflate a session.

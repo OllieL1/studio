@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { pdfTab } from "@/lib/pdfTab";
 import { useRouter } from "next/navigation";
 import { deleteAttachment } from "@/app/actions";
 import { fmtBytes } from "@/lib/format";
@@ -71,7 +72,7 @@ export function Attachments({ taskId, files }: { taskId: string; files: Attached
               <path d="M7 1.5v2h2" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
             </svg>
             <a
-              href={`/api/uploads/${f.id}`}
+              href={/\.pdf$/i.test(f.filename) ? pdfTab(`/api/uploads/${f.id}`, f.filename) : `/api/uploads/${f.id}`}
               target="_blank"
               rel="noreferrer"
               className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-n-700 hover:text-rust-600"

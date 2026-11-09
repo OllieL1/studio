@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { stopTimer } from "@/app/actions";
+import { cancelTimer, stopTimer } from "@/app/actions";
 import { fmtDuration } from "@/lib/dates";
 import { resolveSplit, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
@@ -139,6 +139,23 @@ export function StopDialog({
       });
       if (res.ok) onSaved();
       else setError(res.error);
+    });
+  };
+
+  // Discarding throws the session away unlogged - it's the way to cancel one
+  // started by mistake. Two clicks, the second within a few seconds: no
+  // browser confirm box, but no one-slip loss either.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  useEffect(() => {
+    if (!confirmDiscard) return;
+    const t = setTimeout(() => setConfirmDiscard(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmDiscard]);
+  const discard = () => {
+    if (!confirmDiscard) return setConfirmDiscard(true);
+    startTransition(async () => {
+      await cancelTimer();
+      onSaved();
     });
   };
 
@@ -334,6 +351,17 @@ export function StopDialog({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-n-100 bg-n-25 px-5 py-3">
+          <button
+            onClick={discard}
+            disabled={pending}
+            title="Delete this session without logging it"
+            className={clsx(
+              "mr-auto rounded-md border px-3 py-2 text-[13px] font-semibold transition-colors duration-[120ms] disabled:opacity-50",
+              confirmDiscard ? "border-danger bg-danger-soft text-danger" : "border-transparent text-danger hover:bg-danger-soft",
+            )}
+          >
+            {confirmDiscard ? "Click again to discard" : "Discard session"}
+          </button>
           <button
             onClick={onClose}
             className="rounded-md px-3 py-2 text-[13px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-100"

@@ -59,7 +59,7 @@ export async function addEnhancement(input: {
     data: {
       number: (_max.number ?? 0) + 1,
       kind,
-      title: title.slice(0, 300),
+      title,
       body,
       app: input.app === "livio" ? "livio" : "studio",
       path: input.path?.slice(0, 300) || null,
@@ -75,7 +75,8 @@ export async function editEnhancement(id: string, patch: { title?: string; body?
   const data: { title?: string; body?: string; kind?: EnhancementKind } = {};
   if (patch.title !== undefined) {
     if (!patch.title.trim()) throw new Error("An enhancement needs a title.");
-    data.title = patch.title.trim().slice(0, 300);
+    // Kept whole - a long title is the person's call, and nothing is cut.
+    data.title = patch.title.trim();
   }
   if (patch.body !== undefined) data.body = patch.body;
   if (patch.kind !== undefined && isKind(patch.kind)) data.kind = patch.kind;

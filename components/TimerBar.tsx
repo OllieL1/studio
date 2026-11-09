@@ -2,29 +2,43 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { startTimer, cancelTimer } from "@/app/actions";
+import { startTimer, cancelTimer, resumeTimer } from "@/app/actions";
 import { fmtClock } from "@/lib/dates";
 import { clsx } from "@/lib/clsx";
 import { StopDialog } from "./StopDialog";
 import type { StudyLocation } from "@/lib/types";
 import { NowPlaying, useNowPlaying } from "./NowPlaying";
 import { FocusMode } from "./FocusMode";
+import { ModesButton, PlayIcon } from "./SessionModes";
+import { studiedMs } from "@/lib/ultraFocus";
 
-type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
+type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
 /**
  * The globally-visible on/off control. The start time lives on the server
  * (ActiveTimer), so the elapsed figure is derived from it on every tick —
  * closing the tab, reloading or a crash can't lose or drift the session.
+ *
+ * Pausing stops the clock without ending the session; the pause comes off
+ * what's logged. Rapt Mode, full screen and pause sit behind one modes
+ * button (SessionModes.tsx). Under Rapt Mode the bar's discard button goes;
+ * the way out is the time running out or ending the session from the stop
+ * dialog, which can log it or discard it.
  */
 export function TimerBar({
   startedAt,
+  pausedAt,
+  pausedMs = 0,
+  locked = false,
   draftName,
   courses,
   lastLocation,
   lastLocationNote,
 }: {
   startedAt: string | null;
+  pausedAt?: string | null;
+  pausedMs?: number;
+  locked?: boolean;
   draftName: string | null;
   courses: CourseLink[];
   lastLocation: StudyLocation | null;
@@ -36,28 +50,32 @@ export function TimerBar({
   const [stopping, setStopping] = useState(false);
   const [focus, setFocus] = useState(false);
   const startMs = startedAt ? new Date(startedAt).getTime() : null;
+  const pausedAtMs = pausedAt ? new Date(pausedAt).getTime() : null;
+  const paused = pausedAtMs != null;
 
   // Tick from the server-provided start time rather than accumulating a
   // counter, so the display stays correct across sleep and throttling.
+  // Pauses come off (lib/ultraFocus.ts); while paused the figure holds.
   useEffect(() => {
     if (startMs == null) {
       setElapsed(0);
       return;
     }
-    const tick = () => setElapsed(Math.max(0, (Date.now() - startMs) / 1000));
+    const clock = { startedAt: new Date(startMs), pausedAt: pausedAtMs == null ? null : new Date(pausedAtMs), pausedMs };
+    const tick = () => setElapsed(studiedMs(clock) / 1000);
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [startMs]);
+  }, [startMs, pausedAtMs, pausedMs]);
 
   // Keep the running time in the tab title — glanceable from another app.
   useEffect(() => {
     const base = "Studio - 26/27";
-    document.title = startMs ? `${fmtClock(elapsed)} · Studying` : base;
+    document.title = startMs ? `${fmtClock(elapsed)} · ${paused ? "Paused" : "Studying"}` : base;
     return () => {
       document.title = base;
     };
-  }, [elapsed, startMs]);
+  }, [elapsed, startMs, paused]);
 
   const running = startMs != null;
   // One poller for the pill below and the full-screen mode.
@@ -92,27 +110,40 @@ export function TimerBar({
               </button>
 
               <div className="flex items-center gap-2">
+                {paused ? (
+                  // Paused: the dot becomes a resume button - the obvious next step.
+                  <button
+                    onClick={() =>
+                      startTransition(async () => {
+                        await resumeTimer();
+                        router.refresh();
+                      })
+                    }
+                    disabled={pending}
+                    aria-label="Resume studying"
+                    title="Resume"
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-rust-600 transition-colors duration-[120ms] hover:bg-rust-50"
+                  >
+                    <PlayIcon />
+                  </button>
+                ) : (
+                  <span aria-hidden className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-rust-500" />
+                )}
                 <span
-                  aria-hidden
-                  className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-rust-500"
-                />
-                <span className="font-num text-[19px] font-semibold leading-none tracking-tight text-n-900 tabular-nums">
+                  className={clsx(
+                    "font-num text-[19px] font-semibold leading-none tracking-tight tabular-nums transition-colors duration-200",
+                    paused ? "text-n-400" : "text-n-900",
+                  )}
+                >
                   {fmtClock(elapsed)}
                 </span>
+                {paused && <span className="text-[11px] font-semibold uppercase tracking-wide text-n-400">Paused</span>}
               </div>
 
               <div className="flex items-center">
-              <button
-                onClick={() => setFocus(true)}
-                aria-label="Open studying mode"
-                title="Studying mode - full screen"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-n-400 transition-colors duration-[120ms] hover:bg-n-50 hover:text-n-700"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-                  <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
+              <ModesButton paused={paused} locked={locked} courses={courses} onFullScreen={() => setFocus(true)} />
 
+              {!locked && (
               <button
                 onClick={() => {
                   if (!confirm("Discard this session without recording it?")) return;
@@ -130,6 +161,7 @@ export function TimerBar({
                   <path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.6 9.2a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4M6.6 6.8v4M9.4 6.8v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
+              )}
               </div>
             </>
           ) : (

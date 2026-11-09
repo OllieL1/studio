@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { pdfTab } from "@/lib/pdfTab";
 import { visibleCourseWhere } from "@/lib/types";
 import { getSessions, getDailySeries } from "@/lib/queries";
 import {
@@ -330,7 +331,7 @@ function PageHeader({ range }: { range?: string }) {
       <div className="flex items-center gap-2">
         <RangePicker current={range ?? "all"} />
         <a
-          href={`/api/stats/pdf${range ? `?range=${range}` : ""}`}
+          href={pdfTab(`/api/stats/pdf${range ? `?range=${range}` : ""}`, "Stats")}
           target="_blank"
           rel="noreferrer"
           className="rounded-md border border-n-200 bg-n-0 px-2.5 py-1.5 text-[12px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
