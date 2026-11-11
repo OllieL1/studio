@@ -7,7 +7,7 @@ import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
 import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
 import { measureMath } from "../lib/pdf/math";
 import { newDoc, MARGIN } from "../lib/pdf/doc";
-import { notesStyle, parseInline, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
+import { listDepth, notesStyle, parseInline, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
 import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
 const tests: [string, () => Promise<void>][] = [];
@@ -396,6 +396,24 @@ test("lists: a list crossing a page carries on at the top of the next, not the f
   const marker = r.calls.find((c) => c.text === next[0].text.replace("Item ", "") + ".")!;
   assert.equal(marker.page, 1, "its marker came with it");
   assert.equal(marker.y, next[0].y);
+});
+
+test("lists: four levels of nesting each step in, with a marker of their own", async () => {
+  const r = await drawn("- one\n  - two\n    - three\n      - four\n    - back to three");
+  const at = (t: string) => r.calls.find((c) => c.text === t)!;
+  const xs = ["one", "two", "three", "four"].map((t) => at(t).x);
+  xs.slice(1).forEach((x, i) => assert.ok(x > xs[i], `level ${i + 2} is further in than level ${i + 1}: ${xs}`));
+  assert.equal(at("back to three").x, xs[2], "coming back out lines up with its level");
+  const markers = r.calls.filter((c) => c.x < xs[3] && c.text.length === 1).map((c) => c.text);
+  assert.deepEqual(markers, ["•", "◦", "▪", "–", "▪"]);
+});
+
+test("lists: depth counts indent steps, whatever the step", async () => {
+  const depths = (leads: string[]) => { const s: number[] = []; return leads.map((l) => listDepth(s, l)); };
+  assert.deepEqual(depths(["", "  ", "    ", "      "]), [0, 1, 2, 3], "the editor's two spaces");
+  assert.deepEqual(depths(["", "   ", "      "]), [0, 1, 2], "three under a number");
+  assert.deepEqual(depths(["", "    ", "        ", "    ", ""]), [0, 1, 2, 1, 0], "four, and back out");
+  assert.deepEqual(depths(["", "\t", "\t\t"]), [0, 1, 2], "tabs");
 });
 
 const squash = (s: string) => s.replace(/\s+/g, "");

@@ -102,5 +102,13 @@
     "status": "done",
     "note": "Both came from the same bug: the number's box was 8pt wide, so \"10.\" didn't fit and broke one character per line. Past 10 that stacked the digits down the margin. At the foot of a page the overflow started a new page by itself, and the item was then drawn back at the old bottom position on the new page - hence the blank page with one line at the very bottom. The number now sits right-aligned in a gutter wide enough for two digits (so 9. and 10. line up and the text doesn't shift), drawn as one run that can't wrap or break the page. A list crossing a page carries on at the top of the next one. Checked against the retro Plan note.",
     "at": "2026-11-11T14:15:37.006Z"
+  },
+  {
+    "id": "cmwc70le8000715o0ogi6yjnt",
+    "number": 17,
+    "title": "double nested lists do not render properly in the PDF.",
+    "status": "done",
+    "note": "Nesting depth was the leading spaces halved and capped at two levels, with \"–\" for everything below the top, so a third and fourth level sat exactly on the second. Depth now counts indent steps from the items above (the editor's two spaces, three under a number, four, or tabs all work), every level steps in, and coming back out lines up with the level it belongs to. The first four bullet levels have their own markers: • ◦ ▪ –, and deeper levels cycle round. Numbered items keep the numbers you wrote at any depth. Checked against the retro Plan note.",
+    "at": "2026-11-11T14:16:47.387Z"
   }
 ]

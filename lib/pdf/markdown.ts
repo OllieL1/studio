@@ -31,11 +31,38 @@ type Inline = { text: string; font: "body" | "bold" | "italic" | "mono" | "maths
 
 const HEADING_SCALE = [1.7, 1.42, 1.2, 1.06, 1, 1];
 
+const LIST_ITEM = /^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/;
+/** A bullet for each of the first four levels, so the depth reads at a glance; deeper levels cycle. */
+const BULLETS = ["•", "◦", "▪", "–"];
+/** How far each level of nesting steps in. */
+const LIST_STEP = 14;
+/** Past this, deeper items stop stepping in, so a deep outline never runs off the page. */
+const MAX_LIST_DEPTH = 6;
+
+/**
+ * How deep a list item is, from the indents of the items above it.
+ *
+ * Depth counts indent *steps*, not spaces: the editor indents by two, but
+ * markdown written elsewhere uses three (under "1. ") or four, or tabs. Each
+ * item deeper than the one above is one level in; one that comes back out
+ * returns to the level it lines up with. `stack` holds the indents of the open
+ * levels and is carried from item to item.
+ */
+export function listDepth(stack: number[], lead: string): number {
+  const indent = lead.replace(/\t/g, "  ").length;
+  while (stack.length && stack[stack.length - 1] > indent) stack.pop();
+  if (!stack.length || stack[stack.length - 1] < indent) stack.push(indent);
+  return stack.length - 1;
+}
+
 export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdStyle) {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
+  /** Indents of the open list levels; anything but a list item or a blank line ends the list. */
+  const listIndents: number[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trimEnd();
+    if (line.trim() && !LIST_ITEM.test(line)) listIndents.length = 0;
 
     // ── Fenced code: gather to the closing fence and draw as one block.
     const fence = /^\s*```(\w*)\s*$/.exec(line);
@@ -160,13 +187,14 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
       continue;
     }
 
-    const bullet = /^(\s*)[-*+]\s+(.*)$/.exec(line);
-    const numbered = /^(\s*)(\d+)[.)]\s+(.*)$/.exec(line);
-    if (bullet || numbered) {
-      const indentSpaces = (bullet ? bullet[1] : numbered![1]).length;
-      const depth = Math.min(2, Math.floor(indentSpaces / 2));
-      const marker = bullet ? (depth === 0 ? "•" : "–") : `${numbered![2]}.`;
-      const text = bullet ? bullet[2] : numbered![3];
+    const item = LIST_ITEM.exec(line);
+    if (item) {
+      const [, lead, bullet, number, text] = item;
+      // Depth used to be the leading spaces halved and capped at 2, with "–"
+      // for everything below the top - so a third and fourth level sat
+      // exactly on the second, and the levels couldn't be told apart.
+      const depth = listDepth(listIndents, lead);
+      const marker = bullet ? BULLETS[depth % BULLETS.length] : `${number}.`;
 
       // The marker sits right-aligned in a gutter wide enough for "10.", so
       // the dots of 9. and 10. line up and the item's text never moves. It is
@@ -177,7 +205,7 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
       // bottom of an otherwise blank page.
       doc.font("body").fontSize(style.size);
       const gutter = Math.max(12, doc.widthOfString("00.") + 5);
-      const indent = gutter + depth * 14;
+      const indent = gutter + Math.min(depth, MAX_LIST_DEPTH) * LIST_STEP;
 
       style.ensure?.(style.size + 6);
       const y = doc.y;
