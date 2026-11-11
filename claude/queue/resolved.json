@@ -96,6 +96,14 @@
     "at": "2026-11-09T00:18:10.185Z"
   },
   {
+    "id": "cmw94qath000015hg7b3g5o25",
+    "number": 13,
+    "title": "Improve the dropdown for read/reading/to read to be site native and better align with the design of the rest of the site",
+    "status": "done",
+    "note": "The reading-status pill on each paper now opens Studio's own small menu instead of the browser's grey native list: To read / Reading / Read, each with its colour dot and a tick on the current one. The pill changes straight away, while the save happens in the background. It works from the keyboard too: ↓ opens it, ↑↓ move, Enter picks and Esc backs out. The menu floats over the page, so it isn't cut off on the last paper in the list, and scrolling closes it.",
+    "at": "2026-11-11T14:20:02.165Z"
+  },
+  {
     "id": "cmwc5dkgi000215o07ri7tp22",
     "number": 15,
     "title": "can we improve the title editing such that we remove the edit button but if i click on the title (when rendered) then i can edit it i.e.",
