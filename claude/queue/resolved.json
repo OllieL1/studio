@@ -96,6 +96,14 @@
     "at": "2026-11-09T00:18:10.185Z"
   },
   {
+    "id": "cmwc5dkgi000215o07ri7tp22",
+    "number": 15,
+    "title": "can we improve the title editing such that we remove the edit button but if i click on the title (when rendered) then i can edit it i.e.",
+    "status": "done",
+    "note": "The Edit button is gone: click the title and it turns into a text box in the same place and size. Enter (or clicking away) saves; Esc puts the old title back. Hovering the title shows a soft band so it reads as clickable, and it can be reached with Tab and opened with Enter too. This is the same note editor everywhere, so Nexus notes behave the same way.",
+    "at": "2026-11-11T14:18:21.245Z"
+  },
+  {
     "id": "cmwc6ydhh000615o07pwoouk1",
     "number": 16,
     "title": "the PDF export when rendering numbered lists is quite bugged.",
