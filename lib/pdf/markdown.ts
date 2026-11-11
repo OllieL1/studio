@@ -166,15 +166,24 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
       const indentSpaces = (bullet ? bullet[1] : numbered![1]).length;
       const depth = Math.min(2, Math.floor(indentSpaces / 2));
       const marker = bullet ? (depth === 0 ? "•" : "–") : `${numbered![2]}.`;
-      const indent = 12 + depth * 14;
       const text = bullet ? bullet[2] : numbered![3];
+
+      // The marker sits right-aligned in a gutter wide enough for "10.", so
+      // the dots of 9. and 10. line up and the item's text never moves. It is
+      // drawn as one unwrapped run at a fixed point: squeezed into a box
+      // narrower than itself, "10." used to break a character per line, and
+      // near the foot of a page that overflow started a new page on its own -
+      // the cursor then went back to the old y, so the item landed at the
+      // bottom of an otherwise blank page.
+      doc.font("body").fontSize(style.size);
+      const gutter = Math.max(12, doc.widthOfString("00.") + 5);
+      const indent = gutter + depth * 14;
 
       style.ensure?.(style.size + 6);
       const y = doc.y;
-      doc.font("body").fontSize(style.size).fillColor(FAINT).text(marker, style.x + depth * 14, y, {
-        width: indent - 4,
-        lineBreak: false,
-      });
+      const markerX = style.x + indent - 4 - doc.widthOfString(marker);
+      doc.fillColor(FAINT).text(marker, markerX, y, { lineBreak: false });
+      doc.x = style.x;
       doc.y = y;
       inline(doc, parseInline(text), { ...style, x: style.x + indent, width: style.width - indent });
       continue;

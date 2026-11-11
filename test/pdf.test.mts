@@ -324,10 +324,11 @@ async function drawn(md: string, opts: { ensure?: boolean } = {}) {
   renderMarkdown(doc, md, opts.ensure === false ? style : { ...style, ensure });
   const size = style.size * 0.86;
   const measure = (s: string) => doc.font("mono").fontSize(size).widthOfString(s);
+  const measureBody = (s: string) => doc.font("body").fontSize(style.size).widthOfString(s);
   const dims = { width: doc.page.width, height: doc.page.height };
   doc.end();
   await done;
-  return { calls, bars, pages: page + 1, measure, ...dims };
+  return { calls, bars, pages: page + 1, measure, measureBody, ...dims };
 }
 
 /** A quote long enough to span pages, after enough prose to start it low on page one. */
@@ -366,6 +367,35 @@ test("quote: a short quote near the foot of a page moves whole, bar and all", as
   const quoted = r.calls.filter((c) => c.text.includes("word0"));
   assert.equal(quoted.length, 1);
   assert.equal(quoted[0].page, r.bars[0].page, "bar is on the same page as its words");
+});
+
+/* ── Lists ───────────────────────────────────────────────────────────────── */
+
+/** A numbered list long enough to run past 10, crossing the page break among the two-digit items. */
+const longList = `${Array.from({ length: 20 }, (_, i) => `Para ${i}.`).join("\n\n")}\n\n${Array.from({ length: 40 }, (_, i) => `${i + 1}. Item ${i + 1}`).join("\n")}`;
+
+test("lists: a two-digit number is drawn whole, and its dot lines up with the single digits", async () => {
+  const r = await drawn(longList);
+  const marker = (n: number) => r.calls.find((c) => c.text === `${n}.`);
+  for (let n = 1; n <= 40; n++) assert.ok(marker(n), `marker ${n}. drawn as one run`);
+  // Single characters would mean pdfkit broke "10." a character per line.
+  assert.ok(!r.calls.some((c) => c.text === "0" || c.text === "."), "no marker split into characters");
+  const textX = (n: number) => r.calls.find((c) => c.text === `Item ${n}`)!.x;
+  assert.equal(textX(9), textX(10), "item text doesn't shift at 10");
+  const right = (n: number) => marker(n)!.x + r.measureBody(`${n}.`);
+  assert.ok(Math.abs(right(9) - right(10)) < 0.5, "markers are right-aligned");
+});
+
+test("lists: a list crossing a page carries on at the top of the next, not the foot", async () => {
+  const r = await drawn(longList);
+  const items = r.calls.filter((c) => /^Item \d+$/.test(c.text));
+  const next = items.filter((c) => c.page === 1);
+  assert.ok(next.length > 0 && items.some((c) => c.page === 0), "the list spans both pages");
+  assert.equal(r.pages, 2);
+  assert.ok(Math.abs(next[0].y - MARGIN) <= 2, `first item on the new page sits at the top margin, not ${next[0].y}`);
+  const marker = r.calls.find((c) => c.text === next[0].text.replace("Item ", "") + ".")!;
+  assert.equal(marker.page, 1, "its marker came with it");
+  assert.equal(marker.y, next[0].y);
 });
 
 const squash = (s: string) => s.replace(/\s+/g, "");

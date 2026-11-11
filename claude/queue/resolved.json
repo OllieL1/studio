@@ -94,5 +94,13 @@
     "status": "done",
     "note": "The new-doc box completes folder names as you type. Start a name with ms and the rest - ci-project/ - shows in grey after the caret; Tab (or → at the end) takes it. It goes one folder at a time like a shell: after msci-project/, typing n completes msci-project/notes/ and so on. When two folders share the start (misc and msci-project after m), Tab fills in as far as they agree, and if they split straight away it does nothing and Tab moves on as normal. Case doesn't matter - MS completes too. The Rename box on a doc completes the same way, so moving a doc into a folder is quick. The old dropdown of folders is gone - the completion replaces it.",
     "at": "2026-11-09T00:18:10.185Z"
+  },
+  {
+    "id": "cmwc6ydhh000615o07pwoouk1",
+    "number": 16,
+    "title": "the PDF export when rendering numbered lists is quite bugged.",
+    "status": "done",
+    "note": "Both came from the same bug: the number's box was 8pt wide, so \"10.\" didn't fit and broke one character per line. Past 10 that stacked the digits down the margin. At the foot of a page the overflow started a new page by itself, and the item was then drawn back at the old bottom position on the new page - hence the blank page with one line at the very bottom. The number now sits right-aligned in a gutter wide enough for two digits (so 9. and 10. line up and the text doesn't shift), drawn as one run that can't wrap or break the page. A list crossing a page carries on at the top of the next one. Checked against the retro Plan note.",
+    "at": "2026-11-11T14:15:37.006Z"
   }
 ]
