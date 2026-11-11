@@ -36,7 +36,7 @@ export async function KbTab() {
           title="Add a token to open the knowledge base."
           body={`${repo} is private, so Studio needs a token to read and commit to it - one for this repo below, or the main one in Settings.`}
           action={
-            <Link href={"/settings#github" as Route} className="text-[12.5px] font-semibold text-n-600 hover:text-rust-600">
+            <Link href={"/settings/github" as Route} className="text-[12.5px] font-semibold text-n-600 hover:text-rust-600">
               GitHub settings →
             </Link>
           }

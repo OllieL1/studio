@@ -19,6 +19,7 @@ test("paired pages swap for their counterpart", () => {
   assert.equal(counterpartPath("/livio"), "/");
   assert.equal(counterpartPath("/settings"), "/livio/preferences");
   assert.equal(counterpartPath("/livio/preferences"), "/settings");
+  assert.equal(counterpartPath("/settings/github"), "/livio/preferences", "a Settings section is still Settings");
 });
 
 test("unpaired pages land on the other app's home", () => {

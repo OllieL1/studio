@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!isSpotifyConfigured()) {
-    return NextResponse.redirect(new URL("/settings?spotify=unconfigured", LOOPBACK_ORIGIN));
+    return NextResponse.redirect(new URL("/settings/spotify?spotify=unconfigured", LOOPBACK_ORIGIN));
   }
 
   const state = randomBytes(16).toString("hex");

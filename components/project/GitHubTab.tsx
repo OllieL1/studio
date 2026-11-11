@@ -28,7 +28,7 @@ export async function GitHubTab({ repo }: { repo: string | null }) {
           title="No repo linked yet."
           body="Set the project's repo in Settings, and its issues, pull requests and commits will show up here."
           action={
-            <Link href={"/settings#github" as Route} className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-400">
+            <Link href={"/settings/github" as Route} className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-400">
               Set the repo
             </Link>
           }
@@ -43,7 +43,7 @@ export async function GitHubTab({ repo }: { repo: string | null }) {
           title="Connect GitHub to see the repo."
           body={`${repo} is private, so Studio needs a token to read it. It takes a minute in Settings.`}
           action={
-            <Link href={"/settings#github" as Route} className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-400">
+            <Link href={"/settings/github" as Route} className="rounded-md bg-rust-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rust-400">
               Set up GitHub
             </Link>
           }

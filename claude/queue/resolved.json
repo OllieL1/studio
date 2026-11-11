@@ -104,6 +104,14 @@
     "at": "2026-11-11T14:20:02.165Z"
   },
   {
+    "id": "cmw9dnjza0005152wtniuoft7",
+    "number": 14,
+    "title": "The settings has got a bit hectic.",
+    "status": "done",
+    "note": "Settings now has a sidebar on the left, laid out like a file tree, and the section you pick opens on the right. It opens on Appearance. Connectors is a folder holding GitHub, Google Calendar, Spotify and Pushcut. Backup sits under Data, and Enhancements and Semester 2 are at the bottom. Each section is its own page (e.g. /settings/github), so it can be linked to and survives a reload, and it only loads its own data - so the Google calendar list is no longer fetched every time you open Settings for something else. Links elsewhere in Studio (Connect Google Calendar, the GitHub tab, Spotify on the stats page, search) now go straight to the right section, as do the Google and Spotify sign-in round trips. Old /settings#github-style links still find their way. On a phone the tree becomes a row of buttons above the section.",
+    "at": "2026-11-11T14:23:37.116Z"
+  },
+  {
     "id": "cmwc5dkgi000215o07ri7tp22",
     "number": 15,
     "title": "can we improve the title editing such that we remove the edit button but if i click on the title (when rendered) then i can edit it i.e.",

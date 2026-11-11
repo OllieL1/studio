@@ -17,7 +17,7 @@ export function GooglePanel({
   planCalendarId,
   calendars,
   linkedCount,
-  returnTo = "/settings",
+  returnTo = "/settings/google",
 }: {
   configured: boolean;
   connected: boolean;

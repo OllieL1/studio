@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   // Set by /api/google/auth: Studio's settings, or Livio's preferences.
   const saved = jar.get("google_oauth_return")?.value;
   jar.delete("google_oauth_return");
-  const back = saved && /^\/(?![/\\])/.test(saved) ? saved : "/settings";
+  const back = saved && /^\/(?![/\\])/.test(saved) ? saved : "/settings/google";
   const fail = (why: string) =>
     NextResponse.redirect(new URL(`${back}?google=${why}`, base));
 

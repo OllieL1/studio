@@ -312,7 +312,7 @@ export function QuickAdd({
             ) : (
               <p className="flex items-center justify-between gap-3 text-[12px] text-n-500">
                 <span>Google Calendar isn&apos;t connected.</span>
-                <a href="/settings" className="shrink-0 font-semibold text-rust-600 hover:text-rust-700">
+                <a href="/settings/google" className="shrink-0 font-semibold text-rust-600 hover:text-rust-700">
                   Connect →
                 </a>
               </p>
