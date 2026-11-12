@@ -134,5 +134,13 @@
     "status": "done",
     "note": "Nesting depth was the leading spaces halved and capped at two levels, with \"–\" for everything below the top, so a third and fourth level sat exactly on the second. Depth now counts indent steps from the items above (the editor's two spaces, three under a number, four, or tabs all work), every level steps in, and coming back out lines up with the level it belongs to. The first four bullet levels have their own markers: • ◦ ▪ –, and deeper levels cycle round. Numbered items keep the numbers you wrote at any depth. Checked against the retro Plan note.",
     "at": "2026-11-11T14:16:47.387Z"
+  },
+  {
+    "id": "cmwdhmr0d000915tozsvsoemk",
+    "number": 20,
+    "title": "massive massive bug. lets say i am writing a note, i ctrl k to another note and then i hit the back button in the browser.",
+    "status": "done",
+    "note": "What was wrong: Back (and Forward) brings a page back as it was when you first opened it, not as you left it. The editor took that old copy as \"what's saved\", and its first blur or autosave wrote it straight over everything since. Nothing on the server checked. That's how Peer Reviews went back to its 11:27 heading-and-empty-quote at 11:48. The 11:42 version was recovered from the database's write-ahead log.\n\nWhat changed, in two layers:\n- Every save now says what it expects to replace, and the server only writes if that's still what's stored. If not, nothing is written, saving stops, and a \"Not saved\" banner offers Copy this version and Reload. It covers notes on tasks and in Nexus, and lecture notes. It also catches two tabs on the same note.\n- When an editor opens, it reads what's stored now. If the page was a stale copy and you haven't typed yet, it shows the latest text instead. So Back now lands on what you last wrote.\n\nCaveat: renaming a tag rewrites mentions inside note bodies, so a note open in another tab during a rename will show the banner. Reload it.",
+    "at": "2026-11-12T12:14:20.680Z"
   }
 ]

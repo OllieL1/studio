@@ -11,6 +11,7 @@ import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
 import { inclusiveEnd, resolveEventTimes, type EventInput } from "@/lib/events";
 import { buildTaskPatch, type TaskEdit } from "@/lib/taskEdit";
+import { CONFLICT, storedTaskNotes } from "@/lib/editor/saveGuard";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
 import { buildListening } from "@/lib/music";
@@ -179,13 +180,34 @@ export async function setNotebookLocation(
 }
 
 /** Save typed notes (markdown) for a lecture. */
-export async function saveNotes(taskId: string, markdown: string) {
-  await db.task.update({
-    where: { id: taskId },
-    data: { notesMd: markdown.trim() ? markdown : null },
-  });
+/**
+ * `expected` is what the editor believes the notes are now; if they've moved
+ * on (another tab, or a stale page restored by Back) nothing is written - see
+ * lib/editor/saveGuard.ts.
+ */
+export async function saveNotes(taskId: string, markdown: string, expected?: string) {
+  const notesMd = storedTaskNotes(markdown);
+  if (expected === undefined) {
+    await db.task.update({ where: { id: taskId }, data: { notesMd } });
+  } else {
+    const { count } = await db.task.updateMany({
+      where: {
+        id: taskId,
+        // Empty notes are stored as null, so "" matches either.
+        OR: [{ notesMd: expected }, ...(storedTaskNotes(expected) === null ? [{ notesMd: null }] : [])],
+      },
+      data: { notesMd },
+    });
+    if (count === 0) return CONFLICT;
+  }
   refresh();
   return { ok: true as const };
+}
+
+/** A task's notes as stored now - for an editor checking its page isn't a stale copy. */
+export async function readTaskNotes(taskId: string) {
+  const task = await db.task.findUnique({ where: { id: taskId }, select: { notesMd: true } });
+  return task ? (task.notesMd ?? "") : null;
 }
 
 export async function deleteTask(id: string) {

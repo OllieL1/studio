@@ -5,7 +5,7 @@ import { isModeToggle, MODE_SHORTCUT } from "@/lib/editor/shortcuts";
 import { pdfTab } from "@/lib/pdfTab";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { deleteNote, setNoteTags, updateNote } from "@/app/nexusActions";
+import { deleteNote, readNoteBody, setNoteTags, updateNote } from "@/app/nexusActions";
 import { LiveEditor } from "../editor/LiveEditor";
 import { TagPicker } from "./TagPicker";
 import { clsx } from "@/lib/clsx";
@@ -268,7 +268,8 @@ export function NoteEditor({
           initial={note.body}
           initialHtml={initialHtml}
           minimal={minimal}
-          onSave={async (body) => { await updateNote(note.id, { body }); }}
+          onSave={(body, expectedBody) => updateNote(note.id, { body, expectedBody })}
+          latest={() => readNoteBody(note.id)}
           onSavedChange={setSaved}
           raw={raw}
           onRawChange={setRaw}
