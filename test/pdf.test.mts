@@ -7,7 +7,7 @@ import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
 import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
 import { measureMath } from "../lib/pdf/math";
 import { newDoc, MARGIN } from "../lib/pdf/doc";
-import { listDepth, notesStyle, parseInline, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
+import { listDepth, notesStyle, parseInline, renderMarkdown, taskItem, wrapCode } from "../lib/pdf/markdown";
 import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
 const tests: [string, () => Promise<void>][] = [];
@@ -330,6 +330,27 @@ async function drawn(md: string, opts: { ensure?: boolean } = {}) {
   await done;
   return { calls, bars, pages: page + 1, measure, measureBody, ...dims };
 }
+
+/* ── Task lists ──────────────────────────────────────────────────────────── */
+
+test("tasks: [ ] and [x] are read as checkboxes, anything else is plain", async () => {
+  assert.deepEqual(taskItem("[ ] open"), { checked: false, text: "open" });
+  assert.deepEqual(taskItem("[x] done"), { checked: true, text: "done" });
+  assert.deepEqual(taskItem("[X] done"), { checked: true, text: "done" });
+  assert.deepEqual(taskItem("[ ]"), { checked: false, text: "" });
+  assert.deepEqual(taskItem("plain"), { checked: null, text: "plain" });
+  assert.deepEqual(taskItem("[link](x) not a task"), { checked: null, text: "[link](x) not a task" });
+});
+
+test("tasks: boxes are drawn, never the raw [ ] or a bullet, at every depth", async () => {
+  const r = await drawn(["- [ ] buy milk", "- [x] post letter", "  - [ ] nested one", "- plain"].join("\n"));
+  const text = r.calls.map((c) => c.text).join("|");
+  assert.ok(!/\[\s?\]|\[x\]/i.test(text), `raw checkbox printed: ${text}`);
+  for (const w of ["buy milk", "post letter", "nested one", "plain"]) assert.ok(text.includes(w), `missing "${w}"`);
+  assert.equal(r.calls.filter((c) => c.text === "•").length, 1, "only the plain item gets a bullet");
+  const x = (w: string) => r.calls.find((c) => c.text.includes(w))!.x;
+  assert.ok(x("nested one") > x("buy milk"), "the nested task still steps in");
+});
 
 /** A quote long enough to span pages, after enough prose to start it low on page one. */
 const longQuote = (words: number) =>

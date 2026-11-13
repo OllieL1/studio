@@ -34,6 +34,18 @@ const HEADING_SCALE = [1.7, 1.42, 1.2, 1.06, 1, 1];
 const LIST_ITEM = /^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/;
 /** A bullet for each of the first four levels, so the depth reads at a glance; deeper levels cycle. */
 const BULLETS = ["•", "◦", "▪", "–"];
+/** A GFM task item's box: "[ ] text" / "[x] text", the text after the list marker. */
+const TASK_BOX = /^\[([ xX])\](?:\s+(.*))?$/;
+
+/**
+ * Split a list item's text into its checkbox state and the text after it.
+ * `checked` is null for a plain item - one that isn't a task at all.
+ */
+export function taskItem(text: string): { checked: boolean | null; text: string } {
+  const m = TASK_BOX.exec(text);
+  return m ? { checked: m[1] !== " ", text: m[2] ?? "" } : { checked: null, text };
+}
+
 /** How far each level of nesting steps in. */
 const LIST_STEP = 14;
 /** Past this, deeper items stop stepping in, so a deep outline never runs off the page. */
@@ -189,7 +201,10 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
 
     const item = LIST_ITEM.exec(line);
     if (item) {
-      const [, lead, bullet, number, text] = item;
+      const [, lead, bullet, number, rawText] = item;
+      // "- [ ] …" is a checkbox, drawn as one; the "[ ]" used to print as text (#19).
+      const task = taskItem(rawText);
+      const text = task.text;
       // Depth used to be the leading spaces halved and capped at 2, with "–"
       // for everything below the top - so a third and fourth level sat
       // exactly on the second, and the levels couldn't be told apart.
@@ -209,8 +224,12 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
 
       style.ensure?.(style.size + 6);
       const y = doc.y;
-      const markerX = style.x + indent - 4 - doc.widthOfString(marker);
-      doc.fillColor(FAINT).text(marker, markerX, y, { lineBreak: false });
+      if (task.checked === null) {
+        const markerX = style.x + indent - 4 - doc.widthOfString(marker);
+        doc.fillColor(FAINT).text(marker, markerX, y, { lineBreak: false });
+      } else {
+        checkbox(doc, style.x + indent - 5, y, style.size, task.checked);
+      }
       doc.x = style.x;
       doc.y = y;
       inline(doc, parseInline(text), { ...style, x: style.x + indent, width: style.width - indent });
@@ -668,3 +687,29 @@ export const notesStyle = (doc: PDFKit.PDFDocument, size = 10): MdStyle => ({
   x: MARGIN,
   width: doc.page.width - MARGIN * 2,
 });
+
+/**
+ * A task item's box, right-aligned in the marker gutter like a bullet and
+ * centred on the first line's x-height. Ticked is filled with a white tick,
+ * the way the editor draws it; open is just the outline.
+ */
+function checkbox(doc: PDFKit.PDFDocument, right: number, y: number, size: number, checked: boolean) {
+  const side = Math.round(size * 0.68 * 10) / 10;
+  const x = right - side;
+  const top = y + (size * 1.18 - side) / 2;
+  doc.save();
+  if (checked) {
+    doc.roundedRect(x, top, side, side, 1.6).fill(MUTED);
+    doc
+      .moveTo(x + side * 0.24, top + side * 0.52)
+      .lineTo(x + side * 0.43, top + side * 0.72)
+      .lineTo(x + side * 0.78, top + side * 0.3)
+      .lineWidth(1.1)
+      .lineCap("round")
+      .lineJoin("round")
+      .stroke("#ffffff");
+  } else {
+    doc.roundedRect(x, top, side, side, 1.6).lineWidth(0.8).stroke(FAINT);
+  }
+  doc.restore();
+}

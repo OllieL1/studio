@@ -144,6 +144,14 @@
     "at": "2026-11-13T17:28:54.639Z"
   },
   {
+    "id": "cmwdglzq6000815tov42bi1fi",
+    "number": 19,
+    "title": "we do not render checkboxes in the rendered PDFs - they just render raw as - []. please can we fix this?",
+    "status": "done",
+    "note": "Task-list items in exported PDFs now get a real checkbox instead of the raw '- [ ]' text. An open item gets an outlined box, a done one ([x]) a filled box with a white tick. Each box sits in the bullet's place, so nested to-dos still step in level by level. Plain bullets and numbered items are unchanged. This covers every PDF that renders markdown: notes, lectures and reading notes.",
+    "at": "2026-11-13T17:29:48.044Z"
+  },
+  {
     "id": "cmwdhmr0d000915tozsvsoemk",
     "number": 20,
     "title": "massive massive bug. lets say i am writing a note, i ctrl k to another note and then i hit the back button in the browser.",
