@@ -203,6 +203,9 @@ export function NoteEditor({
         ) : (
           // The title is its own edit button: click it (or Enter on it) and it
           // becomes the input, in the same place and size so nothing jumps.
+          // No hover band: with the pointer still over a just-saved title it
+          // read as a text box left open (#18). The box is the editing state
+          // only; the text cursor says it's clickable.
           <h1
             tabIndex={0}
             onClick={startEditingTitle}
@@ -213,7 +216,7 @@ export function NoteEditor({
               }
             }}
             title="Click to rename"
-            className="font-display -mx-2 min-w-0 flex-1 cursor-text truncate rounded-md border border-transparent px-[7px] text-[26px] leading-[34px] font-semibold tracking-tight text-n-900 outline-none transition-colors duration-[120ms] hover:bg-n-50 focus-visible:border-rust-400"
+            className="font-display -mx-2 min-w-0 flex-1 cursor-text truncate rounded-md border border-transparent px-[7px] text-[26px] leading-[34px] font-semibold tracking-tight text-n-900 outline-none focus-visible:border-rust-400"
           >
             {title}
           </h1>

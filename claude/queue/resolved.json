@@ -136,6 +136,14 @@
     "at": "2026-11-11T14:16:47.387Z"
   },
   {
+    "id": "cmwcdwxqo000315vwafe3o503",
+    "number": 18,
+    "title": "The text area should not be visible when the text is saved for the title of a note i.e. it should only appear or be visible when editing after a click.",
+    "status": "done",
+    "note": "The soft hover band behind a note's title is gone. With the pointer still resting on a title you'd just saved, it looked like a text box left open. Now the title is plain text until you click it, and the bordered box only appears while you're editing. The text cursor still shows it's clickable, and Tab + Enter still opens it. Same note editor in Studio, Nexus and Livio todo notes.",
+    "at": "2026-11-13T17:28:54.639Z"
+  },
+  {
     "id": "cmwdhmr0d000915tozsvsoemk",
     "number": 20,
     "title": "massive massive bug. lets say i am writing a note, i ctrl k to another note and then i hit the back button in the browser.",
