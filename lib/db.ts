@@ -1,8 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-
-/** Single Prisma instance, cached across hot reloads in dev so we don't
- *  exhaust connections. */
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient; prismaTuned?: boolean };
+import { sharedReconnect, withRecovery } from "./dbRecovery";
 
 /**
  * One connection, and SQLite tuned for a stick.
@@ -18,6 +15,9 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient; prisma
  * other for the file, and `busy_timeout` makes anything that does still
  * collide wait instead of failing. `VACUUM INTO` (lib/backup.ts) stays correct
  * under WAL, so backups are unaffected.
+ *
+ * If the stick drops out, that one connection is left holding a dead file
+ * handle. The client below reopens it on a disk I/O error (lib/dbRecovery.ts).
  */
 function connectionUrl(): string | undefined {
   const base = process.env.DATABASE_URL;
@@ -29,25 +29,46 @@ function connectionUrl(): string | undefined {
   return `${path}?${params}`;
 }
 
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+/**
+ * `journal_mode` is stored in the file, so it only really has to be set once;
+ * the other two are per-connection, so they are set again on every new
+ * connection.
+ */
+async function tune(client: PrismaClient): Promise<void> {
+  for (const pragma of ["busy_timeout = 10000", "journal_mode = WAL", "synchronous = NORMAL"]) {
+    await client.$queryRawUnsafe(`PRAGMA ${pragma}`).catch(() => {});
+  }
+}
+
+function createDb() {
+  const base = new PrismaClient({
     datasourceUrl: connectionUrl(),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
+  // Queued ahead of everything else at startup.
+  void tune(base);
+
+  const reconnect = sharedReconnect(async () => {
+    console.warn("[db] disk I/O error: reopening the database connection");
+    await base.$disconnect().catch(() => {});
+    await tune(base);
+  });
+
+  return base.$extends({
+    query: {
+      async $allOperations({ operation, args, query }) {
+        return withRecovery(operation, () => query(args), reconnect);
+      },
+    },
+  });
+}
+
+export type Db = ReturnType<typeof createDb>;
+
+/** Single instance, cached across hot reloads in dev so we don't exhaust
+ *  connections. */
+const globalForPrisma = globalThis as unknown as { prisma?: Db };
+
+export const db = globalForPrisma.prisma ?? createDb();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
-
-/**
- * Queued ahead of everything else at startup. `journal_mode` is stored in the
- * file, so it only really has to be set once; the other two are per-connection
- * and there is only ever one.
- */
-if (!globalForPrisma.prismaTuned) {
-  globalForPrisma.prismaTuned = true;
-  void (async () => {
-    for (const pragma of ["busy_timeout = 10000", "journal_mode = WAL", "synchronous = NORMAL"]) {
-      await db.$queryRawUnsafe(`PRAGMA ${pragma}`).catch(() => {});
-    }
-  })();
-}
