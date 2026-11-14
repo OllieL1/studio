@@ -1,7 +1,7 @@
 /** Sovrano: what time is worth, what's owed, and what the export says. */
 import assert from "node:assert/strict";
 import {
-  centsFor, fmtHours, fmtUSD, lastPlatform, parseRate, sessionCents, sovranoJson, sovranoTotals,
+  centsFor, fmtHours, fmtUSD, lastPlatform, parseRate, sessionCents, sovranoJson, sovranoTotals, splitLog,
   type SovProject, type SovSession,
 } from "../lib/sovrano";
 
@@ -147,6 +147,20 @@ test("json: sessions oldest first with project, value and paid state", () => {
   // Only the projects these sessions touch.
   assert.deepEqual(j.projects.map((p) => p.name), ["Alpha"]);
   assert.doesNotThrow(() => JSON.stringify(j));
+});
+
+test(":log: a leading length, then the name", () => {
+  assert.deepEqual(splitLog("1h20 rubric batch"), { minutes: 80, name: "rubric batch" });
+  assert.deepEqual(splitLog("1h 20 rubric batch"), { minutes: 80, name: "rubric batch" });
+  assert.deepEqual(splitLog("45 batch 4"), { minutes: 45, name: "batch 4" });
+  assert.deepEqual(splitLog("1:30"), { minutes: 90, name: "" });
+  assert.deepEqual(splitLog("2 hours 15 minutes evals"), { minutes: 135, name: "evals" });
+});
+
+test(":log: no length means all name - the dialog asks for one", () => {
+  assert.deepEqual(splitLog("rubric batch"), { minutes: null, name: "rubric batch" });
+  assert.deepEqual(splitLog(""), { minutes: null, name: "" });
+  assert.deepEqual(splitLog("0 nothing"), { minutes: null, name: "0 nothing" });
 });
 
 let failed = 0;

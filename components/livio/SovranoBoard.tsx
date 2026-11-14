@@ -18,8 +18,8 @@ import {
 } from "@/lib/livio/table";
 import { pdfTab } from "@/lib/pdfTab";
 import {
-  fmtHours, fmtUSD, isPlatform, OPEN_SOVRANO_LOG_EVENT, parseRate, PLATFORM_LABEL, PLATFORM_SHORT, PLATFORMS,
-  sessionCents, SOVRANO_KEY, sovranoTotals,
+  fmtHours, fmtUSD, isPlatform, lastPlatform, OPEN_SOVRANO_LOG_EVENT, parseRate, PLATFORM_LABEL, PLATFORM_SHORT, PLATFORMS,
+  sessionCents, SOVRANO_KEY, sovranoTotals, splitLog,
 } from "@/lib/sovrano";
 import { parseDuration } from "@/lib/ultraFocus";
 import { Eyebrow } from "../ui";
@@ -30,6 +30,7 @@ import { HelpSheet, type HelpSection } from "./HelpSheet";
 import { Kbd } from "./Kbd";
 import { isTypingTarget } from "@/lib/livio/keys";
 import { UndoToast } from "./UndoToast";
+import { SovranoLogDialog } from "../sovrano/SovranoLogDialog";
 
 const FIELDS: Field[] = [
   { key: "date", label: "Date", aliases: ["when", "day"] },
@@ -47,7 +48,8 @@ const COMMANDS: PageCommand[] = [
   { name: "rate", hint: "Hourly rate in USD for the filtered project (or the cursor's)", arg: "24.50" },
   { name: "project", hint: "Add a project - with a rate if you like", arg: "name [rate]" },
   { name: "export", hint: "This view as a PDF - or :export json", arg: "pdf | json" },
-  { name: "log", hint: "Stop and log the running session" },
+  { name: "log", hint: "Log work you didn't time - :log 1h20 rubric batch", arg: "length [name]" },
+  { name: "stop", hint: "Stop and log the running session" },
   { name: "full", hint: "Every column at full width - again to fit" },
   { name: "fit", hint: "Every column on screen" },
   { name: "clear", hint: "Clear search, filters and sort" },
@@ -62,6 +64,7 @@ const HELP: HelpSection[] = [
       [[SOVRANO_KEY], "Start work - from anywhere, in Livio or Studio"],
       [[SOVRANO_KEY], "…again to stop and log it"],
       [["⌥S"], "Studying pauses work, and work pauses study"],
+      [[":log 1h20 batch 4"], "Work you didn't time"],
     ],
   },
   {
@@ -120,6 +123,7 @@ export function SovranoBoard({ initialSessions, initialProjects }: { initialSess
   const [help, setHelp] = useState(false);
   const [filtering, setFiltering] = useState(false);
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
+  const [logging, setLogging] = useState<{ minutes: number | null; name: string; projectId: string | null } | null>(null);
   const cursorRow = useRef<SovranoRow | null>(null);
 
   const byId = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -168,7 +172,7 @@ export function SovranoBoard({ initialSessions, initialProjects }: { initialSess
 
   const totals = useMemo(() => sovranoTotals(rows, projects, now), [rows, projects, now]);
   const viewTotals = useMemo(() => sovranoTotals(visible, projects, now), [visible, projects, now]);
-  const modal = command !== null || help || filtering;
+  const modal = command !== null || help || filtering || logging !== null;
   const filtered = view.q || Object.values(view.filters).some((v) => v.length);
 
   useEffect(() => {
@@ -309,7 +313,12 @@ export function SovranoBoard({ initialSessions, initialProjects }: { initialSess
           return;
         }
         if (cmd.name === "export") return exportView(arg.toLowerCase());
-        if (cmd.name === "log") return void window.dispatchEvent(new Event(OPEN_SOVRANO_LOG_EVENT));
+        if (cmd.name === "log") {
+          const { minutes, name } = splitLog(arg);
+          const f = view.filters.project ?? [];
+          return void setTimeout(() => setLogging({ minutes, name, projectId: f.length === 1 ? f[0] : null }));
+        }
+        if (cmd.name === "stop") return void window.dispatchEvent(new Event(OPEN_SOVRANO_LOG_EVENT));
         if (cmd.name === "full" || cmd.name === "fit") return setView({ ...view, layout: view.layout === cmd.name ? "fit" : cmd.name });
         if (cmd.name === "clear") return setView({ q: "", sort: null, filters: {}, hideClosed: false, layout: view.layout });
       }
@@ -512,6 +521,22 @@ export function SovranoBoard({ initialSessions, initialProjects }: { initialSess
           hideClosed={false}
           onChange={(filters) => setView({ ...view, filters })}
           onClose={() => setFiltering(false)}
+        />
+      )}
+      {logging && (
+        <SovranoLogDialog
+          past={logging}
+          // Most recently worked first, each with the platform it was last worked under.
+          projects={totals.projects.map((p) => ({ id: p.id, name: p.name, rateCents: p.rateCents, lastPlatform: lastPlatform(rows, p.id) }))}
+          onClose={() => setLogging(null)}
+          onSaved={(logged) => {
+            setLogging(null);
+            if (!logged) return;
+            const { session, project } = logged;
+            setProjects((ps) => (ps.some((p) => p.id === project.id) ? ps : [...ps, project].sort((a, b) => a.name.localeCompare(b.name))));
+            setRows((rs) => [session, ...rs].sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime()));
+            setToast({ message: `Logged ${fmtDuration(session.minutes)} on ${project.name}` });
+          }}
         />
       )}
       {toast && <UndoToast message={toast.message} onUndo={toast.undo} onDone={() => setToast(null)} />}

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { cancelSovrano, stopSovrano } from "@/app/sovranoActions";
+import { cancelSovrano, logSovrano, stopSovrano, type SovranoProjectRow, type SovranoRow } from "@/app/sovranoActions";
 import { clsx } from "@/lib/clsx";
-import { fmtDuration } from "@/lib/dates";
+import { fmtDuration, fmtTime, toISODate } from "@/lib/dates";
+import { parseDuration } from "@/lib/ultraFocus";
 import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
 import { centsFor, fmtUSD, isPlatform, PLATFORM_LABEL, PLATFORMS, type Platform } from "@/lib/sovrano";
 import type { SovranoProjectOption } from "@/lib/sovranoData";
@@ -17,20 +18,36 @@ import { Eyebrow } from "../ui";
  *
  * The most recently worked project is picked to start with, and each
  * project brings the platform it was last worked under.
+ *
+ * With `past` it logs work that was never timed (`:log` on the Sovrano
+ * page): a start date and time and a typed length take the place of the
+ * tracked time and its down-only bar.
  */
 export function SovranoLogDialog({
-  trackedMinutes,
+  trackedMinutes = 0,
+  past,
   projects,
   onClose,
   onSaved,
 }: {
-  trackedMinutes: number;
+  trackedMinutes?: number;
+  /** Logging untimed work: what `:log` was given, if anything. */
+  past?: { minutes: number | null; name: string; projectId?: string | null };
   projects: SovranoProjectOption[];
   onClose: () => void;
-  onSaved: () => void;
+  /** With past work, what was logged - so the page can show it at once. */
+  onSaved: (logged?: { session: SovranoRow; project: SovranoProjectRow }) => void;
 }) {
-  const first = projects[0] ?? null;
-  const [name, setName] = useState("");
+  const first = (past?.projectId && projects.find((p) => p.id === past.projectId)) || projects[0] || null;
+  const [name, setName] = useState(past?.name ?? "");
+  // Past work: it ended just now unless you say otherwise - so the start is
+  // the length ago, on the 5 minutes.
+  const [length, setLength] = useState(past?.minutes ? fmtDuration(past.minutes) : "");
+  const [when, setWhen] = useState(() => {
+    const at = new Date(Date.now() - (past?.minutes ?? 60) * 60_000);
+    at.setMinutes(Math.floor(at.getMinutes() / 5) * 5, 0, 0);
+    return { date: toISODate(at), time: fmtTime(at.getHours() * 60 + at.getMinutes()) };
+  });
   const [projectId, setProjectId] = useState<string | null>(first?.id ?? null);
   const [creating, setCreating] = useState(projects.length === 0);
   const [newProject, setNewProject] = useState("");
@@ -43,7 +60,9 @@ export function SovranoLogDialog({
   useModal({ onClose, initialFocus: nameRef });
 
   const project = creating ? null : projects.find((p) => p.id === projectId) ?? null;
-  const value = project?.rateCents != null ? centsFor(minutes, project.rateCents) : null;
+  const pastMinutes = past ? parseDuration(length) : null;
+  const logMinutes = past ? pastMinutes ?? 0 : minutes;
+  const value = project?.rateCents != null && logMinutes > 0 ? centsFor(logMinutes, project.rateCents) : null;
   const adjusted = trackedMinutes - minutes;
 
   const pick = (p: SovranoProjectOption) => {
@@ -58,7 +77,29 @@ export function SovranoLogDialog({
       setError(creating ? "Name the new project." : "Pick a project.");
       return;
     }
+    if (past && !pastMinutes) {
+      setError("How long was it? Try 45, 1h20 or 1:20.");
+      return;
+    }
     setError(null);
+    if (past) {
+      startTransition(async () => {
+        const [h, m] = when.time.split(":").map(Number);
+        const startedAt = new Date(`${when.date}T00:00`);
+        startedAt.setHours(h || 0, m || 0, 0, 0);
+        const res = await logSovrano({
+          name,
+          projectId: creating ? null : projectId,
+          newProject: creating ? newProject : null,
+          platform,
+          minutes: pastMinutes!,
+          startedAt,
+        });
+        if (res.ok) onSaved({ session: res.session, project: res.project });
+        else setError(res.error);
+      });
+      return;
+    }
     startTransition(async () => {
       const res = await stopSovrano({
         name,
@@ -105,9 +146,9 @@ export function SovranoLogDialog({
           <div className="flex items-baseline justify-between border-b border-n-100 px-5 py-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-sov-600">Sovrano</p>
-              <h2 className="font-display text-[20px] font-semibold text-n-900">Log this work</h2>
+              <h2 className="font-display text-[20px] font-semibold text-n-900">{past ? "Log past work" : "Log this work"}</h2>
             </div>
-            <span className="font-num text-[13px] text-n-500">{fmtDuration(trackedMinutes)} tracked</span>
+            {!past && <span className="font-num text-[13px] text-n-500">{fmtDuration(trackedMinutes)} tracked</span>}
           </div>
 
           <div className="max-h-[70vh] space-y-5 overflow-y-auto px-5 py-5">
@@ -189,18 +230,39 @@ export function SovranoLogDialog({
               </div>
             </Field>
 
-            <Field
-              label="Duration"
-              hint={adjusted > 0 ? `Trimmed by ${fmtDuration(adjusted)}. Can only be adjusted down.` : "Can only be adjusted down from the tracked time."}
-            >
-              <DurationTrim tracked={trackedMinutes} value={minutes} onChange={setMinutes} accent="sov" />
-            </Field>
+            {past ? (
+              <div className="grid grid-cols-[1fr_auto_auto] gap-3">
+                <Field label="Length" hint={pastMinutes ? fmtDuration(pastMinutes) : "45, 1h20 or 1:20"}>
+                  <input
+                    value={length}
+                    onChange={(e) => setLength(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submit()}
+                    placeholder="1h 20m"
+                    aria-label="How long it was"
+                    className={clsx(field, "font-num")}
+                  />
+                </Field>
+                <Field label="Day">
+                  <input type="date" value={when.date} max={toISODate(new Date())} onChange={(e) => setWhen((w) => ({ ...w, date: e.target.value }))} aria-label="Day it started" className={clsx(field, "font-num w-[150px]")} />
+                </Field>
+                <Field label="Started">
+                  <input type="time" value={when.time} onChange={(e) => setWhen((w) => ({ ...w, time: e.target.value }))} aria-label="Time it started" className={clsx(field, "font-num w-[110px]")} />
+                </Field>
+              </div>
+            ) : (
+              <Field
+                label="Duration"
+                hint={adjusted > 0 ? `Trimmed by ${fmtDuration(adjusted)}. Can only be adjusted down.` : "Can only be adjusted down from the tracked time."}
+              >
+                <DurationTrim tracked={trackedMinutes} value={minutes} onChange={setMinutes} accent="sov" />
+              </Field>
+            )}
 
             {error && <p className="text-[13px] font-medium text-danger">{error}</p>}
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-n-100 bg-n-25 px-5 py-3">
-            <button
+            {!past && <button
               onClick={discard}
               disabled={pending}
               title="Throw this session away without logging it"
@@ -210,7 +272,7 @@ export function SovranoLogDialog({
               )}
             >
               {confirmDiscard ? "Click again to discard" : "Discard"}
-            </button>
+            </button>}
             <button onClick={onClose} className="rounded-md px-3 py-2 text-[13px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-100">
               Back
             </button>
@@ -219,7 +281,7 @@ export function SovranoLogDialog({
               disabled={pending}
               className="rounded-md bg-sov-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-[120ms] hover:bg-sov-600 disabled:opacity-50"
             >
-              {pending ? "Saving…" : `Log ${fmtDuration(minutes)}${value != null ? ` · ${fmtUSD(value)}` : ""}`}
+              {pending ? "Saving…" : `Log ${logMinutes > 0 ? fmtDuration(logMinutes) : ""}${value != null ? ` · ${fmtUSD(value)}` : ""}`.trimEnd()}
             </button>
           </div>
         </div>

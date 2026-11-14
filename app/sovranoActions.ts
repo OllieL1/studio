@@ -96,6 +96,41 @@ export async function stopSovrano(input: StopSovranoInput) {
   return { ok: true as const, id: session.id, minutes };
 }
 
+export type LogSovranoInput = Omit<StopSovranoInput, "minutes"> & { minutes: number; startedAt: Date };
+
+/** Longest stretch `:log` takes in one go - a typo guard, not a rule about work. */
+const MAX_LOGGED_MINUTES = 16 * 60;
+
+/**
+ * Log work that wasn't timed (`:log` on the page) - forgot to press ⌥W,
+ * or worked away from the machine. There's no tracked time to trim from, so
+ * the length is taken as given, within reason, and can't end in the future.
+ */
+export async function logSovrano(input: LogSovranoInput) {
+  if (!isPlatform(input.platform)) return { ok: false as const, error: "Pick Sovrano or DataAnnotation." };
+  const newName = input.newProject?.trim().slice(0, 80);
+  if (!input.projectId && !newName) return { ok: false as const, error: "Pick a project, or name a new one." };
+  const minutes = Math.round(input.minutes);
+  if (!Number.isFinite(minutes) || minutes < 1) return { ok: false as const, error: "How long was it? Try 45, 1h20 or 1:20." };
+  if (minutes > MAX_LOGGED_MINUTES) return { ok: false as const, error: "That's over 16 hours - log it as more than one session." };
+  const startedAt = new Date(input.startedAt);
+  if (Number.isNaN(startedAt.getTime())) return { ok: false as const, error: "Pick when it started." };
+  const endedAt = new Date(startedAt.getTime() + minutes * 60_000);
+  if (endedAt.getTime() > Date.now() + 60_000) return { ok: false as const, error: "That would end in the future - pick an earlier start." };
+
+  const session = await db.$transaction(async (tx) => {
+    const projectId = newName
+      ? (await tx.sovranoProject.upsert({ where: { name: newName }, update: {}, create: { name: newName } })).id
+      : input.projectId!;
+    return tx.sovranoSession.create({
+      data: { name: input.name.trim().slice(0, 200) || "Work session", projectId, platform: input.platform, startedAt, endedAt, minutes, rawMinutes: minutes },
+    });
+  });
+  // A new project belongs in the bar's dialog too.
+  if (newName) refresh();
+  return { ok: true as const, session, project: await db.sovranoProject.findUniqueOrThrow({ where: { id: session.projectId } }) };
+}
+
 /* ── The page ──────────────────────────────────────────────────────────
    The table edits optimistically and swaps in what these return, like the
    other Livio boards - so these don't revalidate the page under an edit. */

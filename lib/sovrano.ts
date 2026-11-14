@@ -1,4 +1,5 @@
 import { startOfWeek } from "./dates";
+import { parseDuration } from "./ultraFocus";
 
 /**
  * Sovrano - paid annotation work, timed in Livio. Pure, so the page, the
@@ -224,3 +225,17 @@ export function sovranoJson(sessions: SovSession[], projects: SovProject[], expo
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * `:log 1h20 rubric batch` → 80 minutes, "rubric batch". The length is the
+ * longest run of leading words that reads as one ("1h 20", "1 hour 20
+ * minutes"); without one it's all name, and the dialog asks.
+ */
+export function splitLog(arg: string): { minutes: number | null; name: string } {
+  const words = arg.trim().split(/\s+/).filter(Boolean);
+  for (let k = Math.min(4, words.length); k > 0; k--) {
+    const m = parseDuration(words.slice(0, k).join(" "));
+    if (m != null && m > 0) return { minutes: m, name: words.slice(k).join(" ") };
+  }
+  return { minutes: null, name: words.join(" ") };
+}

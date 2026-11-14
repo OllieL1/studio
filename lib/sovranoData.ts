@@ -37,7 +37,7 @@ export async function getSovranoProjects() {
     },
   });
   return projects
-    .map((p) => ({ id: p.id, name: p.name, rateCents: p.rateCents, lastPlatform: p.sessions[0]?.platform ?? null, lastAt: p.sessions[0]?.startedAt.getTime() ?? 0 }))
+    .map((p) => ({ id: p.id, name: p.name, rateCents: p.rateCents, lastPlatform: (p.sessions.length ? p.sessions[0].platform : null) as string | null, lastAt: p.sessions.length ? p.sessions[0].startedAt.getTime() : 0 }))
     .sort((a, b) => b.lastAt - a.lastAt || a.name.localeCompare(b.name))
     .map(({ lastAt: _, ...p }) => p);
 }
