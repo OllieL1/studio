@@ -220,11 +220,14 @@ export default async function CoursePage({
             {exams.map((e) => {
               const prereqs = deps.filter((d) => d.dependentId === e.id).map((d) => d.prerequisite);
               const r = readinessFor(e, course, prereqs, course.tasks);
+              // The card is the way in: the exam's own page sets its formal
+              // date, diet and weight (Edit, or E), or deletes a duplicate (#22).
               return (
-                <Card key={e.id} accent={cssColour(course.colour)} className="p-4 pl-5">
+                <Link key={e.id} href={`/tasks/${e.id}`} className="group block rounded-lg" title="Open - set its date, or edit it">
+                <Card accent={cssColour(course.colour)} className="p-4 pl-5 transition-colors duration-[120ms] group-hover:border-n-300">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[14px] font-semibold text-n-800">{e.title}</p>
+                      <p className="text-[14px] font-semibold text-n-800 underline-offset-2 group-hover:underline">{e.title}</p>
                       <p className="mt-0.5 text-[12px] text-n-500">
                         {e.examDiet ?? (e.dueAt ? fmtRelative(e.dueAt) : "Date TBC")}
                         {e.gradeWeight != null && (
@@ -247,6 +250,7 @@ export default async function CoursePage({
                     </p>
                   </div>
                 </Card>
+                </Link>
               );
             })}
           </div>
