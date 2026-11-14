@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import type { MusicStats, Group } from "@/lib/musicStats";
 import { MIN_ARTIST_SESSIONS, MIN_COMPARE } from "@/lib/musicStats";
@@ -47,7 +48,7 @@ export function MusicSection({
           </p>
           {connected && !historyScope && <ReconnectHint />}
           {!connected && (
-            <Link href="/settings" className="mt-3 inline-block text-[12.5px] font-semibold text-rust-600 hover:text-rust-700">
+            <Link href={"/settings/spotify" as Route} className="mt-3 inline-block text-[12.5px] font-semibold text-rust-600 hover:text-rust-700">
               Connect in Settings →
             </Link>
           )}

@@ -826,3 +826,52 @@ model KbDraft {
 
   @@id([repo, path])
 }
+
+/* ── Sovrano ────────────────────────────────────────────────────────────────
+   Paid annotation work (Sovrano, through DataAnnotation), timed like a study
+   session but kept entirely apart from study: its own timer, its own bar,
+   its own tables. Livio's /livio/sovrano page reads them. lib/sovrano.ts
+   holds the money and totals rules. */
+
+/// A client project, with its hourly rate in US cents.
+model SovranoProject {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  /// USD per hour, in cents. Null until set - its time then has no value yet.
+  rateCents Int?
+  sessions  SovranoSession[]
+  createdAt DateTime @default(now())
+}
+
+/// A logged stretch of paid work. Its value is minutes × the project's
+/// current rate until it's marked paid; then `paidCents` freezes what was
+/// actually paid, so a later rate change never rewrites history.
+model SovranoSession {
+  id         String         @id @default(cuid())
+  name       String
+  projectId  String
+  project    SovranoProject @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  /// "SOVRANO" | "DATAANNOTATION" - see lib/sovrano.ts.
+  platform   String
+  startedAt  DateTime
+  endedAt    DateTime
+  /// Adjusted, down-only minutes - what every total counts.
+  minutes    Int
+  /// Wall-clock minutes less pauses, before adjusting.
+  rawMinutes Int
+  paidAt     DateTime?
+  paidCents  Int?
+  createdAt  DateTime @default(now())
+
+  @@index([startedAt])
+  @@index([projectId])
+}
+
+/// Singleton (id is always "singleton"): the running Sovrano timer. The same
+/// shape as ActiveTimer, so it survives reloads and closed tabs too.
+model SovranoTimer {
+  id        String    @id @default("singleton")
+  startedAt DateTime
+  pausedAt  DateTime?
+  pausedMs  Int       @default(0)
+}

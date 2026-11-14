@@ -5,7 +5,7 @@ import { isModeToggle, MODE_SHORTCUT } from "@/lib/editor/shortcuts";
 import { pdfTab } from "@/lib/pdfTab";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { deleteNote, setNoteTags, updateNote } from "@/app/nexusActions";
+import { deleteNote, readNoteBody, setNoteTags, updateNote } from "@/app/nexusActions";
 import { LiveEditor } from "../editor/LiveEditor";
 import { TagPicker } from "./TagPicker";
 import { clsx } from "@/lib/clsx";
@@ -198,23 +198,28 @@ export function NoteEditor({
             }}
             placeholder="Untitled"
             aria-label="Note title"
-            className="font-display h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-2 text-[24px] font-semibold tracking-tight text-n-900 outline-none focus:border-rust-400"
+            className="font-display -mx-2 h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-[7px] text-[26px] font-semibold tracking-tight text-n-900 outline-none focus:border-rust-400"
           />
         ) : (
-          <>
-            <h1
-              onDoubleClick={startEditingTitle}
-              className="font-display min-w-0 flex-1 truncate text-[26px] leading-9 font-semibold tracking-tight text-n-900"
-            >
-              {title}
-            </h1>
-            <button
-              onClick={startEditingTitle}
-              className="h-8 shrink-0 rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
-            >
-              Edit
-            </button>
-          </>
+          // The title is its own edit button: click it (or Enter on it) and it
+          // becomes the input, in the same place and size so nothing jumps.
+          // No hover band: with the pointer still over a just-saved title it
+          // read as a text box left open (#18). The box is the editing state
+          // only; the text cursor says it's clickable.
+          <h1
+            tabIndex={0}
+            onClick={startEditingTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                startEditingTitle();
+              }
+            }}
+            title="Click to rename"
+            className="font-display -mx-2 min-w-0 flex-1 cursor-text truncate rounded-md border border-transparent px-[7px] text-[26px] leading-[34px] font-semibold tracking-tight text-n-900 outline-none focus-visible:border-rust-400"
+          >
+            {title}
+          </h1>
         )}
         {showPin && <button
           onClick={() => {
@@ -266,7 +271,8 @@ export function NoteEditor({
           initial={note.body}
           initialHtml={initialHtml}
           minimal={minimal}
-          onSave={async (body) => { await updateNote(note.id, { body }); }}
+          onSave={(body, expectedBody) => updateNote(note.id, { body, expectedBody })}
+          latest={() => readNoteBody(note.id)}
           onSavedChange={setSaved}
           raw={raw}
           onRawChange={setRaw}

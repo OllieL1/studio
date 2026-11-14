@@ -9,7 +9,7 @@ import { buildAuthUrl, isGoogleConfigured } from "@/lib/google";
  *  be turned into an open redirect. */
 function returnPath(req: NextRequest): string {
   const r = req.nextUrl.searchParams.get("return");
-  return r && /^\/(?![/\\])/.test(r) ? r : "/settings";
+  return r && /^\/(?![/\\])/.test(r) ? r : "/settings/google";
 }
 
 /** Kicks off the OAuth flow. */

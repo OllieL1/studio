@@ -7,7 +7,7 @@ import { exchangeSpotifyCode, fetchDisplayName } from "@/lib/spotify";
 /** Spotify redirects here (on 127.0.0.1). Tokens go in the DB, then back to the app on localhost. */
 export async function GET(req: NextRequest) {
   const back = (result: string) =>
-    NextResponse.redirect(new URL(`/settings?spotify=${result}`, LOOPBACK_ORIGIN));
+    NextResponse.redirect(new URL(`/settings/spotify?spotify=${result}`, LOOPBACK_ORIGIN));
 
   if (req.nextUrl.searchParams.get("error")) return back("denied");
 

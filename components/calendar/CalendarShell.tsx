@@ -234,7 +234,7 @@ export function CalendarShell({
         )}
 
         {!googleConnected && (
-          <a href="/settings" className="ml-1 text-[11.5px] font-medium text-n-400 hover:text-rust-600">
+          <a href="/settings/google" className="ml-1 text-[11.5px] font-medium text-n-400 hover:text-rust-600">
             Connect Google Calendar to see your other events →
           </a>
         )}

@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { saveNotes } from "@/app/actions";
+import { readTaskNotes, saveNotes } from "@/app/actions";
 import {
   applyInsert, autoArrow, caretLine, filterInserts, joinBlocks, listContinuation, quoteContinuation,
   classify, indentLines, newId, retype, sourceOffset, splitBlocks, type Block, type Insert,
@@ -17,6 +17,7 @@ import {
   compactMentions, deleteShorthandBefore, expandMentions, insertMentionShorthand, mentionIndexAt,
 } from "@/lib/editor/mentionShorthand";
 import type { MentionOption } from "@/app/api/mentions/route";
+import { createSaver } from "@/lib/editor/saveGuard";
 import { TableEditor } from "./TableEditor";
 import { ColumnsEditor } from "./ColumnsEditor";
 
@@ -31,13 +32,24 @@ import { ColumnsEditor } from "./ColumnsEditor";
  *
  * Saving is a debounce plus every blur, and a save is forced before the tab
  * can close. Losing notes is the worst thing this app could do.
+ *
+ * Each save also says what it expects to replace, so an editor holding an old
+ * copy - a second tab, or a page Back restored as it was - can't overwrite
+ * newer work: the save is refused, saving stops, and the editor says so
+ * (lib/editor/saveGuard.ts).
  */
 
 type Props = {
   /** Save to this task's notes. Omit it and `onSave` is used instead. */
   taskId?: string;
-  /** Where the markdown goes when there's no task - a meeting, a paper. */
-  onSave?: (markdown: string) => void | Promise<void>;
+  /** Where the markdown goes when there's no task - a meeting, a paper.
+   *  `expected` is what this editor believes is stored; return CONFLICT
+   *  (lib/editor/saveGuard.ts) when it isn't, and nothing is overwritten. */
+  onSave?: (markdown: string, expected: string) => unknown;
+  /** What `onSave` writes to, as stored right now (null if it's gone). Read
+   *  once on mount: Back can restore a page as it was when first opened, and
+   *  then the editor swaps in the newer text. A task's notes need nothing. */
+  latest?: () => Promise<string | null>;
   initial: string;
   /** Server-rendered HTML for the initial blocks, in order. */
   /** Server-rendered HTML for the initial blocks. Rendered here when absent. */
@@ -68,6 +80,7 @@ type Props = {
 export function LiveEditor({
   taskId,
   onSave,
+  latest,
   initial,
   initialHtml,
   minimal = false,
@@ -92,6 +105,8 @@ export function LiveEditor({
   const [html, setHtml] = useState<Record<string, string>>(start.html);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rawText, setRawText] = useState(initial);
+  const rawTextRef = useRef(rawText);
+  rawTextRef.current = rawText;
   /** Block indices, inclusive, when several blocks are selected at once. */
   const [selection, setSelection] = useState<{ from: number; to: number } | null>(null);
   const [menu, setMenu] = useState<{ blockId: string; start: number; query: string } | null>(null);
@@ -111,7 +126,12 @@ export function LiveEditor({
   /** Index of the block a selection extends from - the last one edited. */
   const anchorRef = useRef<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSaved = useRef(initial);
+  /** Where saves go - a ref, so the saver below always uses the latest props. */
+  const sendRef = useRef<(text: string, expected: string) => Promise<unknown>>(null!);
+  sendRef.current = async (text, expected) => (taskId ? saveNotes(taskId, text, expected) : onSave?.(text, expected));
+  /** What's stored, as far as this editor knows, and whether a conflict stopped saving. */
+  const [saver] = useState(() => createSaver(initial, (text, expected) => sendRef.current(text, expected)));
+  const [conflict, setConflict] = useState(false);
   const rowHandlers = useRef<{ extend: (i: number) => void; enter: (id: string, caret: number) => void }>(null!);
   const extendRow = useCallback((i: number) => rowHandlers.current.extend(i), []);
   const enterRow = useCallback((id: string, caret: number) => rowHandlers.current.enter(id, caret), []);
@@ -139,19 +159,17 @@ export function LiveEditor({
 
   const persist = useCallback(
     async (text: string) => {
-      if (text === lastSaved.current) return;
-      lastSaved.current = text;
-      if (taskId) await saveNotes(taskId, text);
-      else await onSave?.(text);
-      onSavedChange?.(true);
+      const outcome = await saver.save(text);
+      if (outcome === "saved") onSavedChange?.(true);
+      if (outcome === "conflict") setConflict(true);
     },
-    [taskId, onSave, onSavedChange],
+    [saver, onSavedChange],
   );
 
   useEffect(() => {
-    const dirty = markdown !== lastSaved.current;
+    const dirty = markdown !== saver.stored;
     onSavedChange?.(!dirty);
-    if (!dirty) return;
+    if (!dirty || conflict) return;
     if (eager) {
       void persist(markdown);
       return;
@@ -161,15 +179,15 @@ export function LiveEditor({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [markdown, persist, onSavedChange, eager]);
+  }, [markdown, persist, onSavedChange, eager, saver, conflict]);
 
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      if (markdown !== lastSaved.current) e.preventDefault();
+      if (markdown !== saver.stored) e.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [markdown]);
+  }, [markdown, saver]);
 
   /* ── Rendering ────────────────────────────────────────────────────────── */
 
@@ -209,6 +227,40 @@ export function LiveEditor({
     if (initialHtml) return;
     void render(blocksRef.current.filter((b) => b.text.trim()));
     // Mount only: later renders happen as blocks are left.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Is this page a stale copy? Back restores a page as it was when it was
+  // first opened, not as it was left. If what's stored has moved on and
+  // nothing has been typed here yet, show what's stored instead. (If
+  // something has, the save guard refuses it and the banner explains.)
+  useEffect(() => {
+    const read = taskId ? () => readTaskNotes(taskId) : latest;
+    if (!read) return;
+    let live = true;
+    void read()
+      .then((stored) => {
+        if (!live || stored === null || stored === initial || saver.stored !== initial) return;
+        // Untouched since mount? (Blocks don't round-trip to the exact
+        // string, so compare like with like.)
+        const untouched = wasRaw.current
+          ? rawTextRef.current === initial
+          : joinBlocks(blocksRef.current) === joinBlocks(start.blocks);
+        if (!untouched) return;
+        saver.rebase(stored);
+        const next = splitBlocks(stored);
+        commit(next);
+        setRawText(stored);
+        setActiveId(null);
+        void render(next);
+      })
+      .catch(() => {
+        // Offline or the like: the save guard still stands.
+      });
+    return () => {
+      live = false;
+    };
+    // Mount only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -673,9 +725,34 @@ export function LiveEditor({
 
   /* ── Render ───────────────────────────────────────────────────────────── */
 
+  const conflictBanner = conflict && (
+    <div role="alert" className="animate-fade-in mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md bg-warn-soft px-3.5 py-2.5 text-[12.5px] text-warn-ink">
+      <p className="min-w-0 flex-1">
+        <span className="font-semibold">Not saved.</span> This was changed somewhere else after this page
+        loaded - another tab, or an older copy of the page brought back by Back - so saving stopped here
+        rather than overwrite it. Copy anything you want to keep, then reload.
+      </p>
+      <span className="flex shrink-0 gap-1.5">
+        <button
+          onClick={() => void navigator.clipboard?.writeText(markdown)}
+          className="h-7 rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-700 hover:bg-n-50"
+        >
+          Copy this version
+        </button>
+        <button
+          onClick={() => window.location.reload()}
+          className="h-7 rounded-md bg-rust-500 px-2.5 text-[11.5px] font-semibold text-white hover:bg-rust-600"
+        >
+          Reload
+        </button>
+      </span>
+    </div>
+  );
+
   if (raw) {
     return (
       <div className="relative">
+        {conflictBanner}
         <textarea
           ref={rawRef}
           value={rawText}
@@ -708,6 +785,7 @@ export function LiveEditor({
 
   return (
     <div className={clsx("relative", nested ? "pb-0" : minimal ? "pb-24" : "pb-10")}>
+      {conflictBanner}
       {blocks.map((b, i) => {
         // The textarea shows and types against this shorthand, never the
         // real markdown - recomputed from the block's actual (always-full)

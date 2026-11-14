@@ -11,11 +11,13 @@ import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
 import { inclusiveEnd, resolveEventTimes, type EventInput } from "@/lib/events";
 import { buildTaskPatch, type TaskEdit } from "@/lib/taskEdit";
+import { CONFLICT, storedTaskNotes } from "@/lib/editor/saveGuard";
 import { upsertEvent, deleteEvent, isGoogleConfigured } from "@/lib/google";
 import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
 import { buildListening } from "@/lib/music";
 import { backupNow } from "@/lib/backup";
 import { firePushcut } from "@/lib/pushcut";
+import { pauseSovranoIfRunning } from "@/lib/sovranoData";
 import { deleteUpload } from "@/lib/uploads";
 import { cleanHour, isThemeMode, DEFAULT_DARK_FROM, DEFAULT_DARK_TO } from "@/lib/theme";
 import { isHttpUrl, linkFallbackLabel, serializeMention } from "@/lib/mentions";
@@ -179,13 +181,34 @@ export async function setNotebookLocation(
 }
 
 /** Save typed notes (markdown) for a lecture. */
-export async function saveNotes(taskId: string, markdown: string) {
-  await db.task.update({
-    where: { id: taskId },
-    data: { notesMd: markdown.trim() ? markdown : null },
-  });
+/**
+ * `expected` is what the editor believes the notes are now; if they've moved
+ * on (another tab, or a stale page restored by Back) nothing is written - see
+ * lib/editor/saveGuard.ts.
+ */
+export async function saveNotes(taskId: string, markdown: string, expected?: string) {
+  const notesMd = storedTaskNotes(markdown);
+  if (expected === undefined) {
+    await db.task.update({ where: { id: taskId }, data: { notesMd } });
+  } else {
+    const { count } = await db.task.updateMany({
+      where: {
+        id: taskId,
+        // Empty notes are stored as null, so "" matches either.
+        OR: [{ notesMd: expected }, ...(storedTaskNotes(expected) === null ? [{ notesMd: null }] : [])],
+      },
+      data: { notesMd },
+    });
+    if (count === 0) return CONFLICT;
+  }
   refresh();
   return { ok: true as const };
+}
+
+/** A task's notes as stored now - for an editor checking its page isn't a stale copy. */
+export async function readTaskNotes(taskId: string) {
+  const task = await db.task.findUnique({ where: { id: taskId }, select: { notesMd: true } });
+  return task ? (task.notesMd ?? "") : null;
 }
 
 export async function deleteTask(id: string) {
@@ -259,6 +282,8 @@ export async function startTimer() {
   const existing = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (existing) return { startedAt: existing.startedAt };
 
+  // Studying now, so paid work stops counting (lib/sovranoData.ts).
+  await pauseSovranoIfRunning();
   const timer = await db.activeTimer.create({
     data: { id: "singleton", startedAt: new Date() },
   });
@@ -278,6 +303,7 @@ export async function pauseTimer() {
 export async function resumeTimer() {
   const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (!t?.pausedAt) return;
+  await pauseSovranoIfRunning();
   await db.activeTimer.update({
     where: { id: "singleton" },
     data: { pausedAt: null, pausedMs: pausedTotalAfterResume(t) },
@@ -304,6 +330,7 @@ export async function startUltraFocus(courseId: string, minutes: number) {
   const lockUntil = new Date(now.getTime() + m * 60_000);
   const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (activeLock(t, now)) return { ok: false as const, error: "Rapt Mode is already on." };
+  await pauseSovranoIfRunning(now);
   if (!t) {
     await db.activeTimer.create({ data: { id: "singleton", startedAt: now, lockCourseId: course.id, lockUntil } });
     after(() => firePushcut("start"));

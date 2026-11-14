@@ -11,6 +11,7 @@ import type { StudyLocation } from "@/lib/types";
 import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
 import { Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
+import { DurationTrim } from "./DurationTrim";
 import { cssColour } from "@/lib/palette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
@@ -280,32 +281,7 @@ export function StopDialog({
                 : "Can only be adjusted down from the tracked time."
             }
           >
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={elapsedMinutes}
-                value={minutes}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-                className="h-[18px] flex-1"
-                aria-label="Adjusted duration in minutes"
-              />
-              <div className="flex items-baseline gap-1 rounded-sm border border-n-200 px-2 py-1">
-                <input
-                  type="number"
-                  min={0}
-                  max={elapsedMinutes}
-                  value={minutes}
-                  onChange={(e) =>
-                    setMinutes(
-                      Math.max(0, Math.min(elapsedMinutes, Number(e.target.value) || 0)),
-                    )
-                  }
-                  className="font-num w-12 bg-transparent text-right text-[14px] font-semibold text-n-900 outline-none"
-                />
-                <span className="text-[12px] text-n-400">min</span>
-              </div>
-            </div>
+            <DurationTrim tracked={elapsedMinutes} value={minutes} onChange={setMinutes} />
           </Field>
 
           {/* Focus */}

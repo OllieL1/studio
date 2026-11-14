@@ -31,11 +31,50 @@ type Inline = { text: string; font: "body" | "bold" | "italic" | "mono" | "maths
 
 const HEADING_SCALE = [1.7, 1.42, 1.2, 1.06, 1, 1];
 
+const LIST_ITEM = /^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/;
+/** A bullet for each of the first four levels, so the depth reads at a glance; deeper levels cycle. */
+const BULLETS = ["•", "◦", "▪", "–"];
+/** A GFM task item's box: "[ ] text" / "[x] text", the text after the list marker. */
+const TASK_BOX = /^\[([ xX])\](?:\s+(.*))?$/;
+
+/**
+ * Split a list item's text into its checkbox state and the text after it.
+ * `checked` is null for a plain item - one that isn't a task at all.
+ */
+export function taskItem(text: string): { checked: boolean | null; text: string } {
+  const m = TASK_BOX.exec(text);
+  return m ? { checked: m[1] !== " ", text: m[2] ?? "" } : { checked: null, text };
+}
+
+/** How far each level of nesting steps in. */
+const LIST_STEP = 14;
+/** Past this, deeper items stop stepping in, so a deep outline never runs off the page. */
+const MAX_LIST_DEPTH = 6;
+
+/**
+ * How deep a list item is, from the indents of the items above it.
+ *
+ * Depth counts indent *steps*, not spaces: the editor indents by two, but
+ * markdown written elsewhere uses three (under "1. ") or four, or tabs. Each
+ * item deeper than the one above is one level in; one that comes back out
+ * returns to the level it lines up with. `stack` holds the indents of the open
+ * levels and is carried from item to item.
+ */
+export function listDepth(stack: number[], lead: string): number {
+  const indent = lead.replace(/\t/g, "  ").length;
+  while (stack.length && stack[stack.length - 1] > indent) stack.pop();
+  if (!stack.length || stack[stack.length - 1] < indent) stack.push(indent);
+  return stack.length - 1;
+}
+
 export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdStyle) {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
+  /** Indents of the open list levels; anything but a list item or a blank line ends the list. */
+  const listIndents: number[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trimEnd();
+    if (line.trim() && !LIST_ITEM.test(line)) listIndents.length = 0;
 
     // ── Fenced code: gather to the closing fence and draw as one block.
     const fence = /^\s*```(\w*)\s*$/.exec(line);
@@ -160,21 +199,38 @@ export function renderMarkdown(doc: PDFKit.PDFDocument, md: string, style: MdSty
       continue;
     }
 
-    const bullet = /^(\s*)[-*+]\s+(.*)$/.exec(line);
-    const numbered = /^(\s*)(\d+)[.)]\s+(.*)$/.exec(line);
-    if (bullet || numbered) {
-      const indentSpaces = (bullet ? bullet[1] : numbered![1]).length;
-      const depth = Math.min(2, Math.floor(indentSpaces / 2));
-      const marker = bullet ? (depth === 0 ? "•" : "–") : `${numbered![2]}.`;
-      const indent = 12 + depth * 14;
-      const text = bullet ? bullet[2] : numbered![3];
+    const item = LIST_ITEM.exec(line);
+    if (item) {
+      const [, lead, bullet, number, rawText] = item;
+      // "- [ ] …" is a checkbox, drawn as one; the "[ ]" used to print as text (#19).
+      const task = taskItem(rawText);
+      const text = task.text;
+      // Depth used to be the leading spaces halved and capped at 2, with "–"
+      // for everything below the top - so a third and fourth level sat
+      // exactly on the second, and the levels couldn't be told apart.
+      const depth = listDepth(listIndents, lead);
+      const marker = bullet ? BULLETS[depth % BULLETS.length] : `${number}.`;
+
+      // The marker sits right-aligned in a gutter wide enough for "10.", so
+      // the dots of 9. and 10. line up and the item's text never moves. It is
+      // drawn as one unwrapped run at a fixed point: squeezed into a box
+      // narrower than itself, "10." used to break a character per line, and
+      // near the foot of a page that overflow started a new page on its own -
+      // the cursor then went back to the old y, so the item landed at the
+      // bottom of an otherwise blank page.
+      doc.font("body").fontSize(style.size);
+      const gutter = Math.max(12, doc.widthOfString("00.") + 5);
+      const indent = gutter + Math.min(depth, MAX_LIST_DEPTH) * LIST_STEP;
 
       style.ensure?.(style.size + 6);
       const y = doc.y;
-      doc.font("body").fontSize(style.size).fillColor(FAINT).text(marker, style.x + depth * 14, y, {
-        width: indent - 4,
-        lineBreak: false,
-      });
+      if (task.checked === null) {
+        const markerX = style.x + indent - 4 - doc.widthOfString(marker);
+        doc.fillColor(FAINT).text(marker, markerX, y, { lineBreak: false });
+      } else {
+        checkbox(doc, style.x + indent - 5, y, style.size, task.checked);
+      }
+      doc.x = style.x;
       doc.y = y;
       inline(doc, parseInline(text), { ...style, x: style.x + indent, width: style.width - indent });
       continue;
@@ -631,3 +687,29 @@ export const notesStyle = (doc: PDFKit.PDFDocument, size = 10): MdStyle => ({
   x: MARGIN,
   width: doc.page.width - MARGIN * 2,
 });
+
+/**
+ * A task item's box, right-aligned in the marker gutter like a bullet and
+ * centred on the first line's x-height. Ticked is filled with a white tick,
+ * the way the editor draws it; open is just the outline.
+ */
+function checkbox(doc: PDFKit.PDFDocument, right: number, y: number, size: number, checked: boolean) {
+  const side = Math.round(size * 0.68 * 10) / 10;
+  const x = right - side;
+  const top = y + (size * 1.18 - side) / 2;
+  doc.save();
+  if (checked) {
+    doc.roundedRect(x, top, side, side, 1.6).fill(MUTED);
+    doc
+      .moveTo(x + side * 0.24, top + side * 0.52)
+      .lineTo(x + side * 0.43, top + side * 0.72)
+      .lineTo(x + side * 0.78, top + side * 0.3)
+      .lineWidth(1.1)
+      .lineCap("round")
+      .lineJoin("round")
+      .stroke("#ffffff");
+  } else {
+    doc.roundedRect(x, top, side, side, 1.6).lineWidth(0.8).stroke(FAINT);
+  }
+  doc.restore();
+}

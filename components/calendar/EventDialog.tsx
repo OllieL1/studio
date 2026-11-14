@@ -191,7 +191,7 @@ export function EventDialog({
             ) : (
               <p className="flex items-center justify-between gap-3 text-[12px] text-n-500">
                 Google Calendar isn&apos;t connected.
-                <a href="/settings" className="shrink-0 font-semibold text-rust-600 hover:text-rust-700">Connect →</a>
+                <a href="/settings/google" className="shrink-0 font-semibold text-rust-600 hover:text-rust-700">Connect →</a>
               </p>
             )}
           </div>

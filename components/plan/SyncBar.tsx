@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { clsx } from "@/lib/clsx";
 
@@ -70,7 +71,7 @@ export function SyncBar({
 }
 
 function SettingsLink() {
-  return <Link href="/settings" className="font-semibold text-rust-600 hover:text-rust-700">Settings</Link>;
+  return <Link href={"/settings/google" as Route} className="font-semibold text-rust-600 hover:text-rust-700">Settings</Link>;
 }
 
 function Tick() {

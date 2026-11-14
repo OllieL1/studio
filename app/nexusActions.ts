@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { ensureTags, pruneOrphanTags, tagKey } from "@/lib/tags";
 import { renameTagMentions } from "@/lib/mentions";
+import { CONFLICT } from "@/lib/editor/saveGuard";
 
 /**
  * Nexus: the project's notebook, plus the tags shared with research.
@@ -61,20 +62,39 @@ export async function createNote(input?: { title?: string; body?: string; taskId
   return { ok: true as const, id: note.id };
 }
 
+/**
+ * `expectedBody` is what the editor believes the body is now. When it's given
+ * and the body has moved on - saved from another tab, or from this page as it
+ * was before Back restored an old copy of it - nothing is written and the
+ * editor is told so (lib/editor/saveGuard.ts).
+ */
 export async function updateNote(
   id: string,
-  data: { title?: string; body?: string; pinned?: boolean },
+  data: { title?: string; body?: string; pinned?: boolean; expectedBody?: string },
 ) {
   const patch: Record<string, unknown> = {};
   if (data.title !== undefined) patch.title = data.title.trim().slice(0, 120) || "Untitled";
   if (data.body !== undefined) patch.body = data.body;
   if (data.pinned !== undefined) patch.pinned = data.pinned;
 
-  const note = await db.note.update({ where: { id }, data: patch, select: { taskId: true } });
+  if (data.expectedBody !== undefined) {
+    // One statement, so nothing can land between the check and the write.
+    const { count } = await db.note.updateMany({ where: { id, body: data.expectedBody }, data: patch });
+    if (count === 0) return CONFLICT;
+  }
+  const note = data.expectedBody !== undefined
+    ? await db.note.findUniqueOrThrow({ where: { id }, select: { taskId: true } })
+    : await db.note.update({ where: { id }, data: patch, select: { taskId: true } });
   // A body save is the autosave; only what the gallery shows is worth
   // invalidating, and the gallery is dynamic so it re-queries on arrival.
   if (data.title !== undefined || data.pinned !== undefined) refreshIndexes(note.taskId);
   return { ok: true as const };
+}
+
+/** The body as stored now - for an editor checking its page isn't a stale copy. */
+export async function readNoteBody(id: string) {
+  const note = await db.note.findUnique({ where: { id }, select: { body: true } });
+  return note?.body ?? null;
 }
 
 export async function deleteNote(id: string) {

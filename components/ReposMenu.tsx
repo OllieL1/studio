@@ -133,7 +133,7 @@ export function ReposMenu({ repos, variant, active }: { repos: RepoMenuEntry[]; 
             )}
             <div className="mt-1 flex items-center justify-between border-t border-n-100 px-2.5 pb-1 pt-2 text-[11px]">
               <span className="text-n-400">{pulse && !pulse.connected ? "Connect GitHub for live counts" : "Opens on GitHub"}</span>
-              <Link href={"/settings#github" as Route} onClick={() => setOpen(false)} className="font-semibold text-n-500 hover:text-rust-700">
+              <Link href={"/settings/github" as Route} onClick={() => setOpen(false)} className="font-semibold text-n-500 hover:text-rust-700">
                 Manage
               </Link>
             </div>

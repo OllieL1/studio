@@ -284,3 +284,29 @@ around a centre. The favicon is that mark on a violet tile.
 **Switching.** There's a ⇄ button beside each wordmark, and ⌘⇧Space from
 anywhere. Paired pages swap (Home ↔ Home, Settings ↔ Preferences) and anything
 else goes to the other app's home. The rules are in `lib/apps.ts`.
+
+## Sovrano (14 Nov 2026)
+
+Paid annotation work (Sovrano, through DataAnnotation) is timed like study,
+but it must never be mistaken for study. It has its own timer (`SovranoTimer`),
+its own bar (`components/sovrano/SovranoBar.tsx`) and its own page
+(`/livio/sovrano`).
+
+**Its own colour.** The `sov-*` teal tokens in `app/globals.css` are the same
+in both apps, because Livio doesn't repoint them. So the work bar is never
+rust (studying) or violet (Livio). Use teal only for Sovrano.
+
+**Its own place.** The bar sits bottom-left in both apps, never centred where
+Studio's study bar is. It has squarer corners and a SOVRANO label. When idle
+it shrinks to a small "Work ⌥W" chip. On a phone in Studio it stacks above
+the study bar instead of overlapping it.
+
+**One minute, one timer.** Starting or resuming either timer pauses the
+other (`lib/sovranoData.ts`), so the same minute is never counted twice. The
+paused one waits for you to resume it. Rapt Mode hides the work bar.
+
+**Money.** All money is held in US cents. A session is worth its minutes at
+the project's *current* rate until it's marked paid. Marking it paid freezes
+`paidCents`, so a later rate change only affects what's still owed. Time on a
+project with no rate shows as "no rate", never as $0. The rules are in
+`lib/sovrano.ts`.

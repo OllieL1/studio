@@ -25,10 +25,15 @@ const PAIRS: [studio: string, livio: string][] = [
   ["/settings", `${LIVIO_BASE}/preferences`],
 ];
 
+/** Studio pages whose sub-pages share their counterpart: a Settings section is still Settings. */
+const NESTED = new Set(["/settings"]);
+
 /** Where the switch should take you from this page. */
 export function counterpartPath(pathname: string): string {
   const from = appOf(pathname);
-  const pair = PAIRS.find(([s, l]) => (from === "studio" ? s : l) === pathname);
+  const pair = PAIRS.find(([s, l]) =>
+    from === "studio" ? s === pathname || (NESTED.has(s) && pathname.startsWith(`${s}/`)) : l === pathname,
+  );
   if (pair) return from === "studio" ? pair[1] : pair[0];
   return from === "studio" ? LIVIO_BASE : "/";
 }

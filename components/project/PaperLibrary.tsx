@@ -33,6 +33,12 @@ const STATUS_TONE: Record<string, string> = {
   read: "bg-ok-soft text-[#3f5c38]",
 };
 
+const STATUS_DOT: Record<string, string> = {
+  "to-read": "bg-n-300",
+  reading: "bg-warn",
+  read: "bg-ok",
+};
+
 /**
  * The research library. Paste a DOI or arXiv link and the details fill in;
  * filter by status, tag or text; tick papers and export them - with their
@@ -238,15 +244,7 @@ function PaperRow({
             </p>
           )}
         </button>
-        <select
-          value={p.status}
-          disabled={pending}
-          onChange={(e) => setStatus(e.target.value)}
-          aria-label="Reading status"
-          className={clsx("shrink-0 cursor-pointer rounded-full border-0 px-2 py-1 text-[11.5px] font-semibold outline-none", STATUS_TONE[p.status])}
-        >
-          {PAPER_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-        </select>
+        <StatusPicker value={p.status} busy={pending} onChange={setStatus} />
       </div>
 
       {expanded && (
@@ -417,5 +415,136 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       {children}
       {hint && <span className="mt-1 block text-[10.5px] text-n-400">{hint}</span>}
     </label>
+  );
+}
+
+/**
+ * A paper's reading status: the coloured pill, which opens a small menu of the
+ * three in the site's own popover style - the browser's native select drew
+ * its own grey list over the page, the one control on it that didn't match.
+ *
+ * The menu is fixed to the viewport under the pill rather than placed inside
+ * the row, because the library's card clips what overflows it and the last
+ * paper's menu would be cut off. Scrolling closes it rather than leaving it
+ * floating away from its pill. ↑↓ move, Enter picks, Escape backs out.
+ */
+function StatusPicker({ value, busy, onChange }: { value: string; busy?: boolean; onChange: (s: PaperStatus) => void }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  // Shown straight away; the refresh that confirms it comes a moment later.
+  const [shown, setShown] = useState(value);
+  useEffect(() => setShown(value), [value]);
+
+  const openMenu = () => {
+    const r = trigger.current!.getBoundingClientRect();
+    setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setActive(Math.max(0, PAPER_STATUSES.indexOf(shown as PaperStatus)));
+    setOpen(true);
+  };
+  const close = (refocus = true) => {
+    setOpen(false);
+    if (refocus) trigger.current?.focus();
+  };
+  const pick = (s: PaperStatus) => {
+    close();
+    if (s === shown) return;
+    setShown(s);
+    onChange(s);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    menu.current?.focus();
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!menu.current?.contains(t) && !trigger.current?.contains(t)) close(false);
+    };
+    const onMove = () => close(false);
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        // Busy, not disabled, while it saves: a disabled button drops focus,
+        // which would strand someone who just picked with the keyboard.
+        aria-busy={busy}
+        onClick={() => (open ? close() : openMenu())}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            openMenu();
+          }
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Reading status: ${STATUS_LABEL[shown as PaperStatus] ?? shown}`}
+        className={clsx(
+          "flex shrink-0 items-center gap-1 rounded-full py-1 pl-2.5 pr-2 text-[11.5px] font-semibold transition-[filter] duration-[120ms] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rust-400 aria-busy:opacity-70",
+          STATUS_TONE[shown],
+        )}
+      >
+        {STATUS_LABEL[shown as PaperStatus] ?? shown}
+        <svg aria-hidden width="9" height="9" viewBox="0 0 10 10" className={clsx("opacity-60 transition-transform duration-[180ms]", open && "rotate-180")}>
+          <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && at && (
+        <div
+          ref={menu}
+          role="listbox"
+          tabIndex={-1}
+          aria-label="Reading status"
+          aria-activedescendant={`status-${PAPER_STATUSES[active]}`}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") setActive((i) => (i + 1) % PAPER_STATUSES.length);
+            else if (e.key === "ArrowUp") setActive((i) => (i + PAPER_STATUSES.length - 1) % PAPER_STATUSES.length);
+            else if (e.key === "Enter" || e.key === " ") pick(PAPER_STATUSES[active]);
+            else if (e.key === "Escape" || e.key === "Tab") close(e.key === "Escape");
+            else return;
+            e.preventDefault();
+          }}
+          className="animate-fade-in fixed z-50 min-w-[128px] rounded-lg border border-n-200 bg-n-0 p-1 outline-none"
+          style={{ top: at.top, right: at.right, boxShadow: "var(--shadow-pop)" }}
+        >
+          {PAPER_STATUSES.map((s, i) => (
+            <div
+              key={s}
+              id={`status-${s}`}
+              role="option"
+              aria-selected={s === shown}
+              onPointerEnter={() => setActive(i)}
+              onClick={() => pick(s)}
+              className={clsx(
+                "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] transition-colors duration-[120ms]",
+                i === active ? "bg-n-50 text-n-900" : "text-n-700",
+              )}
+            >
+              <span aria-hidden className={clsx("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[s])} />
+              <span className="flex-1">{STATUS_LABEL[s]}</span>
+              {s === shown && (
+                <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" className="text-rust-500">
+                  <path d="M2.5 6.2 5 8.5 9.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

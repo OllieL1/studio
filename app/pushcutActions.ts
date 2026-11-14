@@ -41,7 +41,7 @@ export async function savePushcut(input: PushcutInput): Promise<Result> {
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true };
 }
 

@@ -5,9 +5,10 @@ import { buildSchedulePdf, type SchedItem } from "../lib/pdf/schedule";
 import { buildStatsPdf } from "../lib/pdf/stats";
 import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
 import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
+import { buildSovranoPdf } from "../lib/pdf/sovrano";
 import { measureMath } from "../lib/pdf/math";
 import { newDoc, MARGIN } from "../lib/pdf/doc";
-import { notesStyle, parseInline, renderMarkdown, wrapCode } from "../lib/pdf/markdown";
+import { listDepth, notesStyle, parseInline, renderMarkdown, taskItem, wrapCode } from "../lib/pdf/markdown";
 import { byDayOfWeek, byHourOfDay, byLocation, bySubject, focusByLength, focusDistribution, headline, rollingMean, type StatSession } from "../lib/stats";
 
 const tests: [string, () => Promise<void>][] = [];
@@ -324,11 +325,55 @@ async function drawn(md: string, opts: { ensure?: boolean } = {}) {
   renderMarkdown(doc, md, opts.ensure === false ? style : { ...style, ensure });
   const size = style.size * 0.86;
   const measure = (s: string) => doc.font("mono").fontSize(size).widthOfString(s);
+  const measureBody = (s: string) => doc.font("body").fontSize(style.size).widthOfString(s);
   const dims = { width: doc.page.width, height: doc.page.height };
   doc.end();
   await done;
-  return { calls, bars, pages: page + 1, measure, ...dims };
+  return { calls, bars, pages: page + 1, measure, measureBody, ...dims };
 }
+
+/* ── Sovrano ───────────────────────────────────────────────────────────────── */
+
+const sovSessions = (n: number) => Array.from({ length: n }, (_, i) => ({
+  id: `s${i}`, name: i % 7 ? `Batch ${i}` : `A very long session name that would never fit in its column ${i}`,
+  projectId: i % 3 ? "a" : "b", platform: i % 2 ? "SOVRANO" : "DATAANNOTATION",
+  startedAt: new Date(2026, 9, 1 + (i % 28), 9), endedAt: new Date(2026, 9, 1 + (i % 28), 10),
+  minutes: 45 + (i % 4) * 10, rawMinutes: 90, paidAt: i % 5 ? null : new Date(2026, 10, 1), paidCents: i % 5 ? null : 1800,
+}));
+const sovProjects = [{ id: "a", name: "Alpha", rateCents: 2400 }, { id: "b", name: "Beta", rateCents: null }];
+
+test("sovrano: a work log builds, unrated projects and all", async () => {
+  const buf = await buildSovranoPdf(sovSessions(6), sovProjects, { title: "Sovrano work log", generatedAt: new Date(2026, 10, 13) });
+  assert.ok(isPdf(buf));
+  assert.equal(pages(buf), 1);
+});
+
+test("sovrano: a long log runs onto more pages", async () => {
+  const buf = await buildSovranoPdf(sovSessions(140), sovProjects, { title: "Sovrano work log", generatedAt: new Date(2026, 10, 13) });
+  assert.ok(isPdf(buf));
+  assert.ok(pages(buf) >= 3, `expected several pages, got ${pages(buf)}`);
+});
+
+/* ── Task lists ──────────────────────────────────────────────────────────── */
+
+test("tasks: [ ] and [x] are read as checkboxes, anything else is plain", async () => {
+  assert.deepEqual(taskItem("[ ] open"), { checked: false, text: "open" });
+  assert.deepEqual(taskItem("[x] done"), { checked: true, text: "done" });
+  assert.deepEqual(taskItem("[X] done"), { checked: true, text: "done" });
+  assert.deepEqual(taskItem("[ ]"), { checked: false, text: "" });
+  assert.deepEqual(taskItem("plain"), { checked: null, text: "plain" });
+  assert.deepEqual(taskItem("[link](x) not a task"), { checked: null, text: "[link](x) not a task" });
+});
+
+test("tasks: boxes are drawn, never the raw [ ] or a bullet, at every depth", async () => {
+  const r = await drawn(["- [ ] buy milk", "- [x] post letter", "  - [ ] nested one", "- plain"].join("\n"));
+  const text = r.calls.map((c) => c.text).join("|");
+  assert.ok(!/\[\s?\]|\[x\]/i.test(text), `raw checkbox printed: ${text}`);
+  for (const w of ["buy milk", "post letter", "nested one", "plain"]) assert.ok(text.includes(w), `missing "${w}"`);
+  assert.equal(r.calls.filter((c) => c.text === "•").length, 1, "only the plain item gets a bullet");
+  const x = (w: string) => r.calls.find((c) => c.text.includes(w))!.x;
+  assert.ok(x("nested one") > x("buy milk"), "the nested task still steps in");
+});
 
 /** A quote long enough to span pages, after enough prose to start it low on page one. */
 const longQuote = (words: number) =>
@@ -366,6 +411,53 @@ test("quote: a short quote near the foot of a page moves whole, bar and all", as
   const quoted = r.calls.filter((c) => c.text.includes("word0"));
   assert.equal(quoted.length, 1);
   assert.equal(quoted[0].page, r.bars[0].page, "bar is on the same page as its words");
+});
+
+/* ── Lists ───────────────────────────────────────────────────────────────── */
+
+/** A numbered list long enough to run past 10, crossing the page break among the two-digit items. */
+const longList = `${Array.from({ length: 20 }, (_, i) => `Para ${i}.`).join("\n\n")}\n\n${Array.from({ length: 40 }, (_, i) => `${i + 1}. Item ${i + 1}`).join("\n")}`;
+
+test("lists: a two-digit number is drawn whole, and its dot lines up with the single digits", async () => {
+  const r = await drawn(longList);
+  const marker = (n: number) => r.calls.find((c) => c.text === `${n}.`);
+  for (let n = 1; n <= 40; n++) assert.ok(marker(n), `marker ${n}. drawn as one run`);
+  // Single characters would mean pdfkit broke "10." a character per line.
+  assert.ok(!r.calls.some((c) => c.text === "0" || c.text === "."), "no marker split into characters");
+  const textX = (n: number) => r.calls.find((c) => c.text === `Item ${n}`)!.x;
+  assert.equal(textX(9), textX(10), "item text doesn't shift at 10");
+  const right = (n: number) => marker(n)!.x + r.measureBody(`${n}.`);
+  assert.ok(Math.abs(right(9) - right(10)) < 0.5, "markers are right-aligned");
+});
+
+test("lists: a list crossing a page carries on at the top of the next, not the foot", async () => {
+  const r = await drawn(longList);
+  const items = r.calls.filter((c) => /^Item \d+$/.test(c.text));
+  const next = items.filter((c) => c.page === 1);
+  assert.ok(next.length > 0 && items.some((c) => c.page === 0), "the list spans both pages");
+  assert.equal(r.pages, 2);
+  assert.ok(Math.abs(next[0].y - MARGIN) <= 2, `first item on the new page sits at the top margin, not ${next[0].y}`);
+  const marker = r.calls.find((c) => c.text === next[0].text.replace("Item ", "") + ".")!;
+  assert.equal(marker.page, 1, "its marker came with it");
+  assert.equal(marker.y, next[0].y);
+});
+
+test("lists: four levels of nesting each step in, with a marker of their own", async () => {
+  const r = await drawn("- one\n  - two\n    - three\n      - four\n    - back to three");
+  const at = (t: string) => r.calls.find((c) => c.text === t)!;
+  const xs = ["one", "two", "three", "four"].map((t) => at(t).x);
+  xs.slice(1).forEach((x, i) => assert.ok(x > xs[i], `level ${i + 2} is further in than level ${i + 1}: ${xs}`));
+  assert.equal(at("back to three").x, xs[2], "coming back out lines up with its level");
+  const markers = r.calls.filter((c) => c.x < xs[3] && c.text.length === 1).map((c) => c.text);
+  assert.deepEqual(markers, ["•", "◦", "▪", "–", "▪"]);
+});
+
+test("lists: depth counts indent steps, whatever the step", async () => {
+  const depths = (leads: string[]) => { const s: number[] = []; return leads.map((l) => listDepth(s, l)); };
+  assert.deepEqual(depths(["", "  ", "    ", "      "]), [0, 1, 2, 3], "the editor's two spaces");
+  assert.deepEqual(depths(["", "   ", "      "]), [0, 1, 2], "three under a number");
+  assert.deepEqual(depths(["", "    ", "        ", "    ", ""]), [0, 1, 2, 1, 0], "four, and back out");
+  assert.deepEqual(depths(["", "\t", "\t\t"]), [0, 1, 2], "tabs");
 });
 
 const squash = (s: string) => s.replace(/\s+/g, "");

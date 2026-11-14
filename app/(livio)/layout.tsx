@@ -8,6 +8,8 @@ import { NotionAutoPull } from "@/components/livio/NotionAutoPull";
 import { DueSoonBanner } from "@/components/DueSoonBanner";
 import { EnhancementHotkey } from "@/components/EnhancementHotkey";
 import { db } from "@/lib/db";
+import { SovranoBar } from "@/components/sovrano/SovranoBar";
+import { getSovranoClock, getSovranoProjects } from "@/lib/sovranoData";
 
 /**
  * Livio's root layout - its own site, served by the same process as Studio.
@@ -31,9 +33,11 @@ export const metadata: Metadata = {
 };
 
 export default async function LivioLayout({ children }: { children: React.ReactNode }) {
-  const [prefs, notion] = await Promise.all([
+  const [prefs, notion, sovClock, sovProjects] = await Promise.all([
     getPreferences(),
     db.notionAuth.findUnique({ where: { id: "singleton" }, select: { id: true } }),
+    getSovranoClock(),
+    getSovranoProjects(),
   ]);
 
   return (
@@ -53,6 +57,8 @@ export default async function LivioLayout({ children }: { children: React.ReactN
             <main className="mx-auto w-full max-w-[1180px] flex-1 px-5 pb-24 pt-8 sm:px-8">{children}</main>
             {notion && <NotionAutoPull />}
             <EnhancementHotkey />
+            {/* Sovrano's work timer - ⌥W, here and in Studio. */}
+            <SovranoBar clock={sovClock} projects={sovProjects} />
           </div>
         </ThemeProvider>
       </body>

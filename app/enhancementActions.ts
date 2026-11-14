@@ -33,7 +33,7 @@ const select = {
   status: true, resolution: true, commit: true, createdAt: true, resolvedAt: true,
 } as const;
 
-const refresh = () => revalidatePath("/settings");
+const refresh = () => revalidatePath("/settings", "layout");
 
 /** Every item: open ones in queue order, then the closed ones, latest first. */
 export async function listEnhancements(): Promise<EnhancementRow[]> {
