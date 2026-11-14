@@ -5,6 +5,7 @@ import { buildSchedulePdf, type SchedItem } from "../lib/pdf/schedule";
 import { buildStatsPdf } from "../lib/pdf/stats";
 import { buildLecturesPdf, type PdfLecture } from "../lib/pdf/lectures";
 import { buildNotesPdf, type PdfNote } from "../lib/pdf/notes";
+import { buildSovranoPdf } from "../lib/pdf/sovrano";
 import { measureMath } from "../lib/pdf/math";
 import { newDoc, MARGIN } from "../lib/pdf/doc";
 import { listDepth, notesStyle, parseInline, renderMarkdown, taskItem, wrapCode } from "../lib/pdf/markdown";
@@ -330,6 +331,28 @@ async function drawn(md: string, opts: { ensure?: boolean } = {}) {
   await done;
   return { calls, bars, pages: page + 1, measure, measureBody, ...dims };
 }
+
+/* ── Sovrano ───────────────────────────────────────────────────────────────── */
+
+const sovSessions = (n: number) => Array.from({ length: n }, (_, i) => ({
+  id: `s${i}`, name: i % 7 ? `Batch ${i}` : `A very long session name that would never fit in its column ${i}`,
+  projectId: i % 3 ? "a" : "b", platform: i % 2 ? "SOVRANO" : "DATAANNOTATION",
+  startedAt: new Date(2026, 9, 1 + (i % 28), 9), endedAt: new Date(2026, 9, 1 + (i % 28), 10),
+  minutes: 45 + (i % 4) * 10, rawMinutes: 90, paidAt: i % 5 ? null : new Date(2026, 10, 1), paidCents: i % 5 ? null : 1800,
+}));
+const sovProjects = [{ id: "a", name: "Alpha", rateCents: 2400 }, { id: "b", name: "Beta", rateCents: null }];
+
+test("sovrano: a work log builds, unrated projects and all", async () => {
+  const buf = await buildSovranoPdf(sovSessions(6), sovProjects, { title: "Sovrano work log", generatedAt: new Date(2026, 10, 13) });
+  assert.ok(isPdf(buf));
+  assert.equal(pages(buf), 1);
+});
+
+test("sovrano: a long log runs onto more pages", async () => {
+  const buf = await buildSovranoPdf(sovSessions(140), sovProjects, { title: "Sovrano work log", generatedAt: new Date(2026, 10, 13) });
+  assert.ok(isPdf(buf));
+  assert.ok(pages(buf) >= 3, `expected several pages, got ${pages(buf)}`);
+});
 
 /* ── Task lists ──────────────────────────────────────────────────────────── */
 

@@ -16,6 +16,17 @@
   --color-rust-800: #57321d;
   --color-rust-900: #3a2314;
 
+  /* Sovrano's teal: paid work, never study. The same in Studio and Livio -
+     neither app repoints it - so the work bar is never mistaken for either
+     app's accent. Muted to sit with rust and violet. */
+  --color-sov-50: #eff5f3;
+  --color-sov-100: #dcebe7;
+  --color-sov-200: #b7d5cd;
+  --color-sov-400: #5f9a8e;
+  --color-sov-500: #3e7c70;
+  --color-sov-600: #32665c;
+  --color-sov-700: #29524a;
+
   --color-n-0: #ffffff;
   --color-n-25: #fbfaf8;
   --color-n-50: #f5f3ef;
@@ -130,6 +141,15 @@
   --color-rust-700: #d59a72;
   --color-rust-800: #e7bb9a;
   --color-rust-900: #f5dcc6;
+
+  /* Sovrano's teal, lifted off the dark page; 500 still carries white. */
+  --color-sov-50: #142220;
+  --color-sov-100: #182b28;
+  --color-sov-200: #23413c;
+  --color-sov-400: #4f8a7f;
+  --color-sov-500: #3f7c71;
+  --color-sov-600: #73b3a6;
+  --color-sov-700: #98cbc0;
 
   /* Status colours lifted off the dark page; the softs become tints of it. */
   --color-ok: #8fb583;
@@ -644,6 +664,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 input[type="range"]::-webkit-slider-thumb:active {
   transform: scale(1.15);
+}
+/* Sovrano's log dialog: the same slider, in its teal. */
+input[type="range"].range-sov::-webkit-slider-thumb {
+  border-color: var(--color-sov-500);
 }
 
 /* ── Markdown notes ────────────────────────────────────────────────────────

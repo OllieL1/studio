@@ -17,6 +17,7 @@ import { getHistorySince, isSpotifyConfigured } from "@/lib/spotify";
 import { buildListening } from "@/lib/music";
 import { backupNow } from "@/lib/backup";
 import { firePushcut } from "@/lib/pushcut";
+import { pauseSovranoIfRunning } from "@/lib/sovranoData";
 import { deleteUpload } from "@/lib/uploads";
 import { cleanHour, isThemeMode, DEFAULT_DARK_FROM, DEFAULT_DARK_TO } from "@/lib/theme";
 import { isHttpUrl, linkFallbackLabel, serializeMention } from "@/lib/mentions";
@@ -281,6 +282,8 @@ export async function startTimer() {
   const existing = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (existing) return { startedAt: existing.startedAt };
 
+  // Studying now, so paid work stops counting (lib/sovranoData.ts).
+  await pauseSovranoIfRunning();
   const timer = await db.activeTimer.create({
     data: { id: "singleton", startedAt: new Date() },
   });
@@ -300,6 +303,7 @@ export async function pauseTimer() {
 export async function resumeTimer() {
   const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (!t?.pausedAt) return;
+  await pauseSovranoIfRunning();
   await db.activeTimer.update({
     where: { id: "singleton" },
     data: { pausedAt: null, pausedMs: pausedTotalAfterResume(t) },
@@ -326,6 +330,7 @@ export async function startUltraFocus(courseId: string, minutes: number) {
   const lockUntil = new Date(now.getTime() + m * 60_000);
   const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (activeLock(t, now)) return { ok: false as const, error: "Rapt Mode is already on." };
+  await pauseSovranoIfRunning(now);
   if (!t) {
     await db.activeTimer.create({ data: { id: "singleton", startedAt: now, lockCourseId: course.id, lockUntil } });
     after(() => firePushcut("start"));

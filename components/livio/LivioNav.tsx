@@ -15,9 +15,10 @@ const LINKS: { href: string; label: string }[] = [
   { href: `${LIVIO_BASE}/careers`, label: "Careers" },
   { href: `${LIVIO_BASE}/reading`, label: "Reading" },
   { href: `${LIVIO_BASE}/cv`, label: "CV" },
+  { href: `${LIVIO_BASE}/sovrano`, label: "Sovrano" },
 ];
 
-/** Studio's nav, pared down: Livio has no timer, courses or repos. */
+/** Studio's nav, pared down: no courses or repos, and only Sovrano's work timer. */
 export function LivioNav() {
   const pathname = usePathname();
   const isActive = (href: string) => (href === LIVIO_BASE ? pathname === LIVIO_BASE : pathname.startsWith(href));

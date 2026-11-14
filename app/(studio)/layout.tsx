@@ -7,6 +7,8 @@ import { TimerBar } from "@/components/TimerBar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { GlobalQuickAdd } from "@/components/GlobalQuickAdd";
 import { SessionHotkey } from "@/components/SessionHotkey";
+import { SovranoBar } from "@/components/sovrano/SovranoBar";
+import { getSovranoClock, getSovranoProjects } from "@/lib/sovranoData";
 import { EnhancementHotkey } from "@/components/EnhancementHotkey";
 import { DueSoonBanner } from "@/components/DueSoonBanner";
 import { LastLecture } from "@/components/LastLecture";
@@ -42,7 +44,7 @@ export default async function RootLayout({
 }) {
   // The timer and course list live in the shell, so they're fetched once here
   // rather than by every page.
-  const [prefs, timer, courses, lastSession, googleAuth, repos, dueSoon] = await Promise.all([
+  const [prefs, timer, courses, lastSession, googleAuth, repos, dueSoon, sovClock, sovProjects] = await Promise.all([
     getPreferences(),
     getActiveTimer(),
     db.course.findMany({
@@ -62,6 +64,9 @@ export default async function RootLayout({
       : Promise.resolve(null),
     repoMenu(),
     getDueSoon(),
+    // Sovrano's work timer rides along in both apps (components/sovrano).
+    getSovranoClock(),
+    getSovranoProjects(),
   ]);
   const calendarConnected = !!googleAuth;
   // Rapt Mode (ultra focus): the locked course, if a lock is on. The proxy keeps every
@@ -111,6 +116,15 @@ export default async function RootLayout({
           <SessionHotkey
             clock={timer ? { startedAt: timer.startedAt.toISOString(), pausedAt: timer.pausedAt?.toISOString() ?? null, pausedMs: timer.pausedMs } : null}
           />
+          {/* Paid work isn't study: Rapt Mode leaves no way in to it. */}
+          {!lock && (
+            <SovranoBar
+              clock={sovClock}
+              projects={sovProjects}
+              stacked
+              ownsTitle={!timer || !!timer.pausedAt}
+            />
+          )}
           <TimerBar
             startedAt={timer?.startedAt.toISOString() ?? null}
             pausedAt={timer?.pausedAt?.toISOString() ?? null}
