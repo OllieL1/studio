@@ -140,8 +140,8 @@
     "number": 18,
     "title": "The text area should not be visible when the text is saved for the title of a note i.e. it should only appear or be visible when editing after a click.",
     "status": "done",
-    "note": "The soft hover band behind a note's title is gone. With the pointer still resting on a title you'd just saved, it looked like a text box left open. Now the title is plain text until you click it, and the bordered box only appears while you're editing. The text cursor still shows it's clickable, and Tab + Enter still opens it. Same note editor in Studio, Nexus and Livio todo notes.",
-    "at": "2026-11-13T17:28:54.639Z"
+    "note": "Fixed properly this time - sorry it came back. The title's box wasn't the hover shade I removed last time. It was a border that should always have been invisible, and wasn't. The stylesheet's default border colour sat outside Tailwind's layers, so it beat every border colour set on an element: border-transparent never hid a border, the slightly stronger borders on buttons and inputs drew as faint hairlines, and the rust focus border on inputs never showed. That's how the title kept a box at rest. The default now sits beneath the utilities, so the title is plain text until you click it, and while you're editing it gets the rust focus border. This is app-wide, so you'll also see firmer edges on buttons and inputs (the weights DESIGN.md sets out) and rust focus borders on fields - nothing else moves.",
+    "at": "2026-11-17T16:30:40.055Z"
   },
   {
     "id": "cmwdglzq6000815tov42bi1fi",
