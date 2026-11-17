@@ -198,5 +198,13 @@
     "status": "done",
     "note": "Fixed - typing in a long block (a long nested list) near the bottom of a page no longer makes the view jump. You were right that long lists were the trigger. Each box grows to fit its text by briefly shrinking to measure itself. With one long list block at the foot of the course page, that brief shrink made the page shorter than where you'd scrolled to, so the browser pulled the scroll back and the box ended up at the bottom of the screen. Now the space around the box is held still while it measures, so nothing outside it moves. The same fix covers lecture notes, the Markdown view and table cells, which could hit the same jump at the end of a long note. If the caret is genuinely off-screen, the browser still scrolls just enough to show it, which is intended.",
     "at": "2026-11-17T14:21:22.156Z"
+  },
+  {
+    "id": "cmwl0lxcb000715f0gx0azbv7",
+    "number": 26,
+    "title": "the title for notes is finally looking good but can we reduce the length of its text area slightly so there is a gap between where it says saved with the green…",
+    "status": "done",
+    "note": "Done - the title's box now stops a clear 16px short of the Saved status, where before it ran right up to the green dot. The box was pulled out on both sides; the left pull is kept so the title still lines up with the page edge, and the right one is gone. The plain title at rest takes the same width, so nothing shifts when you click to rename.",
+    "at": "2026-11-17T23:06:59.723Z"
   }
 ]
