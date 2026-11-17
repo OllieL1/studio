@@ -206,5 +206,13 @@
     "status": "done",
     "note": "Done - the title's box now stops a clear 16px short of the Saved status, where before it ran right up to the green dot. The box was pulled out on both sides; the left pull is kept so the title still lines up with the page edge, and the right one is gone. The plain title at rest takes the same width, so nothing shifts when you click to rename.",
     "at": "2026-11-17T23:06:59.723Z"
+  },
+  {
+    "id": "cmwl0o25c000e15f0w38lliik",
+    "number": 27,
+    "title": "the tab bar for the project - each tab entry if they have a number is slightly offline from the text being aligned with the tabs where there is no number…",
+    "status": "done",
+    "note": "Fixed - every tab label on the Project page now sits on the same line. The counts (Nexus, Tasks, Meetings, Research) are set in the number font, which made their tabs a pixel taller than Overview, KB and GitHub, so their labels and underline sat half a pixel higher. The count no longer adds to the line height, so all the tabs are the same height.",
+    "at": "2026-11-17T23:07:01.256Z"
   }
 ]
