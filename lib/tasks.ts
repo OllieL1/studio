@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Db } from "./db";
 import { REVISION_ITEM_LABEL } from "./types";
 
 /**
@@ -9,7 +9,11 @@ import { REVISION_ITEM_LABEL } from "./types";
  * run from a test or a script. The actions are thin wrappers over these.
  */
 
-type DB = PrismaClient;
+/**
+ * The app's client (lib/db.ts), extended with disk-error recovery. Its types
+ * differ from a bare PrismaClient's, so the tests use it too.
+ */
+type DB = Db;
 
 /**
  * Keep Task.doneAt in step with its checklist.

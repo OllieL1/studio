@@ -5,11 +5,10 @@
  * never touched.
  */
 import assert from "node:assert/strict";
-import { PrismaClient } from "@prisma/client";
 import { addTaskItem, removeTaskItem, setTaskDone, toggleTaskItem } from "../lib/tasks";
+import { db } from "../lib/db";
 import { computeCourseProgress } from "../lib/progress";
 
-const db = new PrismaClient();
 const SCRATCH = "__TEST_SCRATCH__";
 
 const tests: [string, (ctx: Ctx) => Promise<void>][] = [];
