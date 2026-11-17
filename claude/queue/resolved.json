@@ -174,5 +174,13 @@
     "status": "done",
     "note": "Exam cards on a course page are now links: click one and it opens that exam's page. Press Edit (or E) there to give it its formal date and time, change the diet text or the grade weight, or Delete the accidental duplicate (I left your data alone, so PSI's second exam is still there for you to remove). Hovering a card underlines the title so it reads as clickable.",
     "at": "2026-11-14T11:55:05.071Z"
+  },
+  {
+    "id": "cmwjavf8a00d815yss67nbvdw",
+    "number": 23,
+    "title": "No need to display the sovrano work modal on the studio homepage.",
+    "status": "done",
+    "note": "The idle Work chip no longer shows anywhere in Studio - only in Livio. ⌥W still starts a Sovrano session from any Studio page, and once one is running its teal timer shows bottom-left as before (pause, and stop-and-log). Caveat: I read 'the studio homepage' as the whole Studio app, since the note compares it with Livio. If you only meant the home page, tell me and I'll bring the chip back on the other pages.",
+    "at": "2026-11-17T14:21:05.726Z"
   }
 ]

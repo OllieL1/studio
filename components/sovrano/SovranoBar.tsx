@@ -18,7 +18,8 @@ const OUT_MS = 240;
  * Sovrano's timer: paid work, in both apps. It's the study bar's cousin, not
  * its twin - bottom-left rather than centred, teal rather than either app's
  * accent, squarer, and labelled - so a glance never confuses earning with
- * studying. Idle, it's a small chip.
+ * studying. Idle, it's a small chip - in Livio only: Studio leaves the
+ * corner empty and relies on ⌥W (`showsIdleChip`).
  *
  * ⌥W starts a session from anywhere (it fires while typing, like ⌥S). With
  * one going, ⌥W opens the log dialog - stopping always goes through it. The
@@ -34,12 +35,15 @@ export function SovranoBar({
   projects,
   stacked = false,
   ownsTitle = true,
+  showsIdleChip = true,
 }: {
   clock: SovranoClock | null;
   projects: SovranoProjectOption[];
   stacked?: boolean;
   /** False in Studio while a study session is running and not paused. */
   ownsTitle?: boolean;
+  /** False in Studio: with nothing running, show nothing - ⌥W still starts a session. */
+  showsIdleChip?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -189,7 +193,7 @@ export function SovranoBar({
               )}
             </button>
           </div>
-        ) : (
+        ) : showsIdleChip ? (
           <button
             onClick={() => void start()}
             disabled={pending}
@@ -205,7 +209,7 @@ export function SovranoBar({
             Work
             <kbd className="font-num hidden rounded-[4px] border border-n-200 px-1 text-[10px] font-medium leading-[15px] text-n-400 sm:inline">{SOVRANO_KEY}</kbd>
           </button>
-        )}
+        ) : null}
       </div>
 
       {notice && (
