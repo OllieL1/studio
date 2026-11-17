@@ -8,6 +8,7 @@ import { setPaperTags } from "@/app/nexusActions";
 import { PAPER_STATUSES, STATUS_LABEL, shortAuthors, type PaperMeta, type PaperStatus } from "@/lib/papers";
 import { clsx } from "@/lib/clsx";
 import { Card, EmptyState } from "../ui";
+import { Portal } from "@/lib/hooks/useModal";
 import { MarkdownField } from "../MarkdownField";
 import { TagPicker } from "./TagPicker";
 
@@ -423,10 +424,13 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
  * three in the site's own popover style - the browser's native select drew
  * its own grey list over the page, the one control on it that didn't match.
  *
- * The menu is fixed to the viewport under the pill rather than placed inside
- * the row, because the library's card clips what overflows it and the last
- * paper's menu would be cut off. Scrolling closes it rather than leaving it
- * floating away from its pill. ↑↓ move, Enter picks, Escape backs out.
+ * The menu is portalled to <body> and fixed under the pill. Left inside the
+ * row, the card's overflow clipped it, and on a course page the section's
+ * fade-up animation (a transform) became its containing block: the menu was
+ * placed far off, focusing it scrolled the page there, and that scroll closed
+ * it. It's focused without scrolling, and a real scroll closes it rather than
+ * leaving it floating away from its pill. ↑↓ move, Enter picks, Escape backs
+ * out.
  */
 function StatusPicker({ value, busy, onChange }: { value: string; busy?: boolean; onChange: (s: PaperStatus) => void }) {
   const [open, setOpen] = useState(false);
@@ -457,7 +461,7 @@ function StatusPicker({ value, busy, onChange }: { value: string; busy?: boolean
 
   useEffect(() => {
     if (!open) return;
-    menu.current?.focus();
+    menu.current?.focus({ preventScroll: true });
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node;
       if (!menu.current?.contains(t) && !trigger.current?.contains(t)) close(false);
@@ -504,46 +508,48 @@ function StatusPicker({ value, busy, onChange }: { value: string; busy?: boolean
       </button>
 
       {open && at && (
-        <div
-          ref={menu}
-          role="listbox"
-          tabIndex={-1}
-          aria-label="Reading status"
-          aria-activedescendant={`status-${PAPER_STATUSES[active]}`}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") setActive((i) => (i + 1) % PAPER_STATUSES.length);
-            else if (e.key === "ArrowUp") setActive((i) => (i + PAPER_STATUSES.length - 1) % PAPER_STATUSES.length);
-            else if (e.key === "Enter" || e.key === " ") pick(PAPER_STATUSES[active]);
-            else if (e.key === "Escape" || e.key === "Tab") close(e.key === "Escape");
-            else return;
-            e.preventDefault();
-          }}
-          className="animate-fade-in fixed z-50 min-w-[128px] rounded-lg border border-n-200 bg-n-0 p-1 outline-none"
-          style={{ top: at.top, right: at.right, boxShadow: "var(--shadow-pop)" }}
-        >
-          {PAPER_STATUSES.map((s, i) => (
-            <div
-              key={s}
-              id={`status-${s}`}
-              role="option"
-              aria-selected={s === shown}
-              onPointerEnter={() => setActive(i)}
-              onClick={() => pick(s)}
-              className={clsx(
-                "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] transition-colors duration-[120ms]",
-                i === active ? "bg-n-50 text-n-900" : "text-n-700",
-              )}
-            >
-              <span aria-hidden className={clsx("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[s])} />
-              <span className="flex-1">{STATUS_LABEL[s]}</span>
-              {s === shown && (
-                <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" className="text-rust-500">
-                  <path d="M2.5 6.2 5 8.5 9.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </div>
-          ))}
-        </div>
+        <Portal>
+          <div
+            ref={menu}
+            role="listbox"
+            tabIndex={-1}
+            aria-label="Reading status"
+            aria-activedescendant={`status-${PAPER_STATUSES[active]}`}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") setActive((i) => (i + 1) % PAPER_STATUSES.length);
+              else if (e.key === "ArrowUp") setActive((i) => (i + PAPER_STATUSES.length - 1) % PAPER_STATUSES.length);
+              else if (e.key === "Enter" || e.key === " ") pick(PAPER_STATUSES[active]);
+              else if (e.key === "Escape" || e.key === "Tab") close(e.key === "Escape");
+              else return;
+              e.preventDefault();
+            }}
+            className="animate-fade-in fixed z-50 min-w-[128px] rounded-lg border border-n-200 bg-n-0 p-1 outline-none"
+            style={{ top: at.top, right: at.right, boxShadow: "var(--shadow-pop)" }}
+          >
+            {PAPER_STATUSES.map((s, i) => (
+              <div
+                key={s}
+                id={`status-${s}`}
+                role="option"
+                aria-selected={s === shown}
+                onPointerEnter={() => setActive(i)}
+                onClick={() => pick(s)}
+                className={clsx(
+                  "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] transition-colors duration-[120ms]",
+                  i === active ? "bg-n-50 text-n-900" : "text-n-700",
+                )}
+              >
+                <span aria-hidden className={clsx("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[s])} />
+                <span className="flex-1">{STATUS_LABEL[s]}</span>
+                {s === shown && (
+                  <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" className="text-rust-500">
+                    <path d="M2.5 6.2 5 8.5 9.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+            ))}
+          </div>
+        </Portal>
       )}
     </>
   );

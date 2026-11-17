@@ -182,5 +182,13 @@
     "status": "done",
     "note": "The idle Work chip no longer shows anywhere in Studio - only in Livio. ⌥W still starts a Sovrano session from any Studio page, and once one is running its teal timer shows bottom-left as before (pause, and stop-and-log). Caveat: I read 'the studio homepage' as the whole Studio app, since the note compares it with Livio. If you only meant the home page, tell me and I'll bring the chip back on the other pages.",
     "at": "2026-11-17T14:21:05.726Z"
+  },
+  {
+    "id": "cmwkrkzfo005t15x8llr31av3",
+    "number": 24,
+    "title": "The dropdown for reading, read and to read does not work at all.",
+    "status": "done",
+    "note": "Fixed - the status pill on a course's Literature list now opens its menu right under the pill, and picking To read / Reading / Read saves. What was wrong: on a course page the Literature section fades in with a CSS transform, and that put the menu (meant to sit fixed under the pill) somewhere off down the page. Opening it then scrolled the page to it (the jitter), and that scroll closed it straight away. It worked on the Project page because nothing there is animated that way, which is how #13 slipped through. The menu now renders at the top level of the page, so no section's styling can move it, and opening it never scrolls. Keyboard use is unchanged: arrows to move, Enter to pick, Escape to back out.",
+    "at": "2026-11-17T14:21:14.895Z"
   }
 ]
