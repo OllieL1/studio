@@ -6,6 +6,7 @@ import {
   serializeTable, setAlign, setCell, type Align, type Table,
 } from "@/lib/editor/tables";
 import { clsx } from "@/lib/clsx";
+import { fitTextarea } from "@/lib/editor/fitTextarea";
 import { InlineMarkdown } from "@/lib/editor/inline";
 import { Portal } from "@/lib/hooks/useModal";
 
@@ -80,8 +81,7 @@ export function TableEditor({
       `[data-cell="${focus.row}:${focus.col}"]`,
     );
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    fitTextarea(el);
   }, [focus, table]);
 
   /** Anything typed in it is worth one question before it goes. */

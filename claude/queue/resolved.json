@@ -190,5 +190,13 @@
     "status": "done",
     "note": "Fixed - the status pill on a course's Literature list now opens its menu right under the pill, and picking To read / Reading / Read saves. What was wrong: on a course page the Literature section fades in with a CSS transform, and that put the menu (meant to sit fixed under the pill) somewhere off down the page. Opening it then scrolled the page to it (the jitter), and that scroll closed it straight away. It worked on the Project page because nothing there is animated that way, which is how #13 slipped through. The menu now renders at the top level of the page, so no section's styling can move it, and opening it never scrolls. Keyboard use is unchanged: arrows to move, Enter to pick, Escape to back out.",
     "at": "2026-11-17T14:21:14.895Z"
+  },
+  {
+    "id": "cmwkrstjq006j15x8q5pat81h",
+    "number": 25,
+    "title": "When I am typing in the live box in the RMT course page adding my notes on papers, it keeps adjusting the box into view but right at the bottom of the screen…",
+    "status": "done",
+    "note": "Fixed - typing in a long block (a long nested list) near the bottom of a page no longer makes the view jump. You were right that long lists were the trigger. Each box grows to fit its text by briefly shrinking to measure itself. With one long list block at the foot of the course page, that brief shrink made the page shorter than where you'd scrolled to, so the browser pulled the scroll back and the box ended up at the bottom of the screen. Now the space around the box is held still while it measures, so nothing outside it moves. The same fix covers lecture notes, the Markdown view and table cells, which could hit the same jump at the end of a long note. If the caret is genuinely off-screen, the browser still scrolls just enough to show it, which is intended.",
+    "at": "2026-11-17T14:21:22.156Z"
   }
 ]

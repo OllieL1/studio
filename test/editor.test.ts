@@ -5,6 +5,7 @@ import {
   joinBlocks, listContinuation, quoteContinuation, parseCallout, parseColumns, serializeCallout,
   serializeColumns, sourceOffset, splitBlocks,
 } from "../lib/editor/blocks";
+import { fitTextarea } from "../lib/editor/fitTextarea";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -398,6 +399,37 @@ test("the menu offers callouts and columns as block inserts", () => {
   assert.equal(byKey.columns.block, true);
   assert.match(byKey.callout.snippet, /\[!note\]/);
   assert.match(byKey.columns.snippet, /::: columns/);
+});
+
+/**
+ * #25: growing a box must never let the page shrink under it, or the browser
+ * clamps the scroll and the box jumps. The parent is held at its height while
+ * the textarea is at `auto`, then given back exactly the style it had.
+ */
+test("fitting a textarea holds its parent's height while it measures", () => {
+  const seen: string[] = [];
+  const holder = { style: { minHeight: "40px" }, offsetHeight: 600 };
+  const el = {
+    style: {
+      get height() { return this._h; },
+      set height(v: string) { seen.push(`${v} with parent at ${holder.style.minHeight}`); this._h = v; },
+      _h: "600px",
+    },
+    scrollHeight: 620,
+    parentElement: holder,
+  };
+  fitTextarea(el);
+  assert.deepEqual(seen, ["auto with parent at 600px", "620px with parent at 600px"]);
+  assert.equal(el.style.height, "620px");
+  assert.equal(holder.style.minHeight, "40px");
+});
+
+test("fitting a textarea honours a floor, and copes without a parent", () => {
+  const el = { style: { height: "" }, scrollHeight: 100, parentElement: null };
+  fitTextarea(el, 240);
+  assert.equal(el.style.height, "240px");
+  fitTextarea(el);
+  assert.equal(el.style.height, "100px");
 });
 
 let failed = 0;
