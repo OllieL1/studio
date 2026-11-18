@@ -40,25 +40,68 @@ async function tune(client: PrismaClient): Promise<void> {
   }
 }
 
-function createDb() {
+/** How long a replaced client is left to finish its in-flight queries. */
+const RETIRE_AFTER_MS = 30_000;
+
+function newBase(): PrismaClient {
   const base = new PrismaClient({
     datasourceUrl: connectionUrl(),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
-  // Queued ahead of everything else at startup.
+  // Queued ahead of everything else on the new connection.
   void tune(base);
+  return base;
+}
+
+/**
+ * Reconnecting builds a whole new client and swaps it in. Calling
+ * `$disconnect` on the shared one instead races the requests still using it
+ * ("Engine is not yet connected"), and if the disconnect itself fails on the
+ * stick the client can stay broken for good. The old client is disconnected
+ * later, once its queries have had time to finish, and any error is ignored.
+ */
+function createDb() {
+  let base = newBase();
 
   const reconnect = sharedReconnect(async () => {
-    console.warn("[db] disk I/O error: reopening the database connection");
-    await base.$disconnect().catch(() => {});
-    await tune(base);
+    console.warn("[db] connection lost: opening a new database connection");
+    const old = base;
+    base = newBase();
+    setTimeout(() => void old.$disconnect().catch(() => {}), RETIRE_AFTER_MS).unref?.();
   });
 
-  return base.$extends({
-    query: {
-      async $allOperations({ operation, args, query }) {
-        return withRecovery(operation, () => query(args), reconnect);
+  const extend = (client: PrismaClient) =>
+    client.$extends({
+      query: {
+        async $allOperations({ model, operation, args, query }) {
+          // The retry goes to whichever client is current after the reconnect.
+          const retry = () => {
+            if (!model) return query(args);
+            const delegate = (base as unknown as Record<string, Record<string, (a: unknown) => Promise<unknown>>>)[
+              model[0].toLowerCase() + model.slice(1)
+            ];
+            return delegate[operation](args) as ReturnType<typeof query>;
+          };
+          return withRecovery(operation, () => query(args), reconnect, retry);
+        },
       },
+    });
+
+  type Extended = ReturnType<typeof extend>;
+  const extended = new WeakMap<PrismaClient, Extended>();
+  const current = (): Extended => {
+    let client = extended.get(base);
+    if (!client) extended.set(base, (client = extend(base)));
+    return client;
+  };
+
+  // Every property is looked up on the current client, so callers holding
+  // `db` pick up a new connection without re-importing anything.
+  return new Proxy({} as Extended, {
+    get(_, prop) {
+      const client = current();
+      const value = Reflect.get(client, prop, client);
+      return typeof value === "function" ? value.bind(client) : value;
     },
   });
 }

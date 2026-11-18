@@ -41,21 +41,37 @@ export function isDiskIoError(e: unknown): boolean {
 }
 
 /**
- * Runs `run`. If it fails with a disk I/O error, calls `reconnect` and, for a
- * read, runs it once more. Any other error is passed straight through.
+ * Errors that mean the connection is unusable and a new one is needed: a disk
+ * I/O error, or Prisma's "Engine is not yet connected".
+ *
+ * The second showed up on 18 Nov 2026. The first fix reopened the connection
+ * by calling `$disconnect` on the client every request shares. Requests that
+ * arrived while it was disconnecting ran against a dead engine and got "Engine
+ * is not yet connected". That wasn't a disk I/O error, so nothing reconnected
+ * again, and Studio served Internal Server Errors until it was restarted.
+ */
+export function isConnectionLost(e: unknown): boolean {
+  return isDiskIoError(e) || (e instanceof Error && /Engine is not yet connected/i.test(e.message));
+}
+
+/**
+ * Runs `run`. If the connection is lost, calls `reconnect` and, for a read,
+ * runs `retry` once (on the new connection). Any other error is passed
+ * straight through.
  */
 export async function withRecovery<T>(
   operation: string,
   run: () => Promise<T>,
   reconnect: () => Promise<void>,
+  retry: () => Promise<T> = run,
 ): Promise<T> {
   try {
     return await run();
   } catch (e) {
-    if (!isDiskIoError(e)) throw e;
+    if (!isConnectionLost(e)) throw e;
     await reconnect();
     if (!isReadOperation(operation)) throw e;
-    return run();
+    return retry();
   }
 }
 

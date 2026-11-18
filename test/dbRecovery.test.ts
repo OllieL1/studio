@@ -1,6 +1,6 @@
 /** Reopening the database after the stick drops out (lib/dbRecovery.ts). */
 import assert from "node:assert/strict";
-import { isDiskIoError, sharedReconnect, withRecovery } from "../lib/dbRecovery";
+import { isConnectionLost, isDiskIoError, sharedReconnect, withRecovery } from "../lib/dbRecovery";
 
 const tests: [string, () => Promise<void>][] = [];
 const test = (n: string, f: () => Promise<void>) => tests.push([n, f]);
@@ -53,6 +53,30 @@ test("other errors pass straight through without a reconnect", async () => {
   const q = flaky(new Error("Unique constraint failed"));
   await assert.rejects(withRecovery("findFirst", q.run, q.reconnect), /Unique constraint/);
   assert.deepEqual(q.calls, { run: 1, reconnect: 0 });
+});
+
+/** The message Prisma gave on 18 Nov 2026, after the shared client was disconnected. */
+const deadEngine = () =>
+  new Error("Invalid `prisma.activeTimer.findUnique()` invocation:\n\n\nEngine is not yet connected.\nBacktrace [...]");
+
+test("a dead engine counts as a lost connection, and so does a disk I/O error", async () => {
+  assert.equal(isConnectionLost(deadEngine()), true);
+  assert.equal(isConnectionLost(ioError()), true);
+  assert.equal(isConnectionLost(new Error("Unique constraint failed")), false);
+});
+
+test("a read that hits a dead engine reconnects and runs again", async () => {
+  const q = flaky(deadEngine());
+  assert.equal(await withRecovery("findUnique", q.run, q.reconnect), "ok");
+  assert.deepEqual(q.calls, { run: 2, reconnect: 1 });
+});
+
+test("the retry runs on the new connection, not the old one", async () => {
+  const q = flaky(ioError());
+  let retried = 0;
+  const retry = async () => (retried++, "fresh");
+  assert.equal(await withRecovery("findMany", q.run, q.reconnect, retry), "fresh");
+  assert.deepEqual({ ...q.calls, retried }, { run: 1, reconnect: 1, retried: 1 });
 });
 
 test("queries that fail together share one reconnect", async () => {
