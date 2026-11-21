@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildDays, navKeys, dayJump, sleepItems, timeLabel } from "../lib/planView";
+import { buildDays, navKeys, dayJump, followKey, sleepItems, timeLabel } from "../lib/planView";
 import type { CalendarItem } from "../lib/calendar";
 import { parseEntry, resolveSlot, planRange, syncPlan, syncState, blockHash, eventSummary, fmtLength, type SyncBlock } from "../lib/plan";
 
@@ -224,6 +224,17 @@ test("free time is measured around sleep", () => {
   const [sleep, lec] = days[0].rows;
   assert.ok(sleep.type === "fixed" && lec.type === "fixed");
   assert.equal(lec.start - sleep.end, 120);
+});
+
+test("a key follows a new block across the swap to its real id", () => {
+  const alias = new Map([["b:real", "b:tmp-1"]]);
+  // Before the server's answer is on screen: the real id finds the temporary row.
+  assert.equal(followKey("b:real", ["b:a", "b:tmp-1"], alias), "b:tmp-1");
+  // After: a composer opened on the temporary row finds the real one (#30).
+  assert.equal(followKey("b:tmp-1", ["b:a", "b:real"], alias), "b:real");
+  assert.equal(followKey("b:a", ["b:a", "b:real"], alias), "b:a");
+  assert.equal(followKey("b:gone", ["b:a"], alias), null);
+  assert.equal(followKey(null, ["b:a"], alias), null);
 });
 
 let passed = 0, failed = 0;

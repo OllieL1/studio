@@ -214,5 +214,13 @@
     "status": "done",
     "note": "Fixed - every tab label on the Project page now sits on the same line. The counts (Nexus, Tasks, Meetings, Research) are set in the number font, which made their tabs a pixel taller than Overview, KB and GitHub, so their labels and underline sat half a pixel higher. The count no longer adds to the line height, so all the tabs are the same height.",
     "at": "2026-11-17T23:07:01.256Z"
+  },
+  {
+    "id": "cmwporgwx000a15o4jdk91u3p",
+    "number": 30,
+    "title": "there is quite a consistent bug (doesnt happen every time) where sometimes i press enter to save a planned schedule and the screen jitters, and then i cant edit…",
+    "status": "done",
+    "note": "Your guess was right: it was pressing Enter again before the first save had come back. A new entry is shown under a temporary id until the server answers, and the second Enter opened the composer against that temporary row. When the server swapped in the real one, the composer had nothing to sit beside, so it vanished (the jitter). The page still thought an entry was open, though, and ignored every key while one is: so no Enter, no E, and the arrow keys fell through to scrolling the page.\n\nNow the open composer follows the new entry across the swap, along with anything you've typed into it, and an edit opened on a just-saved entry updates the real one. If what it was opened from disappears altogether, it closes instead of hanging open invisibly. So you can save and press Enter straight away.\n\nCaveat: an edit (E) opened and saved within the split second before the first save comes back still goes to the temporary entry and shows \"couldn't save\"; just press E again.",
+    "at": "2026-11-21T01:00:29.860Z"
   }
 ]
