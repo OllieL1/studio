@@ -224,6 +224,14 @@
     "at": "2026-11-21T01:02:30.973Z"
   },
   {
+    "id": "cmwpi53ds000015l88cdvpyqz",
+    "number": 29,
+    "title": "can we add a nicer way to see the done enhancements ?",
+    "status": "done",
+    "note": "Done now shows ten at a time, newest first, with ‹ › to page back through older ones. Above the list there's a search box and Bug / Feature / Tweak chips with counts. The search matches every word you type anywhere in the title, detail or write-up, and \"#14\" jumps to item 14. Changing the search or the kind goes back to the first page.\n\nKept deliberately small: it's all in the browser over the list Settings already loads, so nothing new on the server.",
+    "at": "2026-11-21T01:03:44.293Z"
+  },
+  {
     "id": "cmwporgwx000a15o4jdk91u3p",
     "number": 30,
     "title": "there is quite a consistent bug (doesnt happen every time) where sometimes i press enter to save a planned schedule and the screen jitters, and then i cant edit…",

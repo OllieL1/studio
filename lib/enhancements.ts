@@ -90,3 +90,24 @@ export function withAnswer(body: string, question: string | null, answer: string
   parts.push(`**Answer:** ${answer.trim()}`);
   return parts.filter(Boolean).join("\n\n");
 }
+
+/** How many done items Settings shows at a time. */
+export const DONE_PAGE = 10;
+
+/**
+ * The done items of one kind (or all) that match a search. Every word has to
+ * appear somewhere in the title, detail or write-up, any case; "#14" is
+ * item 14 exactly.
+ */
+export function searchDone<R extends { number: number; kind: EnhancementKind; title: string; body: string; resolution: string | null }>(
+  rows: R[],
+  kind: EnhancementKind | null,
+  query: string,
+): R[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return rows.filter((r) => {
+    if (kind && r.kind !== kind) return false;
+    const text = `${r.title} ${r.body} ${r.resolution ?? ""}`.toLowerCase();
+    return words.every((w) => (/^#\d+$/.test(w) ? r.number === Number(w.slice(1)) : text.includes(w)));
+  });
+}
