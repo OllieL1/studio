@@ -8,6 +8,7 @@ import { resolveSplit, type SplitMode } from "@/lib/split";
 import { clsx } from "@/lib/clsx";
 import { Card, Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
+import { TaskChecklist, useSubjectTasks } from "./SessionTasks";
 import { LocationPicker } from "./LocationPicker";
 import type { StudyLocation } from "@/lib/types";
 import { cssColour } from "@/lib/palette";
@@ -81,10 +82,12 @@ export function ManualLog({ courses }: { courses: C[] }) {
   const [location, setLocation] = useState<StudyLocation | null>(null);
   const [locationNote, setLocationNote] = useState("");
   const [courseIds, setCourseIds] = useState<string[]>([]);
+  const [taskIds, setTaskIds] = useState<string[]>([]);
   const [splitMode, setSplitMode] = useState<SplitMode>("equal");
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const tasks = useSubjectTasks(courseIds, setTaskIds);
 
   const minutes = Math.min(MAX_MINUTES, parseDuration(durText));
   const when = useMemo(() => {
@@ -114,10 +117,11 @@ export function ManualLog({ courses }: { courses: C[] }) {
       await logManualSession({
         name, date: when.date, startTime: when.time, minutes, focus,
         courses: courseIds.map((courseId, i) => ({ courseId, minutes: split[i] })),
-        taskIds: [], notes: null, location, locationNote: locationNote || null,
+        taskIds, notes: null, location, locationNote: locationNote || null,
       });
       setName("");
       setCourseIds([]);
+      setTaskIds([]);
       setWeights({});
       setDurText("60");
       setNowAt(null);
@@ -209,6 +213,13 @@ export function ManualLog({ courses }: { courses: C[] }) {
               onModeChange={setSplitMode}
               onWeightChange={(id, v) => setWeights((w) => ({ ...w, [id]: v }))}
             />
+          )}
+          {tasks.length > 0 && (
+            <div>
+              <Eyebrow className="mb-2">Tasks worked on</Eyebrow>
+              <TaskChecklist tasks={tasks} courses={courses} selected={taskIds} onChange={setTaskIds} />
+              <p className="mt-1.5 text-[11px] leading-4 text-n-400">Optional - lets stats show time per task.</p>
+            </div>
           )}
         </div>
 

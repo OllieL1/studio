@@ -11,11 +11,11 @@ import type { StudyLocation } from "@/lib/types";
 import { backdropProps, Portal, useModal } from "@/lib/hooks/useModal";
 import { Eyebrow } from "./ui";
 import { SubjectSplit } from "./SubjectSplit";
+import { TaskChecklist, useSubjectTasks } from "./SessionTasks";
 import { DurationTrim } from "./DurationTrim";
 import { cssColour } from "@/lib/palette";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string };
-type TaskOption = { id: string; title: string; courseId: string | null; kind: string };
 
 /**
  * Shown when the timer stops. Collects everything AIM.md asks for: a name,
@@ -50,31 +50,13 @@ export function StopDialog({
   const [locationNote, setLocationNote] = useState(lastLocationNote ?? "");
   const [splitMode, setSplitMode] = useState<SplitMode>("equal");
   const [weights, setWeights] = useState<Record<string, number>>({});
-  const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const nameRef = useRef<HTMLInputElement>(null);
 
   useModal({ onClose, initialFocus: nameRef });
 
-  // Task options are scoped to the chosen subjects — picking a subject first
-  // keeps the task list short and relevant.
-  useEffect(() => {
-    if (courseIds.length === 0) {
-      setTasks([]);
-      return;
-    }
-    const q = new URLSearchParams({ courseIds: courseIds.join(","), open: "1" });
-    fetch(`/api/tasks?${q}`)
-      .then((r) => r.json())
-      .then((d: TaskOption[]) => setTasks(d))
-      .catch(() => setTasks([]));
-  }, [courseIds]);
-
-  // Drop any selected task that no longer belongs to a selected subject.
-  useEffect(() => {
-    setTaskIds((ids) => ids.filter((id) => tasks.some((t) => t.id === id)));
-  }, [tasks]);
+  const tasks = useSubjectTasks(courseIds, setTaskIds);
 
   // Seed the weights from the current even split, so switching to percent or
   // minutes starts from something sensible rather than zeros.
@@ -239,36 +221,7 @@ export function StopDialog({
           {/* Tasks */}
           {tasks.length > 0 && (
             <Field label="Tasks worked on" hint="Optional - lets stats show time per task.">
-              <div className="max-h-36 space-y-0.5 overflow-y-auto rounded-sm border border-n-100 p-1">
-                {tasks.map((t) => {
-                  const on = taskIds.includes(t.id);
-                  const course = courses.find((c) => c.id === t.courseId);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() =>
-                        setTaskIds((ids) =>
-                          on ? ids.filter((x) => x !== t.id) : [...ids, t.id],
-                        )
-                      }
-                      className={clsx(
-                        "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors duration-[120ms]",
-                        on ? "bg-rust-50 text-rust-800" : "text-n-600 hover:bg-n-50",
-                      )}
-                      aria-pressed={on}
-                    >
-                      <Tick on={on} />
-                      <span className="truncate">{t.title}</span>
-                      {course && (
-                        <span className="ml-auto shrink-0 text-[11px] text-n-400">
-                          {course.shortName}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <TaskChecklist tasks={tasks} courses={courses} selected={taskIds} onChange={setTaskIds} />
             </Field>
           )}
 
@@ -375,21 +328,3 @@ function Field({
     </div>
   );
 }
-
-function Tick({ on }: { on: boolean }) {
-  return (
-    <span
-      className={clsx(
-        "flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-[180ms]",
-        on ? "border-rust-500 bg-rust-500" : "border-n-300",
-      )}
-    >
-      {on && (
-        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-          <path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </span>
-  );
-}
-

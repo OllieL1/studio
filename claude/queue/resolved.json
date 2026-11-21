@@ -216,6 +216,14 @@
     "at": "2026-11-17T23:07:01.256Z"
   },
   {
+    "id": "cmwp740bn00vo1540lrp36zl2",
+    "number": 28,
+    "title": "please can we add the ability to add a task from the subject choice when manually logging a session?",
+    "status": "done",
+    "note": "Logging a session by hand now has the same \"Tasks worked on\" list as the timer's stop dialog. Pick a subject and its open tasks appear underneath, tick the ones you worked on, and the session is linked to them, so the per-task stats count it. Unpicking a subject drops its tasks from the selection.\n\nIt's the same list in both places now (one shared component), so they won't drift apart.",
+    "at": "2026-11-21T01:02:30.973Z"
+  },
+  {
     "id": "cmwporgwx000a15o4jdk91u3p",
     "number": 30,
     "title": "there is quite a consistent bug (doesnt happen every time) where sometimes i press enter to save a planned schedule and the screen jitters, and then i cant edit…",
