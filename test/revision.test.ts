@@ -2,12 +2,11 @@
  * Revision mode, exercised against the real database on a throwaway course.
  */
 import assert from "node:assert/strict";
-import { PrismaClient } from "@prisma/client";
 import { setCourseRevisionMode, revisionProgress, toggleTaskItem, setTaskDone } from "../lib/tasks";
+import { db } from "../lib/db";
 import { computeCourseProgress } from "../lib/progress";
 import { REVISION_ITEM_LABEL } from "../lib/types";
 
-const db = new PrismaClient();
 const SCRATCH = "__TEST_REVISION__";
 
 const tests: [string, (c: Ctx) => Promise<void>][] = [];

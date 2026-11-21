@@ -268,8 +268,13 @@
   --shadow-modal: 0 20px 56px -12px rgb(0 0 0 / 0.7);
 }
 
-* {
-  border-color: var(--color-n-100);
+/* The default hairline. In @layer base, like the outline rule below, so a
+   border-colour utility (border-n-200, border-transparent, focus:border-…)
+   can override it - unlayered, it beat every one of them. */
+@layer base {
+  * {
+    border-color: var(--color-n-100);
+  }
 }
 
 html {

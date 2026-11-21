@@ -128,7 +128,7 @@ export default async function ProjectPage({ searchParams }: { searchParams: Prom
               )}
             >
               {t.label}
-              {count != null && count > 0 && <span className="font-num ml-1.5 text-[11px] font-normal text-n-400">{count}</span>}
+              {count != null && count > 0 && <span className="font-num ml-1.5 text-[11px] leading-none font-normal text-n-400">{count}</span>}
             </Link>
           );
         })}

@@ -18,6 +18,7 @@ import {
 } from "@/lib/editor/mentionShorthand";
 import type { MentionOption } from "@/app/api/mentions/route";
 import { createSaver } from "@/lib/editor/saveGuard";
+import { fitTextarea } from "@/lib/editor/fitTextarea";
 import { TableEditor } from "./TableEditor";
 import { ColumnsEditor } from "./ColumnsEditor";
 
@@ -307,7 +308,7 @@ export function LiveEditor({
     const pos = at < 0 ? el.value.length : Math.min(at, el.value.length);
     el.setSelectionRange(pos, pos);
     caretTarget.current = null;
-    autosize(el);
+    fitTextarea(el);
   }, [activeId]);
 
   const update = (id: string, text: string) =>
@@ -322,7 +323,7 @@ export function LiveEditor({
   const write = (el: HTMLTextAreaElement, id: string, text: string, caret: number) => {
     el.value = text;
     el.setSelectionRange(caret, caret);
-    autosize(el);
+    fitTextarea(el);
     update(id, expandMentions(text, mentionTokensRef.current));
   };
 
@@ -494,7 +495,7 @@ export function LiveEditor({
       const shifted = indentLines(el.value, el.selectionStart, el.selectionEnd, e.shiftKey);
       el.value = shifted.text;
       el.setSelectionRange(shifted.start, shifted.end);
-      autosize(el);
+      fitTextarea(el);
       update(b.id, expandMentions(shifted.text, mentionTokensRef.current));
       return;
     }
@@ -592,7 +593,7 @@ export function LiveEditor({
     const caret = el.selectionStart;
     const text = el.value;
     update(b.id, expandMentions(text, mentionTokensRef.current));
-    autosize(el);
+    fitTextarea(el);
 
     if (menu) {
       if (caret < menu.start + 1) {
@@ -715,8 +716,7 @@ export function LiveEditor({
       // Measured from the top of the page, so scrolling doesn't change it.
       const top = el.getBoundingClientRect().top + window.scrollY;
       const floor = minRows || nested ? 0 : Math.max(240, window.innerHeight - top - 32);
-      el.style.height = "auto";
-      el.style.height = `${Math.max(el.scrollHeight, floor)}px`;
+      fitTextarea(el, floor);
     };
     fit();
     window.addEventListener("resize", fit);
@@ -995,11 +995,6 @@ const Rendered = memo(function Rendered({
 });
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
-
-function autosize(el: HTMLTextAreaElement) {
-  el.style.height = "auto";
-  el.style.height = `${el.scrollHeight}px`;
-}
 
 /** Map a click in rendered HTML back to an offset in the block's markdown. */
 function caretFromPoint(e: React.MouseEvent<HTMLDivElement>, source: string): number {

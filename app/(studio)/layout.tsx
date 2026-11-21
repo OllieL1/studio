@@ -123,6 +123,7 @@ export default async function RootLayout({
               projects={sovProjects}
               stacked
               ownsTitle={!timer || !!timer.pausedAt}
+              showsIdleChip={false}
             />
           )}
           <TimerBar

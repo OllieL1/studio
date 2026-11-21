@@ -198,11 +198,13 @@ export function NoteEditor({
             }}
             placeholder="Untitled"
             aria-label="Note title"
-            className="font-display -mx-2 h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-[7px] text-[26px] font-semibold tracking-tight text-n-900 outline-none focus:border-rust-400"
+            className="font-display -ml-2 mr-2 h-9 min-w-0 flex-1 rounded-md border border-n-200 bg-n-0 px-[7px] text-[26px] font-semibold tracking-tight text-n-900 outline-none focus:border-rust-400"
           />
         ) : (
           // The title is its own edit button: click it (or Enter on it) and it
           // becomes the input, in the same place and size so nothing jumps.
+          // Pulled left so the text lines up with the page; not right, so the
+          // box stops short of the save status (#26).
           // No hover band: with the pointer still over a just-saved title it
           // read as a text box left open (#18). The box is the editing state
           // only; the text cursor says it's clickable.
@@ -216,7 +218,7 @@ export function NoteEditor({
               }
             }}
             title="Click to rename"
-            className="font-display -mx-2 min-w-0 flex-1 cursor-text truncate rounded-md border border-transparent px-[7px] text-[26px] leading-[34px] font-semibold tracking-tight text-n-900 outline-none focus-visible:border-rust-400"
+            className="font-display -ml-2 mr-2 min-w-0 flex-1 cursor-text truncate rounded-md border border-transparent px-[7px] text-[26px] leading-[34px] font-semibold tracking-tight text-n-900 outline-none focus-visible:border-rust-400"
           >
             {title}
           </h1>
