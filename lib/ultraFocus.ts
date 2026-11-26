@@ -21,6 +21,23 @@ export function pausedTotalAfterResume(t: TimerClock, now = new Date()): number 
   return t.pausedMs + (t.pausedAt ? Math.max(0, now.getTime() - t.pausedAt.getTime()) : 0);
 }
 
+export type Pause = { start: Date; end: Date };
+
+export function parsePauses(json: string | null): Pause[] {
+  if (!json) return [];
+  const value: unknown = JSON.parse(json);
+  const isPair = (p: unknown) => Array.isArray(p) && p.length === 2 && p.every((ms) => Number.isFinite(ms));
+  if (!Array.isArray(value) || !value.every(isPair)) throw new Error(`ActiveTimer.pauses is malformed: ${json}`);
+  return (value as [number, number][]).map(([start, end]) => ({ start: new Date(start), end: new Date(end) }));
+}
+
+/** Ending a pause: the list of finished pauses with this one added. */
+export function pausesAfterResume(t: { pausedAt: Date | null; pauses: string | null }, now = new Date()): string | null {
+  if (!t.pausedAt) return t.pauses;
+  const finished = [...parsePauses(t.pauses), { start: t.pausedAt, end: now }];
+  return JSON.stringify(finished.map((p) => [p.start.getTime(), p.end.getTime()]));
+}
+
 /** Rapt Mode's quick picks, in minutes; anything else is typed (parseDuration). */
 export const LOCK_PRESETS = [25, 50, 90] as const;
 export const LOCK_MIN_MINUTES = 5;

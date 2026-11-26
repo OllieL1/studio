@@ -13,7 +13,12 @@
  *
  * Listening time comes from how far playback *position* advanced, not wall
  * time — so a track paused for ten minutes doesn't count ten minutes.
+ *
+ * Pausing the study timer is a break: each studied stretch between pauses is
+ * built on its own, so nothing played during a pause is counted.
  */
+
+import type { Pause } from "./ultraFocus";
 
 export type TrackMeta = {
   spotifyId: string | null;
@@ -59,17 +64,33 @@ type SampledPlay = {
   start: number;
 };
 
-export function buildListening({
-  samples,
-  history,
-  start,
-  end,
-}: {
-  samples: Sample[];
-  history: HistoryEntry[];
-  start: Date;
-  end: Date;
-}): Play[] {
+type Listening = { samples: Sample[]; history: HistoryEntry[]; start: Date; end: Date };
+
+export function buildListening({ pauses = [], ...session }: Listening & { pauses?: Pause[] }): Play[] {
+  const stretches = studiedStretches(session.start, session.end, pauses);
+  return stretches.flatMap(({ start, end }, i) => {
+    // Samples just outside the session still describe it, so only the edges
+    // that border a pause are hard ones.
+    const from = i === 0 ? -Infinity : start.getTime();
+    const to = i === stretches.length - 1 ? Infinity : end.getTime();
+    const samples = session.samples.filter((s) => s.at.getTime() >= from && s.at.getTime() <= to);
+    return buildStretch({ samples, history: session.history, start, end });
+  });
+}
+
+function studiedStretches(start: Date, end: Date, pauses: Pause[]): { start: Date; end: Date }[] {
+  const stretches: { start: Date; end: Date }[] = [];
+  let from = start;
+  for (const pause of [...pauses].sort((a, b) => a.start.getTime() - b.start.getTime())) {
+    if (pause.start > from) stretches.push({ start: from, end: pause.start < end ? pause.start : end });
+    if (pause.end > from) from = pause.end;
+  }
+  if (end > from) stretches.push({ start: from, end });
+  return stretches;
+}
+
+/** The plays within one unbroken stretch of study. */
+function buildStretch({ samples, history, start, end }: Listening): Play[] {
   const S = start.getTime();
   const E = end.getTime();
   if (E <= S) return [];
@@ -166,7 +187,7 @@ export function buildListening({
     plays.push({ ...meta, startedAt: new Date(Math.max(slot.start, S)), minutes: ms / 60_000, source });
   });
 
-  // ── 4. Never report more listening than the session lasted.
+  // ── 4. Never report more listening than the stretch lasted.
   const total = plays.reduce((s, p) => s + p.minutes, 0);
   const cap = (E - S) / 60_000;
   if (total > cap) for (const p of plays) p.minutes *= cap / total;

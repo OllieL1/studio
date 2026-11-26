@@ -1,6 +1,6 @@
 /** Pausing and ultra focus: studied time excludes pauses; the lock keeps you on one course's pages. */
 import assert from "node:assert/strict";
-import { activeLock, fmtLockLength, lockAllows, lockHome, parseDuration, pausedTotalAfterResume, studiedMs } from "../lib/ultraFocus";
+import { activeLock, fmtLockLength, lockAllows, lockHome, parseDuration, parsePauses, pausedTotalAfterResume, pausesAfterResume, studiedMs } from "../lib/ultraFocus";
 
 const tests: [string, () => void][] = [];
 const test = (n: string, f: () => void) => tests.push([n, f]);
@@ -18,6 +18,16 @@ test("studied time leaves out pauses, finished and ongoing", () => {
   assert.equal(studiedMs({ startedAt: start, pausedAt: null, pausedMs: banked }, at(45)), 30 * MIN);
   // Resuming when not paused changes nothing.
   assert.equal(pausedTotalAfterResume({ startedAt: start, pausedAt: null, pausedMs: banked }, at(50)), banked);
+});
+
+test("each finished pause is remembered", () => {
+  const first = pausesAfterResume({ pausedAt: at(10), pauses: null }, at(15));
+  const second = pausesAfterResume({ pausedAt: at(20), pauses: first }, at(30));
+  assert.deepEqual(parsePauses(second), [{ start: at(10), end: at(15) }, { start: at(20), end: at(30) }]);
+  // Not paused: the list is left as it was.
+  assert.equal(pausesAfterResume({ pausedAt: null, pauses: second }, at(40)), second);
+  assert.deepEqual(parsePauses(null), []);
+  assert.throws(() => parsePauses('[["10", 15]]'), /malformed/);
 });
 
 test("a lock holds until its time, then it's gone", () => {

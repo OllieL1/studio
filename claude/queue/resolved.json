@@ -246,5 +246,13 @@
     "status": "done",
     "note": "Saving anything refreshes the page, and the refresh put the \"Studio - 26/27\" title back until the timer's next one-second tick rewrote it. The timer now watches the title and puts the clock back before anything is drawn, so it stays put through a save. The Sovrano \"Working\" title is held the same way.",
     "at": "2026-11-26T22:46:32.045Z"
+  },
+  {
+    "id": "cmwxubzam00se15okjxupjn4c",
+    "number": 32,
+    "title": "we need to ensure that when sessions have been paused, they slice out the music listening when paused.",
+    "status": "done",
+    "note": "Music played while the timer was paused was being counted: only the total paused time was kept, not when the pauses happened. Each pause is now recorded, and listening is worked out only from the stretches you were studying, so it can't exceed the time studied. A track that spans a pause may count as two plays.\n\nPast sessions are left as they are, as you chose (their pause times were never saved). A session already running when this is deployed has no record of its earlier pauses. Tested with made-up Spotify data, not a live session, so worth a glance after your next paused one.",
+    "at": "2026-11-26T22:48:02.306Z"
   }
 ]
