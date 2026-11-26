@@ -11,6 +11,7 @@ import { NowPlaying, useNowPlaying } from "./NowPlaying";
 import { FocusMode } from "./FocusMode";
 import { ModesButton, PlayIcon } from "./SessionModes";
 import { studiedMs } from "@/lib/ultraFocus";
+import { TITLE_PRIORITY, useTabTitle } from "@/lib/tabTitle";
 
 type CourseLink = { id: string; name: string; shortName: string; colour: string; code: string; isProject: boolean };
 
@@ -69,13 +70,7 @@ export function TimerBar({
   }, [startMs, pausedAtMs, pausedMs]);
 
   // Keep the running time in the tab title — glanceable from another app.
-  useEffect(() => {
-    const base = "Studio - 26/27";
-    document.title = startMs ? `${fmtClock(elapsed)} · ${paused ? "Paused" : "Studying"}` : base;
-    return () => {
-      document.title = base;
-    };
-  }, [elapsed, startMs, paused]);
+  useTabTitle(startMs ? `${fmtClock(elapsed)} · ${paused ? "Paused" : "Studying"}` : null, TITLE_PRIORITY.study);
 
   const running = startMs != null;
   // One poller for the pill below and the full-screen mode.
