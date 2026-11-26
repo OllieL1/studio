@@ -87,6 +87,16 @@ export function NoteEditor({
     };
   }, [minimal]);
 
+  // Clicked just after typing, the download would beat the save to the server
+  // and miss the last words, so it waits for the save to land.
+  const markdownHref = `/api/project/notes/markdown?id=${note.id}`;
+  const [isDownloadWaiting, setIsDownloadWaiting] = useState(false);
+  useEffect(() => {
+    if (!isDownloadWaiting || !saved) return;
+    setIsDownloadWaiting(false);
+    window.location.assign(markdownHref);
+  }, [isDownloadWaiting, saved, markdownHref]);
+
   const save = (patch: Parameters<typeof updateNote>[1]) =>
     startTransition(async () => {
       await updateNote(note.id, patch);
@@ -155,6 +165,22 @@ export function NoteEditor({
     </a>
   );
 
+  const markdownLink = (
+    <a
+      href={markdownHref}
+      download
+      onClick={(e) => {
+        if (saved) return;
+        e.preventDefault();
+        setIsDownloadWaiting(true);
+      }}
+      title="Download this note as markdown"
+      className="flex h-8 shrink-0 items-center rounded-md border border-n-200 bg-n-0 px-2.5 text-[11.5px] font-semibold text-n-600 transition-colors duration-[120ms] hover:bg-n-50"
+    >
+      MD
+    </a>
+  );
+
   return (
     // One tree for both layouts - only classes change - so the editor is never
     // remounted (and what was typed since the page loaded never lost).
@@ -177,6 +203,7 @@ export function NoteEditor({
               {status}
               {modeToggle}
               {pdfLink}
+              {markdownLink}
               {focusButton}
             </div>
           </div>
@@ -241,6 +268,7 @@ export function NoteEditor({
         {modeToggle}
         {focusButton}
         {pdfLink}
+        {markdownLink}
         <button
           onClick={() => {
             if (!confirm(`Delete "${title}"?`)) return;

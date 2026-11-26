@@ -254,5 +254,13 @@
     "status": "done",
     "note": "Music played while the timer was paused was being counted: only the total paused time was kept, not when the pauses happened. Each pause is now recorded, and listening is worked out only from the stretches you were studying, so it can't exceed the time studied. A track that spans a pause may count as two plays.\n\nPast sessions are left as they are, as you chose (their pause times were never saved). A session already running when this is deployed has no record of its earlier pauses. Tested with made-up Spotify data, not a live session, so worth a glance after your next paused one.",
     "at": "2026-11-26T22:48:02.306Z"
+  },
+  {
+    "id": "cmwy4strt00021528yhotpwg6",
+    "number": 33,
+    "title": "Can we add a markdown download button next to the PDF button that downloads the markdown file ?",
+    "status": "done",
+    "note": "There's now an MD button beside PDF on a note (task notes and Nexus notes, focus mode too). It downloads the note as a markdown file: the title as a heading, then the text, with @ mentions written as their labels and pasted links as ordinary markdown links. If you've only just typed, it waits for the save first.\n\nCaveats: images and attachments still point at Studio, so they won't show outside it. There's no bulk download from the notes list.",
+    "at": "2026-11-26T22:49:51.233Z"
   }
 ]

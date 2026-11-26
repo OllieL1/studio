@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { buildNotesPdf } from "@/lib/pdf/notes";
 import { toISODate } from "@/lib/dates";
+import { fileSlug } from "@/lib/noteExport";
 
 export const dynamic = "force-dynamic";
 // pdfkit reads its font files from disk, so this can't run on the edge.
@@ -46,13 +47,12 @@ export async function GET(req: NextRequest) {
   const pdf = await buildNotesPdf({ notes, course, generatedAt: new Date() });
 
   // Named for what it is: the note, or the piece of work / course a bundle shares.
-  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const works = new Set(notes.map((n) => n.work));
   const label =
     notes.length === 1 ? notes[0].title
     : works.size === 1 && notes[0].work ? `${notes[0].work} notes`
     : `${(notes[0].course ?? course)?.name ?? ""} notes`;
-  const name = slug(label);
+  const name = fileSlug(label);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
