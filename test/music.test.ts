@@ -148,6 +148,33 @@ test("an empty or inverted session returns nothing", () => {
 });
 
 let passed = 0, failed = 0;
+const pause = (from: number, to: number) => ({ start: at(from), end: at(to) });
+const total = (plays: { minutes: number }[]) => plays.reduce((s, p) => s + p.minutes, 0);
+
+test("music played only during a pause counts nothing", () => {
+  const a = track("a", 4);
+  const b = track("b", 4);
+  const plays = buildListening({ ...session, pauses: [pause(20, 40)], history: [hist(b, at(35))], samples: [
+    sample(a, at(25), 0.25), sample(a, at(26), 1.25),
+  ]});
+  assert.equal(plays.length, 0);
+});
+
+test("a track straddling a pause counts only its studied part", () => {
+  const a = track("a", 10);
+  // Played 15:00-25:00; the timer paused at 20:00.
+  const plays = buildListening({ ...session, pauses: [pause(20, 40)], history: [hist(a, at(25))], samples: [
+    sample(a, at(16), 1), sample(a, at(19), 4), sample(a, at(22), 7),
+  ]});
+  approx(total(plays), 5, "15:00 to the pause");
+});
+
+test("listening never exceeds the time studied", () => {
+  const history = Array.from({ length: 15 }, (_, i) => hist(track(`h${i}`, 4), at((i + 1) * 4)));
+  const plays = buildListening({ ...session, pauses: [pause(10, 30), pause(45, 50)], samples: [], history });
+  approx(total(plays), 35, "60 minutes less 25 paused");
+});
+
 for (const [name, fn] of tests) {
   try { fn(); passed++; console.log(`  \x1b[32m✓\x1b[0m ${name}`); }
   catch (e) { failed++; console.log(`  \x1b[31m✗\x1b[0m ${name}\n    \x1b[31m${(e as Error).message}\x1b[0m`); }

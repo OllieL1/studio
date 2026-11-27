@@ -104,6 +104,22 @@ export function navKeys(days: PlanDay[]): string[] {
   return days.flatMap((d) => d.rows.map((r) => r.key));
 }
 
+/**
+ * The row a key points at now. A new block is shown under a temporary id
+ * until the server answers, then swapped for the real one; `alias` maps
+ * real → temporary, and a key held from either side of the swap (the
+ * cursor, or an open composer's anchor) is followed to whichever is on
+ * screen. Null if it's gone.
+ */
+export function followKey(key: string | null, keys: readonly string[], alias: ReadonlyMap<string, string>): string | null {
+  if (!key) return null;
+  if (keys.includes(key)) return key;
+  const temp = alias.get(key);
+  if (temp && keys.includes(temp)) return temp;
+  for (const [real, t] of alias) if (t === key && keys.includes(real)) return real;
+  return null;
+}
+
 /** Where ← / → go: the first row of the previous or next day. */
 export function dayJump(days: PlanDay[], key: string | null, dir: -1 | 1): string | null {
   if (!days.length) return null;

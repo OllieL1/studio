@@ -12,7 +12,7 @@ import { TASK_KIND_LABEL } from "@/lib/types";
 import { clsx } from "@/lib/clsx";
 import { cssColour } from "@/lib/palette";
 import { fmtLength, fmtMinutes, rangeHref } from "@/lib/plan";
-import { blockKey, buildDays, dayJump, GAP_WORTH_SHOWING, navKeys, nowKey, sleepItems, timeLabel, type PlanDay, type Row, type Sleep } from "@/lib/planView";
+import { blockKey, buildDays, dayJump, followKey, GAP_WORTH_SHOWING, navKeys, nowKey, sleepItems, timeLabel, type PlanDay, type Row, type Sleep } from "@/lib/planView";
 import { createBlock, deleteBlock, restoreBlock, setHidden, setSleep, syncRange, updateBlock, type BlockInput } from "@/app/planActions";
 import { WeekGrid } from "../calendar/WeekGrid";
 import { Composer, Key, TimeField, type ComposerCourse, type ComposerResult } from "./Composer";
@@ -104,12 +104,7 @@ export function PlanEditor({
     [from, dayCount, withSleep, blocks, hidden, showHidden],
   );
   const keys = useMemo(() => navKeys(days), [days]);
-  const resolve = useCallback((key: string | null) => {
-    if (!key) return null;
-    if (keys.includes(key)) return key;
-    const a = alias.current.get(key);
-    return a && keys.includes(a) ? a : null;
-  }, [keys]);
+  const resolve = useCallback((key: string | null) => followKey(key, keys, alias.current), [keys]);
   const current = resolve(cursor);
 
   // Start on today's first entry when today is in range, else the first day's.
@@ -148,6 +143,24 @@ export function PlanEditor({
     }
     return null;
   }, [days]);
+
+  // The open composer, pointed at the rows on screen now. Enter pressed again
+  // straight after saving opens it on the new block while it still has its
+  // temporary id; when the server swaps in the real one the anchor (or the
+  // block being edited) follows it, rather than the composer vanishing and
+  // leaving a draft open that nothing shows - which swallowed every key (#30).
+  const liveDraft = useMemo((): Draft | null => {
+    if (!draft) return null;
+    const anchorKey = resolve(draft.anchorKey);
+    if (!anchorKey) return null;
+    if (!draft.editing) return { ...draft, anchorKey };
+    const found = findRow(anchorKey);
+    return found?.row.type === "block" ? { ...draft, anchorKey, editing: found.row.block } : null;
+  }, [draft, resolve, findRow]);
+  // And if what it was opened from is gone altogether, close it.
+  useEffect(() => { if (draft && !liveDraft) setDraft(null); }, [draft, liveDraft]);
+  // Its identity is the draft as opened, so the swap doesn't reset what's typed.
+  const composerKey = draft ? `${draft.anchorKey}-${draft.direction}-${draft.editing?.id ?? ""}` : "";
 
   /* ── Actions ─────────────────────────────────────────────────────────── */
 
@@ -281,7 +294,7 @@ export function PlanEditor({
         runUndo();
         return;
       }
-      if (typing || draft || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (typing || liveDraft || e.metaKey || e.ctrlKey || e.altKey) return;
       if (document.querySelector("[role=dialog]")) return;
 
       const i = current ? keys.indexOf(current) : -1;
@@ -333,7 +346,7 @@ export function PlanEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [keys, days, current, draft, undo, openComposer, editRow, remove, runUndo, togglePreview, router, from, dayCount]);
+  }, [keys, days, current, liveDraft, undo, openComposer, editRow, remove, runUndo, togglePreview, router, from, dayCount]);
 
   /* ── Render ──────────────────────────────────────────────────────────── */
 
@@ -425,7 +438,8 @@ export function PlanEditor({
               day={day}
               courses={courseById}
               current={current}
-              draft={draft?.iso === day.iso ? draft : null}
+              draft={liveDraft?.iso === day.iso ? liveDraft : null}
+              rowKey={(key) => alias.current.get(key) ?? key}
               revealHidden={showHidden.has(day.iso)}
               onToggleHidden={() => setShowHidden((s) => {
                 const n = new Set(s);
@@ -439,7 +453,7 @@ export function PlanEditor({
               onHideChip={hideChip}
               composer={(d) => (
                 <Composer
-                  key={`${d.anchorKey}-${d.direction}-${d.editing?.id ?? ""}`}
+                  key={composerKey}
                   courses={courses}
                   anchor={d.anchor}
                   direction={d.direction}
@@ -483,13 +497,15 @@ export function PlanEditor({
 /* ── A day ─────────────────────────────────────────────────────────────── */
 
 function DaySection({
-  day, courses, current, draft, revealHidden, onToggleHidden,
+  day, courses, current, draft, rowKey, revealHidden, onToggleHidden,
   onSelect, onCompose, onEdit, onRemove, onHideChip, composer,
 }: {
   day: PlanDay<PlanBlockView>;
   courses: Map<string, ComposerCourse>;
   current: string | null;
   draft: Draft | null;
+  /** A row's React key - a new block keeps its temporary one, so nothing beside it remounts at the swap. */
+  rowKey: (key: string) => string;
   revealHidden: boolean;
   onToggleHidden: () => void;
   onSelect: (key: string) => void;
@@ -576,7 +592,7 @@ function DaySection({
           const gap = row.type !== "empty" && prev && prev.type !== "empty" ? row.start - Math.max(lastEnd, prev.end) : 0;
           if (row.type !== "empty") lastEnd = Math.max(lastEnd, row.end);
           return (
-            <Fragment key={row.key}>
+            <Fragment key={rowKey(row.key)}>
               {gap >= GAP_WORTH_SHOWING && !draft && prev && (
                 <FreeGap minutes={gap} onClick={() => onCompose(prev.key, "below")} />
               )}

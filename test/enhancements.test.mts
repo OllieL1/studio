@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { movedPosition, nextKind, parseEnhancement, prefixKind, withAnswer } from "../lib/enhancements.ts";
+import { movedPosition, nextKind, parseEnhancement, prefixKind, searchDone, withAnswer } from "../lib/enhancements.ts";
 // @ts-expect-error - plain .mjs, no types
 import { applyResolutions, formatQueue, readQueue, readResolutions, recordResolution } from "../scripts/queue/lib.mjs";
 
@@ -77,6 +77,17 @@ const freshDb = () => {
   add.run("e4", 4, "bug", "Slow", "question", 3);
   return db;
 };
+
+test("done items filter by kind and every searched word; #N is that item", () => {
+  const row = (number, kind, title, resolution = null) => ({ number, kind, title, body: "", resolution });
+  const rows = [row(14, "bug", "Plan jitters on Enter", "The composer now follows the new block"), row(15, "tweak", "Tabs line up"), row(140, "feature", "Done list")];
+  assert.deepEqual(searchDone(rows, null, "").map((r) => r.number), [14, 15, 140]);
+  assert.deepEqual(searchDone(rows, "bug", "").map((r) => r.number), [14]);
+  assert.deepEqual(searchDone(rows, null, "COMPOSER block").map((r) => r.number), [14]);
+  assert.deepEqual(searchDone(rows, null, "composer tabs").map((r) => r.number), []);
+  assert.deepEqual(searchDone(rows, null, "#14").map((r) => r.number), [14]);
+  assert.deepEqual(searchDone(rows, "tweak", "jitters").map((r) => r.number), []);
+});
 
 test("the queue reads top-down, questions after, closed ones left out", () => {
   const rows = readQueue(freshDb());

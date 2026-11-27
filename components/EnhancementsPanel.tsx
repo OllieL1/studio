@@ -9,7 +9,7 @@ import {
 import { OPEN_ENHANCEMENT_EVENT } from "@/components/EnhancementHotkey";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { clsx } from "@/lib/clsx";
-import { KIND_LABEL, KIND_TONE, KINDS, type EnhancementKind } from "@/lib/enhancements";
+import { DONE_PAGE, KIND_LABEL, KIND_TONE, KINDS, searchDone, type EnhancementKind } from "@/lib/enhancements";
 
 const fmt = (d: Date) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
@@ -22,6 +22,10 @@ export function EnhancementsPanel({ rows }: { rows: EnhancementRow[] }) {
   const [pending, start] = useTransition();
   const [filter, setFilter] = useState<EnhancementKind | null>(null);
   const [showClosed, setShowClosed] = useState(false);
+  // Done is newest first, ten at a time, narrowed by kind and a search.
+  const [doneKind, setDoneKind] = useState<EnhancementKind | null>(null);
+  const [doneQuery, setDoneQuery] = useState("");
+  const [donePage, setDonePage] = useState(0);
 
   const run = (fn: () => Promise<unknown>) =>
     start(async () => {
@@ -33,6 +37,10 @@ export function EnhancementsPanel({ rows }: { rows: EnhancementRow[] }) {
   const asked = rows.filter((r) => r.status === "question");
   const closed = rows.filter((r) => r.status === "done" || r.status === "wontfix");
   const visible = filter ? queued.filter((r) => r.kind === filter) : queued;
+  const found = searchDone(closed, doneKind, doneQuery);
+  const pages = Math.max(1, Math.ceil(found.length / DONE_PAGE));
+  const page = Math.min(donePage, pages - 1);
+  const shown = found.slice(page * DONE_PAGE, (page + 1) * DONE_PAGE);
 
   return (
     <Card className="p-5" id="enhancements">
@@ -116,8 +124,38 @@ export function EnhancementsPanel({ rows }: { rows: EnhancementRow[] }) {
             {showClosed ? "▾" : "▸"} Done ({closed.length})
           </button>
           {showClosed && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <input
+                type="search"
+                value={doneQuery}
+                onChange={(e) => { setDoneQuery(e.target.value); setDonePage(0); }}
+                placeholder="Search done - words, or #14"
+                aria-label="Search done enhancements"
+                className="h-7 w-full min-w-0 rounded-md border border-n-200 bg-n-0 px-2.5 text-[12.5px] text-n-800 outline-none placeholder:text-n-400 focus:border-n-400 sm:w-56"
+              />
+              {[null, ...KINDS].map((k) => (
+                <button
+                  key={k ?? "all"}
+                  type="button"
+                  onClick={() => { setDoneKind(k); setDonePage(0); }}
+                  className={clsx(
+                    "rounded-full border px-2.5 py-0.5 text-[11.5px] font-semibold",
+                    doneKind === k ? "border-n-300 bg-n-50 text-n-800" : "border-transparent text-n-500 hover:bg-n-50",
+                  )}
+                >
+                  {k ? `${KIND_LABEL[k]} ${closed.filter((r) => r.kind === k).length}` : "All"}
+                </button>
+              ))}
+            </div>
+          )}
+          {showClosed && found.length === 0 && (
+            <p className="mt-2 rounded-md border border-dashed border-n-200 px-4 py-4 text-center text-[12.5px] text-n-500">
+              Nothing done matches that.
+            </p>
+          )}
+          {showClosed && found.length > 0 && (
             <ul className="mt-2 space-y-2">
-              {closed.map((r) => (
+              {shown.map((r) => (
                 <li key={r.id} className="rounded-md border border-n-100 px-3.5 py-2.5">
                   <div className="flex items-center gap-2">
                     <span className="font-num text-[11.5px] text-n-400">#{r.number}</span>
@@ -145,6 +183,15 @@ export function EnhancementsPanel({ rows }: { rows: EnhancementRow[] }) {
                 </li>
               ))}
             </ul>
+          )}
+          {showClosed && pages > 1 && (
+            <div className="mt-2 flex items-center justify-end gap-1 text-[11.5px] text-n-500">
+              <span className="font-num mr-1">
+                {page * DONE_PAGE + 1}–{page * DONE_PAGE + shown.length} of {found.length}
+              </span>
+              <IconButton label="Newer" disabled={page === 0} onClick={() => setDonePage(page - 1)}>‹</IconButton>
+              <IconButton label="Older" disabled={page >= pages - 1} onClick={() => setDonePage(page + 1)}>›</IconButton>
+            </div>
           )}
         </div>
       )}

@@ -214,5 +214,61 @@
     "status": "done",
     "note": "Fixed - every tab label on the Project page now sits on the same line. The counts (Nexus, Tasks, Meetings, Research) are set in the number font, which made their tabs a pixel taller than Overview, KB and GitHub, so their labels and underline sat half a pixel higher. The count no longer adds to the line height, so all the tabs are the same height.",
     "at": "2026-11-17T23:07:01.256Z"
+  },
+  {
+    "id": "cmwp740bn00vo1540lrp36zl2",
+    "number": 28,
+    "title": "please can we add the ability to add a task from the subject choice when manually logging a session?",
+    "status": "done",
+    "note": "Logging a session by hand now has the same \"Tasks worked on\" list as the timer's stop dialog. Pick a subject and its open tasks appear underneath, tick the ones you worked on, and the session is linked to them, so the per-task stats count it. Unpicking a subject drops its tasks from the selection.\n\nIt's the same list in both places now (one shared component), so they won't drift apart.",
+    "at": "2026-11-21T01:02:30.973Z"
+  },
+  {
+    "id": "cmwpi53ds000015l88cdvpyqz",
+    "number": 29,
+    "title": "can we add a nicer way to see the done enhancements ?",
+    "status": "done",
+    "note": "Done now shows ten at a time, newest first, with ‹ › to page back through older ones. Above the list there's a search box and Bug / Feature / Tweak chips with counts. The search matches every word you type anywhere in the title, detail or write-up, and \"#14\" jumps to item 14. Changing the search or the kind goes back to the first page.\n\nKept deliberately small: it's all in the browser over the list Settings already loads, so nothing new on the server.",
+    "at": "2026-11-21T01:03:44.293Z"
+  },
+  {
+    "id": "cmwporgwx000a15o4jdk91u3p",
+    "number": 30,
+    "title": "there is quite a consistent bug (doesnt happen every time) where sometimes i press enter to save a planned schedule and the screen jitters, and then i cant edit…",
+    "status": "done",
+    "note": "Your guess was right: it was pressing Enter again before the first save had come back. A new entry is shown under a temporary id until the server answers, and the second Enter opened the composer against that temporary row. When the server swapped in the real one, the composer had nothing to sit beside, so it vanished (the jitter). The page still thought an entry was open, though, and ignored every key while one is: so no Enter, no E, and the arrow keys fell through to scrolling the page.\n\nNow the open composer follows the new entry across the swap, along with anything you've typed into it, and an edit opened on a just-saved entry updates the real one. If what it was opened from disappears altogether, it closes instead of hanging open invisibly. So you can save and press Enter straight away.\n\nCaveat: an edit (E) opened and saved within the split second before the first save comes back still goes to the temporary entry and shows \"couldn't save\"; just press E again.",
+    "at": "2026-11-21T01:00:29.860Z"
+  },
+  {
+    "id": "cmwtkzdp30039kiwaxclevpu0",
+    "number": 31,
+    "title": "when the notes in RMT lit review save, it seems to refresh the tab name i.e.",
+    "status": "done",
+    "note": "Saving anything refreshes the page, and the refresh put the \"Studio - 26/27\" title back until the timer's next one-second tick rewrote it. The timer now watches the title and puts the clock back before anything is drawn, so it stays put through a save. The Sovrano \"Working\" title is held the same way.",
+    "at": "2026-11-26T22:46:32.045Z"
+  },
+  {
+    "id": "cmwxubzam00se15okjxupjn4c",
+    "number": 32,
+    "title": "we need to ensure that when sessions have been paused, they slice out the music listening when paused.",
+    "status": "done",
+    "note": "Music played while the timer was paused was being counted: only the total paused time was kept, not when the pauses happened. Each pause is now recorded, and listening is worked out only from the stretches you were studying, so it can't exceed the time studied. A track that spans a pause may count as two plays.\n\nPast sessions are left as they are, as you chose (their pause times were never saved). A session already running when this is deployed has no record of its earlier pauses. Tested with made-up Spotify data, not a live session, so worth a glance after your next paused one.",
+    "at": "2026-11-26T22:48:02.306Z"
+  },
+  {
+    "id": "cmwy4strt00021528yhotpwg6",
+    "number": 33,
+    "title": "Can we add a markdown download button next to the PDF button that downloads the markdown file ?",
+    "status": "done",
+    "note": "There's now an MD button beside PDF on a note (task notes and Nexus notes, focus mode too). It downloads the note as a markdown file: the title as a heading, then the text, with @ mentions written as their labels and pasted links as ordinary markdown links. If you've only just typed, it waits for the save first.\n\nCaveats: images and attachments still point at Studio, so they won't show outside it. There's no bulk download from the notes list.",
+    "at": "2026-11-26T22:49:51.233Z"
+  },
+  {
+    "id": "cmwya4n9y00bf15os48rriev4",
+    "number": 34,
+    "title": "i have seen this in the terminal appear.",
+    "status": "done",
+    "note": "It was a bug in Next.js 16.3, not in Studio. When a page is sent faster than gzip can take it, Next added a listener to wait for it to catch up, and because of a quirk in the compression library the listener was never removed. After 11 on one response Node warns. They were freed when that response finished, so nothing was building up over time: noise only.\n\nNext is upgraded from 16.3.5 to 16.4.6, which uses one listener per response. The warning is reproduced on the old code path and gone on the new. The built app was checked here, not yet running from the stick, so keep an eye on the terminal.",
+    "at": "2026-11-27T01:19:43.266Z"
   }
 ]

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notionDoneSync } from "@/lib/notionSync";
 import { db } from "@/lib/db";
-import { activeLock, LOCK_MAX_MINUTES, LOCK_MIN_MINUTES, pausedTotalAfterResume, studiedMs } from "@/lib/ultraFocus";
+import { activeLock, LOCK_MAX_MINUTES, LOCK_MIN_MINUTES, parsePauses, pausedTotalAfterResume, pausesAfterResume, studiedMs } from "@/lib/ultraFocus";
 import { DEFAULT_ITEMS, isStudyLocation } from "@/lib/types";
 import { normaliseWeights } from "@/lib/progress";
 import { distributeMinutes } from "@/lib/split";
@@ -304,9 +304,10 @@ export async function resumeTimer() {
   const t = await db.activeTimer.findUnique({ where: { id: "singleton" } });
   if (!t?.pausedAt) return;
   await pauseSovranoIfRunning();
+  const now = new Date();
   await db.activeTimer.update({
     where: { id: "singleton" },
-    data: { pausedAt: null, pausedMs: pausedTotalAfterResume(t) },
+    data: { pausedAt: null, pausedMs: pausedTotalAfterResume(t, now), pauses: pausesAfterResume(t, now) },
   });
   after(() => firePushcut("start"));
   refresh();
@@ -340,7 +341,9 @@ export async function startUltraFocus(courseId: string, minutes: number) {
       data: {
         lockCourseId: course.id,
         lockUntil,
-        ...(t.pausedAt ? { pausedAt: null, pausedMs: pausedTotalAfterResume(t, now) } : {}),
+        ...(t.pausedAt
+          ? { pausedAt: null, pausedMs: pausedTotalAfterResume(t, now), pauses: pausesAfterResume(t, now) }
+          : {}),
       },
     });
     if (t.pausedAt) after(() => firePushcut("start"));
@@ -436,8 +439,10 @@ export async function stopTimer(input: StopTimerInput) {
   // the session still stands — it's just logged without a soundtrack.
   let music: { tracks: number } | null = null;
   try {
-    music = await attachListening(session.id, timer.startedAt, endedAt);
-  } catch {
+    // A pause still open when the session stops ends with it.
+    music = await attachListening(session.id, timer.startedAt, endedAt, pausesAfterResume(timer, endedAt));
+  } catch (error) {
+    console.error(`Session ${session.id} saved without its music:`, error);
     music = null;
   }
 
@@ -453,7 +458,7 @@ export async function stopTimer(input: StopTimerInput) {
  * wasn't open. Marks the session as music-tracked even when nothing played —
  * that's a genuine "studied in silence", which the stats need.
  */
-async function attachListening(sessionId: string, start: Date, end: Date) {
+async function attachListening(sessionId: string, start: Date, end: Date, pauses: string | null) {
   if (!isSpotifyConfigured()) return null;
   const auth = await db.spotifyAuth.findUnique({ where: { id: "singleton" }, select: { id: true } });
   if (!auth) return null;
@@ -471,6 +476,7 @@ async function attachListening(sessionId: string, start: Date, end: Date) {
   const plays = buildListening({
     start,
     end,
+    pauses: parsePauses(pauses),
     samples: rawSamples.map((x) => ({
       spotifyId: x.spotifyId, kind: x.kind === "episode" ? "episode" : "track",
       title: x.title, artist: x.artist, artists: x.artists, album: x.album,

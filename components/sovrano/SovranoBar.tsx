@@ -8,6 +8,7 @@ import { fmtClock } from "@/lib/dates";
 import { OPEN_SOVRANO_LOG_EVENT, SOVRANO_KEY } from "@/lib/sovrano";
 import type { SovranoClock, SovranoProjectOption } from "@/lib/sovranoData";
 import { studiedMs } from "@/lib/ultraFocus";
+import { TITLE_PRIORITY, useTabTitle } from "@/lib/tabTitle";
 import { Portal } from "@/lib/hooks/useModal";
 import { SovranoLogDialog } from "./SovranoLogDialog";
 
@@ -68,20 +69,9 @@ export function SovranoBar({
     return () => clearInterval(id);
   }, [startMs, pausedAtMs, pausedMs]);
 
-  // The running clock in the tab title, as the study bar does - put back as
-  // it was when the session stops or pauses.
-  const before = useRef<string | null>(null);
+  // The running clock in the tab title, as the study bar does.
   const titled = running && !paused && ownsTitle;
-  useEffect(() => {
-    if (!titled) return;
-    if (before.current == null) before.current = document.title;
-    document.title = `${fmtClock(elapsed)} · Working`;
-  }, [titled, elapsed]);
-  useEffect(() => {
-    if (titled || before.current == null) return;
-    document.title = before.current;
-    before.current = null;
-  }, [titled]);
+  useTabTitle(titled ? `${fmtClock(elapsed)} · Working` : null, TITLE_PRIORITY.work);
 
   // A session that ends elsewhere (another tab) takes the dialog with it.
   useEffect(() => {

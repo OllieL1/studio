@@ -270,6 +270,9 @@ model ActiveTimer {
   /// Time spent paused in earlier, finished pauses (ms). Not studying time,
   /// so it comes off the session when it's logged.
   pausedMs Int       @default(0)
+  /// When those finished pauses were, as JSON [[startMs, endMs], …]. Music
+  /// played during one isn't part of the session.
+  pauses   String?
 
   /// Ultra focus: Studio is locked to this course's pages (the project's,
   /// if it's the project) until `lockUntil`, or until the session ends.
