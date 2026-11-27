@@ -262,5 +262,13 @@
     "status": "done",
     "note": "There's now an MD button beside PDF on a note (task notes and Nexus notes, focus mode too). It downloads the note as a markdown file: the title as a heading, then the text, with @ mentions written as their labels and pasted links as ordinary markdown links. If you've only just typed, it waits for the save first.\n\nCaveats: images and attachments still point at Studio, so they won't show outside it. There's no bulk download from the notes list.",
     "at": "2026-11-26T22:49:51.233Z"
+  },
+  {
+    "id": "cmwya4n9y00bf15os48rriev4",
+    "number": 34,
+    "title": "i have seen this in the terminal appear.",
+    "status": "done",
+    "note": "It was a bug in Next.js 16.3, not in Studio. When a page is sent faster than gzip can take it, Next added a listener to wait for it to catch up, and because of a quirk in the compression library the listener was never removed. After 11 on one response Node warns. They were freed when that response finished, so nothing was building up over time: noise only.\n\nNext is upgraded from 16.3.5 to 16.4.6, which uses one listener per response. The warning is reproduced on the old code path and gone on the new. The built app was checked here, not yet running from the stick, so keep an eye on the terminal.",
+    "at": "2026-11-27T01:19:43.266Z"
   }
 ]
